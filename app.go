@@ -39,7 +39,10 @@ func setMiddlewares(router *gin.Engine) {
 		Credentials: true,
 		Methods:     []string{http.MethodGet, http.MethodHead, http.MethodPost, http.MethodOptions, http.MethodPut, http.MethodDelete},
 	}
+	rl := md.NewRateLimiter(500, 10)
+
 	router.Use(
+		rl.RateLimiterMiddleware(),
 		md.CorsMiddleware(corsConfig),
 	)
 }
