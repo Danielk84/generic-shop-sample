@@ -13,7 +13,7 @@ import (
 )
 
 type App struct {
-	router *gin.Engine
+	Router *gin.Engine
 	config *AppConfig
 }
 
@@ -28,7 +28,7 @@ func NewApp(config *AppConfig) *App {
 	setMiddlewares(router)
 
 	return &App{
-		router: router,
+		Router: router,
 		config: config,
 	}
 }
@@ -51,7 +51,7 @@ func setMiddlewares(router *gin.Engine) {
 func (a *App) Run() {
 	srv := &http.Server{
 		Addr:         a.config.Addr,
-		Handler:      a.router,
+		Handler:      a.Router,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}

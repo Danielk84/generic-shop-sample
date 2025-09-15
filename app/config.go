@@ -14,7 +14,7 @@ type AppConfig struct {
 }
 
 func NewAppConfig() *AppConfig {
-	if err := godotenv.Load(".env"); err != nil {
+	if err := godotenv.Load(getDotEnvFilePath()); err != nil {
 		log.Panicln("error on loading .env file", err)
 	}
 
@@ -25,4 +25,11 @@ func NewAppConfig() *AppConfig {
 		Addr:           os.Getenv("ADDR"),
 		TrustedProxies: strings.Split(trustedProxies, ","),
 	}
+}
+
+func getDotEnvFilePath() string {
+	if env := os.Getenv("DOTENV_PATH"); env != "" {
+		return env
+	}
+	return ".env"
 }
