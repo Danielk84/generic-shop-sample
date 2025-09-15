@@ -1,8 +1,10 @@
 package main
 
+import "generic-shop-sample/app"
+
 func main() {
-	config := NewAppConfig()
-	app := NewApp(config)
+	config := app.NewAppConfig()
+	app := app.NewApp(config)
 
 	app.Run()
 }
