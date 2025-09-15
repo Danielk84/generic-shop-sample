@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	md "generic-shop-sample/middlewares"
 	"log"
 	"net/http"
 	"os/signal"
@@ -17,9 +18,14 @@ type App struct {
 }
 
 func NewApp(config *AppConfig) *App {
+	gin.DisableConsoleColor()
 	gin.SetMode(config.Mode)
 	router := gin.Default()
-	router.SetTrustedProxies(config.TrustedProxies)
+	if err := router.SetTrustedProxies(config.TrustedProxies); err != nil {
+		log.Panicln(err)
+	}
+
+	setMiddlewares(router)
 
 	return &App{
 		router: router,
@@ -27,10 +33,23 @@ func NewApp(config *AppConfig) *App {
 	}
 }
 
+func setMiddlewares(router *gin.Engine) {
+	corsConfig := &md.CorsConfig{
+		Origins:     []string{"http://localhost:8080/"},
+		Credentials: true,
+		Methods:     []string{http.MethodGet, http.MethodHead, http.MethodPost, http.MethodOptions, http.MethodPut, http.MethodDelete},
+	}
+	router.Use(
+		md.CorsMiddleware(corsConfig),
+	)
+}
+
 func (a *App) Run() {
 	srv := &http.Server{
-		Addr:    a.config.Addr,
-		Handler: a.router,
+		Addr:         a.config.Addr,
+		Handler:      a.router,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
 	}
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
