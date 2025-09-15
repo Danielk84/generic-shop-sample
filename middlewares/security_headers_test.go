@@ -1,14 +1,14 @@
 package middlewares_test
 
 import (
-	ts "generic-shop-sample/internal/testutils"
+	tu "generic-shop-sample/internal/testutils"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
 
 func TestSecurityHeadersMiddleware(t *testing.T) {
-	router := ts.RouterSetup()
+	router := tu.RouterSetup()
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/", nil)
