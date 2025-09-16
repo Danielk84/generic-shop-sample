@@ -8,7 +8,7 @@ import (
 )
 
 func TestSecurityHeadersMiddleware(t *testing.T) {
-	router := tu.RouterSetup()
+	router := tu.RouterSetup(t.Context())
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/", nil)

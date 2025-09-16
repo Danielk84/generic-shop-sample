@@ -5,19 +5,18 @@ import (
 	md "generic-shop-sample/middlewares"
 	"log"
 	"net/http"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 type App struct {
+	ctx    context.Context
 	Router *gin.Engine
 	config *AppConfig
 }
 
-func NewApp(config *AppConfig) *App {
+func NewApp(ctx context.Context, config *AppConfig) *App {
 	gin.DisableConsoleColor()
 	gin.SetMode(config.Mode)
 	router := gin.Default()
@@ -25,21 +24,23 @@ func NewApp(config *AppConfig) *App {
 		log.Panicln(err)
 	}
 
-	setMiddlewares(router)
+	setMiddlewares(ctx, router)
 
 	return &App{
+		ctx:    ctx,
 		Router: router,
 		config: config,
 	}
 }
 
-func setMiddlewares(router *gin.Engine) {
+func setMiddlewares(ctx context.Context, router *gin.Engine) {
 	corsConfig := &md.CorsConfig{
 		Origins:     []string{"http://localhost:8080/"},
 		Credentials: true,
 		Methods:     []string{http.MethodGet, http.MethodHead, http.MethodPost, http.MethodOptions, http.MethodPut, http.MethodDelete},
 	}
-	rl := md.NewRateLimiter(500, 10)
+
+	rl := md.NewRateLimiter(ctx, 500, 10*time.Minute, 30*time.Minute)
 
 	router.Use(
 		md.SecurityHeadersMiddleware(),
@@ -61,9 +62,7 @@ func (a *App) Run() {
 		}
 	}()
 
-	quit, quitCancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer quitCancel()
-	<-quit.Done()
+	<-a.ctx.Done()
 
 	shutdown, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()

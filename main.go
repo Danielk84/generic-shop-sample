@@ -1,10 +1,18 @@
 package main
 
-import "generic-shop-sample/app"
+import (
+	"context"
+	"generic-shop-sample/app"
+	"os/signal"
+	"syscall"
+)
 
 func main() {
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+
 	config := app.NewAppConfig()
-	app := app.NewApp(config)
+	app := app.NewApp(ctx, config)
 
 	app.Run()
 }

@@ -1,14 +1,15 @@
 package testutils
 
 import (
+	"context"
 	a "generic-shop-sample/app"
 
 	"github.com/gin-gonic/gin"
 )
 
-func RouterSetup() *gin.Engine {
+func RouterSetup(ctx context.Context) *gin.Engine {
 	config := a.NewAppConfig()
-	app := a.NewApp(config)
+	app := a.NewApp(ctx, config)
 
 	return app.Router
 }

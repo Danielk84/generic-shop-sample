@@ -2,33 +2,40 @@ package middlewares
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"net/http"
-	"os/signal"
+	"strconv"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
-func NewRateLimiter(requestLimit int, timePeriod int) *RateLimter {
-	rl := &RateLimter{
-		ipRLs:        make(map[string]*ipRateLimiter),
-		requestLimit: requestLimit,
-		timePeriod:   time.Duration(timePeriod) * time.Minute,
+func NewRateLimiter(ctx context.Context, requestLimit int, timePeriod, cleanupPeriod time.Duration) *RateLimter {
+	if timePeriod == 0 || cleanupPeriod == 0 {
+		log.Panic("timePeriod or cleanupPeriod must be non-zero")
 	}
 
-	go rl.removeEndedTask()
+	rl := &RateLimter{
+		ctx:           ctx,
+		ipRLs:         make(map[string]*ipRateLimiter),
+		requestLimit:  requestLimit,
+		timePeriod:    timePeriod,
+		cleanupPeriod: cleanupPeriod,
+	}
+
+	go rl.removeExpired()
 
 	return rl
 }
 
 type RateLimter struct {
-	mu           sync.Mutex
-	ipRLs        map[string]*ipRateLimiter
-	requestLimit int
-	timePeriod   time.Duration
+	mu            sync.Mutex
+	ctx           context.Context
+	ipRLs         map[string]*ipRateLimiter
+	requestLimit  int
+	timePeriod    time.Duration
+	cleanupPeriod time.Duration
 }
 
 func (rl *RateLimter) RateLimiterMiddleware() gin.HandlerFunc {
@@ -40,8 +47,9 @@ func (rl *RateLimter) RateLimiterMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		c.String(http.StatusTooManyRequests,
-			fmt.Sprintf("Try %d minutes later", int64(rl.timePeriod/time.Minute)))
+		retryAfter := strconv.Itoa(int(rl.timePeriod.Seconds()))
+		c.Header("Retry-After", retryAfter)
+		c.String(http.StatusTooManyRequests, "Too many requests, try later.")
 	}
 }
 
@@ -59,34 +67,34 @@ func (rl *RateLimter) createOrGetInfo(ip string) *ipRateLimiter {
 	return ipRL
 }
 
-func (rl *RateLimter) removeEndedTask() {
-	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
-	defer cancel()
-
-	ticker := time.NewTicker(30 * time.Minute)
+func (rl *RateLimter) removeExpired() {
+	ticker := time.NewTicker(rl.cleanupPeriod)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-ctx.Done():
+		case <-rl.ctx.Done():
 			return
 		case <-ticker.C:
 			rl.mu.Lock()
 
-			newIpRLs := make(map[string]*ipRateLimiter)
+			now := time.Now()
 			for key, value := range rl.ipRLs {
-				if time.Since(value.startTime) > rl.timePeriod {
-					continue
+				if now.Sub(value.startTime) >= rl.timePeriod {
+					delete(rl.ipRLs, key)
 				}
-
-				newIpRLs[key] = value
 			}
-
-			rl.ipRLs = newIpRLs
 
 			rl.mu.Unlock()
 		}
 	}
+}
+
+// GetLen return the number of stored IP entries, mainly for unit testing.
+func (rl *RateLimter) GetLen() int {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	return len(rl.ipRLs)
 }
 
 type ipRateLimiter struct {
