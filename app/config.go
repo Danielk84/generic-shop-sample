@@ -9,8 +9,8 @@ import (
 )
 
 type AppConfig struct {
-	Mode, Addr     string
-	TrustedProxies []string
+	Mode, Addr              string
+	TrustedProxies, Origins []string
 }
 
 func NewAppConfig() *AppConfig {
@@ -18,12 +18,11 @@ func NewAppConfig() *AppConfig {
 		log.Panicln("error on loading .env file", err)
 	}
 
-	trustedProxies := strings.ReplaceAll(os.Getenv("TRUSTED_PROXIES"), " ", "")
-
 	return &AppConfig{
 		Mode:           os.Getenv("MODE"),
 		Addr:           os.Getenv("ADDR"),
-		TrustedProxies: strings.Split(trustedProxies, ","),
+		TrustedProxies: getStrSliceFromStr(os.Getenv("TRUSTED_PROXIES")),
+		Origins:        getStrSliceFromStr(os.Getenv("ORIGINS")),
 	}
 }
 
@@ -32,4 +31,8 @@ func getDotEnvFilePath() string {
 		return env
 	}
 	return ".env"
+}
+
+func getStrSliceFromStr(s string) []string {
+	return strings.Split(strings.ReplaceAll(s, " ", ""), ",")
 }

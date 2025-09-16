@@ -24,7 +24,7 @@ func NewApp(ctx context.Context, config *AppConfig) *App {
 		log.Panicln(err)
 	}
 
-	setMiddlewares(ctx, router)
+	setMiddlewares(ctx, router, config)
 
 	return &App{
 		ctx:    ctx,
@@ -33,9 +33,9 @@ func NewApp(ctx context.Context, config *AppConfig) *App {
 	}
 }
 
-func setMiddlewares(ctx context.Context, router *gin.Engine) {
+func setMiddlewares(ctx context.Context, router *gin.Engine, config *AppConfig) {
 	corsConfig := &md.CorsConfig{
-		Origins:     []string{"http://localhost:8080/"},
+		Origins:     config.Origins,
 		Credentials: true,
 		Methods:     []string{http.MethodGet, http.MethodHead, http.MethodPost, http.MethodOptions, http.MethodPut, http.MethodDelete},
 	}
