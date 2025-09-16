@@ -11,6 +11,7 @@ import (
 type AppConfig struct {
 	Mode, Addr              string
 	TrustedProxies, Origins []string
+	DatabaseURL             string
 }
 
 func NewAppConfig() *AppConfig {
@@ -23,6 +24,7 @@ func NewAppConfig() *AppConfig {
 		Addr:           os.Getenv("ADDR"),
 		TrustedProxies: getStrSliceFromStr(os.Getenv("TRUSTED_PROXIES")),
 		Origins:        getStrSliceFromStr(os.Getenv("ORIGINS")),
+		DatabaseURL:    os.Getenv("DATABASE_URL"),
 	}
 }
 
