@@ -2,12 +2,13 @@ CREATE TABLE products (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR(256),
     description TEXT,
+    price BIGINT NOT NULL DEFAULT 0,
     is_available BOOLEAN NOT NULL DEFAULT FALSE,
     is_active BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE categories (
-    id GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     category TEXT UNIQUE
 );
 
