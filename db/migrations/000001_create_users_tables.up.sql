@@ -1,5 +1,5 @@
 CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     username VARCHAR(128) UNIQUE NOT NULL,
     email VARCHAR(256) UNIQUE,
     password_hash TEXT,
@@ -9,7 +9,7 @@ CREATE TABLE users (
 
 CREATE TABLE user_profile (
     user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    img_path TEXT NOT NULL,
+    img_path TEXT,
     age INTEGER CHECK (age > 0),
     phone_number TEXT,
     bio VARCHAR(450),

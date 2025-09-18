@@ -7,7 +7,7 @@ CREATE TABLE products (
 );
 
 CREATE TABLE categories (
-    id SERIAL PRIMARY KEY,
+    id GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     category TEXT UNIQUE
 );
 
