@@ -52,7 +52,7 @@ func (um *UserManager) IsUsernameExists(ctx context.Context, username string) bo
 	return false
 }
 
-const insertQuery = `INSERT INTO users (username, password_hash, permission_type, is_active)
+const createUserQuery = `INSERT INTO users (username, password_hash, permission_type, is_active)
 VALUES (@Username, @PasswordHash, @PermissionType, @IsActive)`
 
 func (um *UserManager) Create(ctx context.Context, user *User) error {
@@ -62,51 +62,25 @@ func (um *UserManager) Create(ctx context.Context, user *User) error {
 		"PermissionType": user.PermissionType,
 		"IsActive":       user.IsActive,
 	}
-	cTag, err := um.session.Exec(ctx, insertQuery, args)
-	if err != nil {
-		return err
-	}
-	if cTag.RowsAffected() != 1 {
-		return ErrNoRowInserted
-	}
-	return nil
+	return execQuery(ctx, um.session, createUserQuery, args)
 }
 
-const addOrUpdateEmailQuery = `UPDATE ONLY users SET email = @Email WHERE id = @ID`
+const setEmailQuery = `UPDATE ONLY users SET email = @Email WHERE id = @ID`
 
 func (um *UserManager) SetEmail(ctx context.Context, user *User) error {
 	args := pgx.NamedArgs{
 		"Email": user.Email,
 		"ID":    user.ID,
 	}
-	cTag, err := um.session.Exec(ctx, addOrUpdateEmailQuery, args)
-	if err != nil {
-		return err
-	}
-	if cTag.RowsAffected() != 1 {
-		return ErrNoRowFoundToUpdate
-	}
-	return nil
+	return execQuery(ctx, um.session, setEmailQuery, args)
 }
 
-const readUserQuery = `SELECT id, username, email::VARCHAR, password_hash::VARCHAR, permission_type, is_active FROM users
+const readUserQuery = `SELECT id, username, email, password_hash, permission_type, is_active FROM users
 WHERE username = $1
 LIMIT 1`
 
 func (um *UserManager) Read(ctx context.Context, username string) (*User, error) {
-	rows, err := um.session.Query(ctx, readUserQuery, username)
-	if err != nil {
-		return nil, err
-	}
-
-	users, err := pgx.CollectRows(rows, pgx.RowToStructByName[User])
-	if err != nil {
-		return nil, err
-	}
-	if len(users) != 1 {
-		return nil, ErrNoRowFound
-	}
-	return &users[0], nil
+	return read[User](ctx, um.session, readUserQuery, username)
 }
 
 const updateUserQuery = `UPDATE users
@@ -120,25 +94,11 @@ func (um *UserManager) Update(ctx context.Context, user *User) error {
 		"IsActive":       user.IsActive,
 		"ID":             user.ID,
 	}
-	cTag, err := um.session.Exec(ctx, updateUserQuery, args)
-	if err != nil {
-		return err
-	}
-	if cTag.RowsAffected() != 1 {
-		return ErrNoRowFoundToDelete
-	}
-	return nil
+	return execQuery(ctx, um.session, updateUserQuery, args)
 }
 
 const deleteUserQuery = `DELETE FROM users WHERE id = $1`
 
 func (um *UserManager) Delete(ctx context.Context, id int32) error {
-	cTag, err := um.session.Exec(ctx, deleteUserQuery, id)
-	if err != nil {
-		return err
-	}
-	if cTag.RowsAffected() != 1 {
-		return ErrNoRowFoundToDelete
-	}
-	return nil
+	return execQuery(ctx, um.session, deleteUserQuery, id)
 }
