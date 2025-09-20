@@ -20,7 +20,7 @@ type User struct {
 	ID             int32
 	Username       string
 	Email          *string
-	PasswordHash   string
+	PasswordHash   *string
 	PermissionType PermissionType
 	IsActive       bool
 }
@@ -30,6 +30,8 @@ type IUserManager interface {
 	Create(context.Context, *User) error
 	SetEmail(context.Context, *User) error
 	Read(context.Context, string) (*User, error)
+	Update(context.Context, *User) error
+	Delete(context.Context, int32) error
 }
 
 func NewUserManager(session *pgxpool.Pool) IUserManager {
@@ -105,4 +107,38 @@ func (um *UserManager) Read(ctx context.Context, username string) (*User, error)
 		return nil, ErrNoRowFound
 	}
 	return &users[0], nil
+}
+
+const updateUserQuery = `UPDATE users
+SET password_hash = @PasswordHash, permission_type = @PermissionType, is_active = @IsActive
+WHERE id = @ID`
+
+func (um *UserManager) Update(ctx context.Context, user *User) error {
+	args := pgx.NamedArgs{
+		"PasswordHash":   user.PasswordHash,
+		"PermissionType": user.PermissionType,
+		"IsActive":       user.IsActive,
+		"ID":             user.ID,
+	}
+	cTag, err := um.session.Exec(ctx, updateUserQuery, args)
+	if err != nil {
+		return err
+	}
+	if cTag.RowsAffected() != 1 {
+		return ErrNoRowFoundToDelete
+	}
+	return nil
+}
+
+const deleteUserQuery = `DELETE FROM users WHERE id = $1`
+
+func (um *UserManager) Delete(ctx context.Context, id int32) error {
+	cTag, err := um.session.Exec(ctx, deleteUserQuery, id)
+	if err != nil {
+		return err
+	}
+	if cTag.RowsAffected() != 1 {
+		return ErrNoRowFoundToDelete
+	}
+	return nil
 }

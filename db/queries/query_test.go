@@ -67,7 +67,7 @@ var testUsersData = []queries.User{
 	{Username: "adminUser", PermissionType: queries.Admin, IsActive: true},
 	{Username: "vendorUser", PermissionType: queries.Vendor, IsActive: true},
 	{Username: "customerUser", PermissionType: queries.Customer, IsActive: true},
-	{Username: "blockUser", PermissionType: queries.BlockUser, IsActive: true},
+	{Username: "blockUser", PermissionType: queries.BlockUser, IsActive: false},
 }
 
 func createTemporaryUsers(ctx context.Context, session *pgxpool.Pool) error {
