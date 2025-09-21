@@ -11,12 +11,12 @@ CREATE TABLE products (
 
 CREATE TABLE categories (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    category TEXT UNIQUE
+    tag TEXT UNIQUE
 );
 
 CREATE TABLE products_categories (
-    product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-    category_id INTEGER NOT NULL REFERENCES categories(id) ON UPDATE CASCADE ON DELETE CASCADE,
+    product_id UUID REFERENCES products(id) ON DELETE CASCADE,
+    category_id INTEGER REFERENCES categories(id) ON UPDATE CASCADE ON DELETE CASCADE,
     CONSTRAINT product_categorie_pkey PRIMARY KEY (product_id, category_id)
 );
 
@@ -26,6 +26,6 @@ CREATE TABLE product_images (
 );
 
 CREATE TABLE product_info (
-    product_id UUID NOT NULL PRIMARY KEY REFERENCES products(id) ON DELETE CASCADE,
+    product_id UUID PRIMARY KEY REFERENCES products(id) ON DELETE CASCADE,
     info JSONB
 );
