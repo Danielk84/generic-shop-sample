@@ -1,4 +1,3 @@
-DROP TABLE IF EXISTS product_info;
 DROP TABLE IF EXISTS product_images;
 DROP TABLE IF EXISTS products_categories CASCADE;
 DROP TABLE IF EXISTS categories CASCADE;

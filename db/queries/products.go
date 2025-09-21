@@ -18,17 +18,14 @@ type ProductSummary struct {
 type Product struct {
 	IsAvailable bool
 	IsActive    bool
-	ProductSummary
-}
-
-type ProductDetails struct {
 	Description *string
-	Product
+	Details     PropertyMap
+	ProductSummary
 }
 
 type OwnedProduct struct {
 	UserID int32
-	ProductDetails
+	Product
 }
 
 type ProductRepository struct {
@@ -38,8 +35,8 @@ type ProductRepository struct {
 type ProductStore interface {
 	Create(context.Context, *OwnedProduct) error
 	List(context.Context, int, int) (*[]ProductSummary, error)
-	Get(context.Context, string) (*ProductDetails, error)
-	Update(context.Context, *ProductDetails) error
+	Get(context.Context, string) (*Product, error)
+	Update(context.Context, *Product) error
 	Delete(context.Context, string) error
 	SetAvailable(context.Context, string, bool) error
 	SetActive(context.Context, string, bool) error
@@ -50,12 +47,13 @@ func NewProductStore(session *pgxpool.Pool) ProductStore {
 }
 
 func (pr *ProductRepository) Create(ctx context.Context, product *OwnedProduct) error {
-	const q = `INSERT INTO products(user_id, name, description, price, is_available, is_active)
-		VALUES (@UserID, @Name, @Description, @Price, @IsAvailable, @IsActive)`
+	const q = `INSERT INTO products(user_id, name, description, details, price, is_available, is_active)
+		VALUES (@UserID, @Name, @Description, @Details, @Price, @IsAvailable, @IsActive)`
 	args := pgx.NamedArgs{
 		"UserID":      product.UserID,
 		"Name":        product.Name,
 		"Description": product.Description,
+		"Details":     product.Details,
 		"IsAvailable": product.IsAvailable,
 		"IsActive":    product.IsActive,
 	}
@@ -71,20 +69,21 @@ func (pr *ProductRepository) List(ctx context.Context, pagination, page int) (*[
 	return list[ProductSummary](ctx, pr.session, q, pagination, (page-1)*pagination)
 }
 
-func (pr *ProductRepository) Get(ctx context.Context, id string) (*ProductDetails, error) {
-	const q = `SELECT id, name, description, price, is_available, is_active FROM products
+func (pr *ProductRepository) Get(ctx context.Context, id string) (*Product, error) {
+	const q = `SELECT id, name, description, details, price, is_available, is_active FROM products
 		WHERE id = $1::UUID
 		LIMIT 1`
-	return get[ProductDetails](ctx, pr.session, q, id)
+	return get[Product](ctx, pr.session, q, id)
 }
 
-func (pr *ProductRepository) Update(ctx context.Context, product *ProductDetails) error {
+func (pr *ProductRepository) Update(ctx context.Context, product *Product) error {
 	const q = `UPDATE products
-		SET name = @Name, description = @Description, is_available = @IsAvailable, is_active = @IsActive
+		SET name = @Name, description = @Description , details = @Details::JSONB, is_available = @IsAvailable, is_active = @IsActive
 		WHERE id = @ID`
 	args := pgx.NamedArgs{
 		"Name":        product.Name,
 		"Description": product.Description,
+		"Details":     product.Details,
 		"IsAvailable": product.IsAvailable,
 		"IsActive":    product.IsActive,
 		"ID":          product.ID,
@@ -147,6 +146,7 @@ type PCRepository struct {
 
 type PCStore interface {
 	SetTags(context.Context, string, []string) error
+	List(context.Context, string) (*[]string, error)
 }
 
 func NewPCStore(session *pgxpool.Pool) PCStore {

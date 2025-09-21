@@ -3,6 +3,7 @@ CREATE TABLE products (
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(256) NOT NULL,
     description TEXT,
+    details JSONB,
     price BIGINT NOT NULL DEFAULT 0,
     pub_date TIMESTAMP NOT NULL DEFAULT now(),
     is_available BOOLEAN NOT NULL DEFAULT FALSE,
@@ -23,9 +24,4 @@ CREATE TABLE products_categories (
 CREATE TABLE product_images (
     product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
     img_path TEXT NOT NULL UNIQUE
-);
-
-CREATE TABLE product_info (
-    product_id UUID PRIMARY KEY REFERENCES products(id) ON DELETE CASCADE,
-    info JSONB
 );

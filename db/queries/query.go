@@ -2,6 +2,9 @@ package queries
 
 import (
 	"context"
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -43,4 +46,28 @@ func get[T any](ctx context.Context, session *pgxpool.Pool, query string, args .
 		return nil, pgx.ErrTooManyRows
 	}
 	return &(*items)[0], nil
+}
+
+type PropertyMap map[string]any
+
+func (p *PropertyMap) Value() (driver.Value, error) {
+	return json.Marshal(*p)
+}
+
+func (p *PropertyMap) Scan(src any) error {
+	value, ok := src.([]byte)
+	if !ok {
+		return fmt.Errorf("type assertion, .([]byte) failed")
+	}
+
+	var i any
+	if err := json.Unmarshal(value, &i); err != nil {
+		return err
+	}
+
+	*p, ok = i.(PropertyMap)
+	if !ok {
+		return fmt.Errorf("type assertion, .([]PropertyMap) failed")
+	}
+	return nil
 }
