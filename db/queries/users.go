@@ -25,80 +25,74 @@ type User struct {
 	IsActive       bool
 }
 
-type IUserManager interface {
+type UserRepository struct {
+	session *pgxpool.Pool
+}
+
+type UserStore interface {
 	IsUsernameExists(context.Context, string) bool
 	Create(context.Context, *User) error
 	SetEmail(context.Context, *User) error
-	Read(context.Context, string) (*User, error)
+	Get(context.Context, string) (*User, error)
 	Update(context.Context, *User) error
 	Delete(context.Context, int32) error
 }
 
-func NewUserManager(session *pgxpool.Pool) IUserManager {
-	return &UserManager{session: session}
+func NewUserStore(session *pgxpool.Pool) UserStore {
+	return &UserRepository{session}
 }
 
-type UserManager struct {
-	session *pgxpool.Pool
-}
-
-const isUsernameExistsQuery = "SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)"
-
-func (um *UserManager) IsUsernameExists(ctx context.Context, username string) bool {
+func (ur *UserRepository) IsUsernameExists(ctx context.Context, username string) bool {
+	const q = "SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)"
 	var isExists bool
-	if err := um.session.QueryRow(ctx, isUsernameExistsQuery, username).Scan(&isExists); err != nil || isExists {
+	if err := ur.session.QueryRow(ctx, q, username).Scan(&isExists); err != nil || isExists {
 		return true
 	}
 	return false
 }
 
-const createUserQuery = `INSERT INTO users (username, password_hash, permission_type, is_active)
-VALUES (@Username, @PasswordHash, @PermissionType, @IsActive)`
-
-func (um *UserManager) Create(ctx context.Context, user *User) error {
+func (ur *UserRepository) Create(ctx context.Context, user *User) error {
+	const q = `INSERT INTO users (username, password_hash, permission_type, is_active)
+		VALUES (@Username, @PasswordHash, @PermissionType, @IsActive)`
 	args := pgx.NamedArgs{
 		"Username":       user.Username,
 		"PasswordHash":   user.PasswordHash,
 		"PermissionType": user.PermissionType,
 		"IsActive":       user.IsActive,
 	}
-	return execQuery(ctx, um.session, createUserQuery, args)
+	return execOne(ctx, ur.session, q, args)
 }
 
-const setEmailQuery = `UPDATE ONLY users SET email = @Email WHERE id = @ID`
-
-func (um *UserManager) SetEmail(ctx context.Context, user *User) error {
+func (ur *UserRepository) SetEmail(ctx context.Context, user *User) error {
+	const q = `UPDATE ONLY users SET email = @Email WHERE id = @ID`
 	args := pgx.NamedArgs{
 		"Email": user.Email,
 		"ID":    user.ID,
 	}
-	return execQuery(ctx, um.session, setEmailQuery, args)
+	return execOne(ctx, ur.session, q, args)
 }
 
-const readUserQuery = `SELECT id, username, email, password_hash, permission_type, is_active FROM users
-WHERE username = $1
-LIMIT 1`
-
-func (um *UserManager) Read(ctx context.Context, username string) (*User, error) {
-	return read[User](ctx, um.session, readUserQuery, username)
+func (ur *UserRepository) Get(ctx context.Context, username string) (*User, error) {
+	const readUserQuery = `SELECT id, username, email, password_hash, permission_type, is_active FROM users
+		WHERE username = $1
+		LIMIT 1`
+	return get[User](ctx, ur.session, readUserQuery, username)
 }
 
-const updateUserQuery = `UPDATE users
-SET password_hash = @PasswordHash, permission_type = @PermissionType, is_active = @IsActive
-WHERE id = @ID`
-
-func (um *UserManager) Update(ctx context.Context, user *User) error {
+func (ur *UserRepository) Update(ctx context.Context, user *User) error {
+	const q = `UPDATE users
+		SET password_hash = @PasswordHash, permission_type = @PermissionType, is_active = @IsActive
+		WHERE id = @ID`
 	args := pgx.NamedArgs{
 		"PasswordHash":   user.PasswordHash,
 		"PermissionType": user.PermissionType,
 		"IsActive":       user.IsActive,
 		"ID":             user.ID,
 	}
-	return execQuery(ctx, um.session, updateUserQuery, args)
+	return execOne(ctx, ur.session, q, args)
 }
 
-const deleteUserQuery = `DELETE FROM users WHERE id = $1`
-
-func (um *UserManager) Delete(ctx context.Context, id int32) error {
-	return execQuery(ctx, um.session, deleteUserQuery, id)
+func (ur *UserRepository) Delete(ctx context.Context, id int32) error {
+	const q = `DELETE FROM users WHERE id = $1`
+	return execOne(ctx, ur.session, q, id)
 }

@@ -8,7 +8,7 @@ import (
 
 func TestIsUsernameExists(t *testing.T) {
 	session := db.Session()
-	um := queries.NewUserManager(session)
+	um := queries.NewUserStore(session)
 
 	if um.IsUsernameExists(t.Context(), "InvalidUsername") {
 		t.Errorf("expected false, but it return true for existing of invalid username")
@@ -20,7 +20,7 @@ func TestIsUsernameExists(t *testing.T) {
 
 func TestCreateUser(t *testing.T) {
 	session := db.Session()
-	um := queries.NewUserManager(session)
+	um := queries.NewUserStore(session)
 
 	user := &queries.User{
 		Username:       "validUser",
@@ -44,7 +44,7 @@ const getEmailQuery = `SELECT email FROM users WHERE id = $1`
 
 func TestSetEmail(t *testing.T) {
 	session := db.Session()
-	um := queries.NewUserManager(session)
+	um := queries.NewUserStore(session)
 
 	var id int32
 	if err := session.QueryRow(t.Context(), getIDFromUsernameQuery, "customerUser").Scan(&id); err != nil {
@@ -69,9 +69,9 @@ func TestSetEmail(t *testing.T) {
 	}
 }
 
-func TestReadUser(t *testing.T) {
+func TestGetUser(t *testing.T) {
 	session := db.Session()
-	um := queries.NewUserManager(session)
+	um := queries.NewUserStore(session)
 
 	passwordHash := "simpleHash"
 	user := queries.User{
@@ -84,9 +84,9 @@ func TestReadUser(t *testing.T) {
 		t.Errorf("failed to creating new user, %s", err)
 	}
 
-	rUser, err := um.Read(t.Context(), user.Username)
+	rUser, err := um.Get(t.Context(), user.Username)
 	if err != nil {
-		t.Errorf(`failed to reading user "%s", %s`, user.Username, err)
+		t.Errorf(`failed to get user "%s", %s`, user.Username, err)
 	}
 
 	if rUser.PasswordHash != user.PasswordHash && !rUser.IsActive && rUser.PermissionType != queries.Customer {
@@ -95,12 +95,12 @@ func TestReadUser(t *testing.T) {
 }
 
 func TestUpdateUser(t *testing.T) {
-	um := queries.NewUserManager(db.Session())
+	um := queries.NewUserStore(db.Session())
 
 	username := "blockUser"
-	user, err := um.Read(t.Context(), username)
+	user, err := um.Get(t.Context(), username)
 	if err != nil {
-		t.Errorf(`failed to read user "%s", %s`, username, err)
+		t.Errorf(`failed to get user "%s", %s`, username, err)
 	}
 
 	user.IsActive = true
@@ -109,9 +109,9 @@ func TestUpdateUser(t *testing.T) {
 		t.Errorf(`failed to update user "%s", %s`, username, err)
 	}
 
-	newUser, err := um.Read(t.Context(), username)
+	newUser, err := um.Get(t.Context(), username)
 	if err != nil {
-		t.Errorf(`failed to re-read user "%s", %s`, username, err)
+		t.Errorf(`failed to get user "%s", %s`, username, err)
 	}
 
 	if !newUser.IsActive && newUser.PermissionType != queries.BlockUser {
@@ -120,7 +120,7 @@ func TestUpdateUser(t *testing.T) {
 }
 
 func TestDeleteUser(t *testing.T) {
-	um := queries.NewUserManager(db.Session())
+	um := queries.NewUserStore(db.Session())
 
 	user := &queries.User{
 		Username:       "deleteUser",
@@ -131,9 +131,9 @@ func TestDeleteUser(t *testing.T) {
 		t.Errorf(`failed to create user "%s", %s`, user.Username, err)
 	}
 
-	rUser, err := um.Read(t.Context(), user.Username)
+	rUser, err := um.Get(t.Context(), user.Username)
 	if err != nil {
-		t.Errorf(`failed to read user "%s", %s`, user.Username, err)
+		t.Errorf(`failed to get user "%s", %s`, user.Username, err)
 	}
 
 	if err := um.Delete(t.Context(), rUser.ID); err != nil {

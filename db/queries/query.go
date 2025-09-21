@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func execQuery(ctx context.Context, session *pgxpool.Pool, query string, args ...any) error {
+func execOne(ctx context.Context, session *pgxpool.Pool, query string, args ...any) error {
 	cTag, err := session.Exec(ctx, query, args...)
 	if err != nil {
 		return err
@@ -18,29 +18,29 @@ func execQuery(ctx context.Context, session *pgxpool.Pool, query string, args ..
 	return nil
 }
 
-func readAll[T any](ctx context.Context, session *pgxpool.Pool, query string, args ...any) ([]*T, error) {
+func list[T any](ctx context.Context, session *pgxpool.Pool, query string, args ...any) (*[]T, error) {
 	rows, err := session.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
 
-	items, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByName[T])
+	items, err := pgx.CollectRows(rows, pgx.RowToStructByName[T])
 	if err != nil {
 		return nil, err
 	}
 	if len(items) == 0 {
 		return nil, pgx.ErrNoRows
 	}
-	return items, nil
+	return &items, nil
 }
 
-func read[T any](ctx context.Context, session *pgxpool.Pool, query string, args ...any) (*T, error) {
-	items, err := readAll[T](ctx, session, query, args...)
+func get[T any](ctx context.Context, session *pgxpool.Pool, query string, args ...any) (*T, error) {
+	items, err := list[T](ctx, session, query, args...)
 	if err != nil {
 		return nil, err
 	}
-	if len(items) != 1 {
+	if len(*items) != 1 {
 		return nil, pgx.ErrTooManyRows
 	}
-	return items[0], nil
+	return &(*items)[0], nil
 }
