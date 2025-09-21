@@ -2,10 +2,10 @@ package queries
 
 import (
 	"context"
+	"generic-shop-sample/db"
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type ProductSummary struct {
@@ -29,7 +29,7 @@ type OwnedProduct struct {
 }
 
 type ProductRepository struct {
-	session *pgxpool.Pool
+	session db.Session
 }
 
 type ProductStore interface {
@@ -42,7 +42,7 @@ type ProductStore interface {
 	SetActive(context.Context, string, bool) error
 }
 
-func NewProductStore(session *pgxpool.Pool) ProductStore {
+func NewProductStore(session db.Session) ProductStore {
 	return &ProductRepository{session: session}
 }
 
@@ -112,7 +112,7 @@ type Category struct {
 }
 
 type CategoryRepository struct {
-	session *pgxpool.Pool
+	session db.Session
 }
 
 type CategoryStore interface {
@@ -121,7 +121,7 @@ type CategoryStore interface {
 	Delete(context.Context, int32) error
 }
 
-func NewCategoryStore(session *pgxpool.Pool) CategoryStore {
+func NewCategoryStore(session db.Session) CategoryStore {
 	return &CategoryRepository{session}
 }
 
@@ -141,7 +141,7 @@ func (cr *CategoryRepository) Delete(ctx context.Context, id int32) error {
 }
 
 type PCRepository struct {
-	session *pgxpool.Pool
+	session db.Session
 }
 
 type PCStore interface {
@@ -149,7 +149,7 @@ type PCStore interface {
 	List(context.Context, string) (*[]string, error)
 }
 
-func NewPCStore(session *pgxpool.Pool) PCStore {
+func NewPCStore(session db.Session) PCStore {
 	return &PCRepository{session}
 }
 

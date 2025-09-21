@@ -2,9 +2,9 @@ package queries
 
 import (
 	"context"
+	"generic-shop-sample/db"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type PermissionType int32
@@ -26,7 +26,7 @@ type User struct {
 }
 
 type UserRepository struct {
-	session *pgxpool.Pool
+	session db.Session
 }
 
 type UserStore interface {
@@ -38,7 +38,7 @@ type UserStore interface {
 	Delete(context.Context, int32) error
 }
 
-func NewUserStore(session *pgxpool.Pool) UserStore {
+func NewUserStore(session db.Session) UserStore {
 	return &UserRepository{session}
 }
 

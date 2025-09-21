@@ -11,23 +11,22 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type TemporaryDataManagerFn func(context.Context, *pgxpool.Pool) error
+type DatabaseFixtureFn func(context.Context, db.Session) error
 
-var setupFuncs = []TemporaryDataManagerFn{
+var setupFuncs = []DatabaseFixtureFn{
 	createTemporaryUsers,
 }
 
-var teardownFuncs = []TemporaryDataManagerFn{
+var teardownFuncs = []DatabaseFixtureFn{
 	truncateTables,
 }
 
 func TestMain(m *testing.M) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	dbEngine := tu.DBEngineSetup(ctx)
-	session := db.Session()
+	engine := tu.DBManagerSetup(ctx)
+	session := db.NewSession()
 
 	errs := []error{}
 	for _, fn := range setupFuncs {
@@ -47,7 +46,7 @@ func TestMain(m *testing.M) {
 		}
 	}
 
-	dbEngine.Close()
+	engine.Close()
 	cancel()
 
 	if len(errs) > 0 {
@@ -60,35 +59,32 @@ func TestMain(m *testing.M) {
 	os.Exit(exitVal)
 }
 
-const createTemporaryQuery = `INSERT INTO users (username, permission_type, is_active)
-VALUES (@Username, @PermissionType, @IsActive)`
-
-var testUsersData = []queries.User{
-	{Username: "adminUser", PermissionType: queries.Admin, IsActive: true},
-	{Username: "vendorUser", PermissionType: queries.Vendor, IsActive: true},
-	{Username: "customerUser", PermissionType: queries.Customer, IsActive: true},
-	{Username: "blockUser", PermissionType: queries.BlockUser, IsActive: false},
-}
-
-func createTemporaryUsers(ctx context.Context, session *pgxpool.Pool) error {
+func createTemporaryUsers(ctx context.Context, session db.Session) error {
 	batch := &pgx.Batch{}
+	const q = `INSERT INTO users (username, permission_type, is_active)
+		VALUES (@Username, @PermissionType, @IsActive)`
+	var users = []queries.User{
+		{Username: "adminUser", PermissionType: queries.Admin, IsActive: true},
+		{Username: "vendorUser", PermissionType: queries.Vendor, IsActive: true},
+		{Username: "customerUser", PermissionType: queries.Customer, IsActive: true},
+		{Username: "blockUser", PermissionType: queries.BlockUser, IsActive: false},
+	}
 
-	for _, user := range testUsersData {
+	for _, user := range users {
 		args := pgx.NamedArgs{
 			"Username":       user.Username,
 			"PermissionType": user.PermissionType,
 			"IsActive":       user.IsActive,
 		}
-		batch.Queue(createTemporaryQuery, args)
+		batch.Queue(q, args)
 	}
 
 	sb := session.SendBatch(ctx, batch)
 	return sb.Close()
 }
 
-const truncateUsersQuery = `TRUNCATE users RESTART IDENTITY CASCADE`
-
-func truncateTables(ctx context.Context, session *pgxpool.Pool) error {
-	_, err := session.Exec(ctx, truncateUsersQuery)
+func truncateTables(ctx context.Context, session db.Session) error {
+	const q = `TRUNCATE users RESTART IDENTITY CASCADE`
+	_, err := session.Exec(ctx, q)
 	return err
 }

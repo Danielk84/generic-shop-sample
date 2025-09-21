@@ -5,12 +5,12 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"generic-shop-sample/db"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func execOne(ctx context.Context, session *pgxpool.Pool, query string, args ...any) error {
+func execOne(ctx context.Context, session db.Session, query string, args ...any) error {
 	cTag, err := session.Exec(ctx, query, args...)
 	if err != nil {
 		return err
@@ -21,7 +21,7 @@ func execOne(ctx context.Context, session *pgxpool.Pool, query string, args ...a
 	return nil
 }
 
-func list[T any](ctx context.Context, session *pgxpool.Pool, query string, args ...any) (*[]T, error) {
+func list[T any](ctx context.Context, session db.Session, query string, args ...any) (*[]T, error) {
 	rows, err := session.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -37,7 +37,7 @@ func list[T any](ctx context.Context, session *pgxpool.Pool, query string, args 
 	return &items, nil
 }
 
-func get[T any](ctx context.Context, session *pgxpool.Pool, query string, args ...any) (*T, error) {
+func get[T any](ctx context.Context, session db.Session, query string, args ...any) (*T, error) {
 	items, err := list[T](ctx, session, query, args...)
 	if err != nil {
 		return nil, err

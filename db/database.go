@@ -8,12 +8,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type IDBEngine interface {
+type Session = *pgxpool.Pool
+
+type DBManager interface {
 	Close()
 }
 
 type DBEngine struct {
-	dbPool *pgxpool.Pool
+	session Session
 }
 
 var (
@@ -21,33 +23,33 @@ var (
 	once            sync.Once
 )
 
-func newDBEngine(ctx context.Context, addr string) (*DBEngine, error) {
+func NewDBEngine(ctx context.Context, addr string) (*DBEngine, error) {
 	connCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	dbPool, err := pgxpool.New(connCtx, addr)
+	session, err := pgxpool.New(connCtx, addr)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := dbPool.Ping(connCtx); err != nil {
-		dbPool.Close()
+	if err := session.Ping(connCtx); err != nil {
+		session.Close()
 		return nil, err
 	}
-	return &DBEngine{dbPool: dbPool}, nil
+	return &DBEngine{session}, nil
 }
 
 func (db *DBEngine) Close() {
-	if db.dbPool != nil {
-		db.dbPool.Close()
+	if db.session != nil {
+		db.session.Close()
 	}
 }
 
-func SetupDBEngine(ctx context.Context, addr string) (IDBEngine, error) {
+func New(ctx context.Context, addr string) (DBManager, error) {
 	var err error
 	once.Do(func() {
 		var engine *DBEngine
-		engine, err = newDBEngine(ctx, addr)
+		engine, err = NewDBEngine(ctx, addr)
 		if err == nil {
 			DefaultDBEngine = engine
 		}
@@ -55,6 +57,6 @@ func SetupDBEngine(ctx context.Context, addr string) (IDBEngine, error) {
 	return DefaultDBEngine, nil
 }
 
-func Session() *pgxpool.Pool {
-	return DefaultDBEngine.dbPool
+func NewSession() Session {
+	return DefaultDBEngine.session
 }

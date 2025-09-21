@@ -7,8 +7,7 @@ import (
 )
 
 func TestIsUsernameExists(t *testing.T) {
-	session := db.Session()
-	um := queries.NewUserStore(session)
+	um := queries.NewUserStore(db.NewSession())
 
 	if um.IsUsernameExists(t.Context(), "InvalidUsername") {
 		t.Errorf("expected false, but it return true for existing of invalid username")
@@ -19,8 +18,7 @@ func TestIsUsernameExists(t *testing.T) {
 }
 
 func TestCreateUser(t *testing.T) {
-	session := db.Session()
-	um := queries.NewUserStore(session)
+	um := queries.NewUserStore(db.NewSession())
 
 	user := &queries.User{
 		Username:       "validUser",
@@ -28,7 +26,7 @@ func TestCreateUser(t *testing.T) {
 		IsActive:       true,
 	}
 	if err := um.Create(t.Context(), user); err != nil {
-		t.Errorf("expected to creating validUser, but got: %s", err)
+		t.Errorf("expected to creating valid user, but got: %s", err)
 	}
 	if !um.IsUsernameExists(t.Context(), user.Username) {
 		t.Errorf("expected to existing of created user, but got false")
@@ -39,13 +37,11 @@ func TestCreateUser(t *testing.T) {
 	}
 }
 
-const getIDFromUsernameQuery = `SELECT id FROM users WHERE username = $1`
-const getEmailQuery = `SELECT email FROM users WHERE id = $1`
-
 func TestSetEmail(t *testing.T) {
-	session := db.Session()
+	const getEmailQuery = `SELECT email FROM users WHERE id = $1`
+	const getIDFromUsernameQuery = `SELECT id FROM users WHERE username = $1`
+	session := db.NewSession()
 	um := queries.NewUserStore(session)
-
 	var id int32
 	if err := session.QueryRow(t.Context(), getIDFromUsernameQuery, "customerUser").Scan(&id); err != nil {
 		t.Errorf("failed to query id from username, %s", err)
@@ -70,8 +66,7 @@ func TestSetEmail(t *testing.T) {
 }
 
 func TestGetUser(t *testing.T) {
-	session := db.Session()
-	um := queries.NewUserStore(session)
+	um := queries.NewUserStore(db.NewSession())
 
 	passwordHash := "simpleHash"
 	user := queries.User{
@@ -90,12 +85,12 @@ func TestGetUser(t *testing.T) {
 	}
 
 	if rUser.PasswordHash != user.PasswordHash && !rUser.IsActive && rUser.PermissionType != queries.Customer {
-		t.Errorf("failed to math fields")
+		t.Errorf("failed to match fields")
 	}
 }
 
 func TestUpdateUser(t *testing.T) {
-	um := queries.NewUserStore(db.Session())
+	um := queries.NewUserStore(db.NewSession())
 
 	username := "blockUser"
 	user, err := um.Get(t.Context(), username)
@@ -120,7 +115,7 @@ func TestUpdateUser(t *testing.T) {
 }
 
 func TestDeleteUser(t *testing.T) {
-	um := queries.NewUserStore(db.Session())
+	um := queries.NewUserStore(db.NewSession())
 
 	user := &queries.User{
 		Username:       "deleteUser",

@@ -10,13 +10,13 @@ import (
 
 func TestDBEngine(t *testing.T) {
 	config := app.NewAppConfig()
-	dbEngine, err := db.SetupDBEngine(t.Context(), config.DatabaseURL)
+	engine, err := db.New(t.Context(), config.DatabaseURL)
 	if err != nil {
 		t.Errorf("incorrect database connection: %s", err)
 	}
-	defer dbEngine.Close()
+	defer engine.Close()
 
-	session := db.Session()
+	session := db.NewSession()
 	timeoutCtx, timeoutCancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer timeoutCancel()
 

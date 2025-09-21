@@ -16,11 +16,11 @@ func RouterSetup(ctx context.Context) *gin.Engine {
 	return app.Router
 }
 
-func DBEngineSetup(ctx context.Context) db.IDBEngine {
+func DBManagerSetup(ctx context.Context) db.DBManager {
 	config := app.NewAppConfig()
-	dbEngine, err := db.SetupDBEngine(ctx, config.DatabaseURL)
+	engine, err := db.New(ctx, config.DatabaseURL)
 	if err != nil {
 		log.Panicln("error setup db: ", err)
 	}
-	return dbEngine
+	return engine
 }
