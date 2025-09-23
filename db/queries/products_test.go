@@ -93,7 +93,7 @@ func TestBasicProductRepositoryMethod(t *testing.T) {
 
 	_, err = ps.Get(ctx, product.ID)
 	if err == nil {
-		t.Errorf("expected error when getting deleted product, got none")
+		t.Errorf("expected error when getting deleted product, got nil")
 	}
 }
 
@@ -150,5 +150,66 @@ func TestFullListProducts(t *testing.T) {
 				t.Errorf(`expected "%d" products, but got "%d"`, test.expectedCount, got)
 			}
 		})
+	}
+}
+
+func TestBasicCategoryMethods(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+
+	session := db.NewSession()
+	cs := queries.NewCategoryStore(session)
+
+	if _, err := session.Exec(ctx, "TRUNCATE categories RESTART IDENTITY CASCADE"); err != nil {
+		t.Fatalf("failed to truncate categories: %s", err)
+	}
+
+	c1 := &queries.Category{Tag: "electronics"}
+	if err := cs.Create(ctx, c1); err != nil {
+		t.Fatalf("failed to create category: %s", err)
+	}
+	c2 := &queries.Category{Tag: "books"}
+	if err := cs.Create(ctx, c2); err != nil {
+		t.Fatalf("failed to create category: %s", err)
+	}
+
+	list, err := cs.List(ctx)
+	if err != nil {
+		t.Fatalf("failed to list categories: %s", err)
+	}
+	if len(list) != 2 {
+		t.Fatalf("expected 2 categories, got %d", len(list))
+	}
+
+	expectedTags := map[string]bool{"electronics": true, "books": true}
+	for _, cat := range list {
+		if !expectedTags[cat.Tag] {
+			t.Errorf("unexpected category tag in list: %q", cat.Tag)
+		}
+		if cat.Tag == "electronics" {
+			c1.ID = cat.ID
+		}
+		if cat.Tag == "books" {
+			c2.ID = cat.ID
+		}
+	}
+
+	if err := cs.Delete(ctx, c1.ID); err != nil {
+		t.Fatalf("failed to delete category id=%d, %s", c1.ID, err)
+	}
+
+	list, err = cs.List(ctx)
+	if err != nil {
+		t.Fatalf("failed to list categories after delete, %s", err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("expected 1 category after deletion, got %d", len(list))
+	}
+	if list[0].Tag != "books" {
+		t.Errorf("expected remaining tag 'books', got %q", list[0].Tag)
+	}
+
+	if err := cs.Delete(ctx, 9999); err == nil {
+		t.Errorf("expected error deleting non-existing category, but got nil")
 	}
 }
