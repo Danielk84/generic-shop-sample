@@ -28,9 +28,12 @@ type CommentRepository struct {
 }
 
 type CommentStore interface {
-	Create(context.Context, *RelatedComment) error
-	List(context.Context, *string, string, int, int) ([]Comment, error)
-	Delete(context.Context, string) error
+	Create(ctx context.Context, comment *RelatedComment) error
+	Get(ctx context.Context, id string) (*RelatedComment, error)
+	List(ctx context.Context, parent *string, referrer string, pagination, page int) ([]Comment, error)
+	FullList(ctx context.Context, username string, pagination, page int) ([]RelatedComment, error)
+	Delete(ctx context.Context, id string) error
+	SetActive(ctx context.Context, id string, isActive bool) error
 }
 
 func NewCommentStore(session db.Session) CommentStore {
@@ -67,6 +70,12 @@ func (cr *CommentRepository) Create(ctx context.Context, comment *RelatedComment
 	})
 }
 
+func (cr *CommentRepository) Get(ctx context.Context, id string) (*RelatedComment, error) {
+	const q = `SELECT id, username, pub_date, parent, children_amount, referrer, body, is_active FROM comments
+		WHERE id = $1::UUID`
+	return get[RelatedComment](ctx, cr.session, q, id)
+}
+
 func (cr *CommentRepository) List(ctx context.Context, parent *string, referrer string, pagination, page int) ([]Comment, error) {
 	const q = `SELECT id, username, pub_date, children_amount, body FROM comments
 		WHERE (parent = @Parent::UUID OR (@Parent::UUID IS NULL AND parent IS NULL))
@@ -84,7 +93,29 @@ func (cr *CommentRepository) List(ctx context.Context, parent *string, referrer 
 	return list[Comment](ctx, cr.session, q, args)
 }
 
+func (cr *CommentRepository) FullList(ctx context.Context, username string, pagination, page int) ([]RelatedComment, error) {
+	const baseQuery = "SELECT id, username, pub_date, parent, children_amount, referrer, body, is_active FROM comments"
+	const limitOffset = ` LIMIT @Pagination OFFSET @Offset`
+	args := pgx.NamedArgs{
+		"Pagination": pagination,
+		"Offset":     (page - 1) * pagination,
+	}
+
+	if username == "" {
+		q := baseQuery + " ORDER BY pub_date DESC, is_active" + limitOffset
+		return list[RelatedComment](ctx, cr.session, q, args)
+	}
+	args["Username"] = username
+	q := baseQuery + " WHERE username = @Username ORDER BY pub_date DESC" + limitOffset
+	return list[RelatedComment](ctx, cr.session, q, args)
+}
+
 func (cr *CommentRepository) Delete(ctx context.Context, id string) error {
 	const q = `DELETE FROM comments WHERE id = $1::UUID`
 	return execOne(ctx, cr.session, q, id)
+}
+
+func (cr *CommentRepository) SetActive(ctx context.Context, id string, isActive bool) error {
+	const q = `UPDATE comments SET is_active = $1 WHERE id = $2::UUID`
+	return execOne(ctx, cr.session, q, isActive, id)
 }
