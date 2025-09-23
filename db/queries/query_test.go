@@ -84,7 +84,7 @@ func createTemporaryUsers(ctx context.Context, session db.Session) error {
 }
 
 func truncateTables(ctx context.Context, session db.Session) error {
-	const q = `TRUNCATE users RESTART IDENTITY CASCADE`
+	const q = `TRUNCATE users, categories RESTART IDENTITY CASCADE`
 	_, err := session.Exec(ctx, q)
 	return err
 }

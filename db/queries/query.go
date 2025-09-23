@@ -21,7 +21,7 @@ func execOne(ctx context.Context, session db.Session, query string, args ...any)
 	return nil
 }
 
-func list[T any](ctx context.Context, session db.Session, query string, args ...any) (*[]T, error) {
+func list[T any](ctx context.Context, session db.Session, query string, args ...any) ([]T, error) {
 	rows, err := session.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -34,7 +34,7 @@ func list[T any](ctx context.Context, session db.Session, query string, args ...
 	if len(items) == 0 {
 		return nil, pgx.ErrNoRows
 	}
-	return &items, nil
+	return items, nil
 }
 
 func get[T any](ctx context.Context, session db.Session, query string, args ...any) (*T, error) {
@@ -42,10 +42,10 @@ func get[T any](ctx context.Context, session db.Session, query string, args ...a
 	if err != nil {
 		return nil, err
 	}
-	if len(*items) != 1 {
+	if len(items) != 1 {
 		return nil, pgx.ErrTooManyRows
 	}
-	return &(*items)[0], nil
+	return &items[0], nil
 }
 
 type PropertyMap map[string]any

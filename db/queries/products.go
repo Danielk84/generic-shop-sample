@@ -34,7 +34,7 @@ type ProductRepository struct {
 
 type ProductStore interface {
 	Create(context.Context, *OwnedProduct) error
-	List(context.Context, int, int) (*[]ProductSummary, error)
+	List(context.Context, int, int) ([]ProductSummary, error)
 	Get(context.Context, string) (*Product, error)
 	Update(context.Context, *Product) error
 	Delete(context.Context, string) error
@@ -60,7 +60,7 @@ func (pr *ProductRepository) Create(ctx context.Context, product *OwnedProduct) 
 	return execOne(ctx, pr.session, q, args)
 }
 
-func (pr *ProductRepository) List(ctx context.Context, pagination, page int) (*[]ProductSummary, error) {
+func (pr *ProductRepository) List(ctx context.Context, pagination, page int) ([]ProductSummary, error) {
 	const q = `SELECT id, name, price, pub_time FROM products
 		WHERE is_active = true AND is_available = true
 		ORDER BY pub_time DESC
@@ -117,7 +117,7 @@ type CategoryRepository struct {
 
 type CategoryStore interface {
 	Create(context.Context, *Category) error
-	List(context.Context) (*[]Category, error)
+	List(context.Context) ([]Category, error)
 	Delete(context.Context, int32) error
 }
 
@@ -130,7 +130,7 @@ func (cr *CategoryRepository) Create(ctx context.Context, category *Category) er
 	return execOne(ctx, cr.session, q, category.Tag)
 }
 
-func (cr *CategoryRepository) List(ctx context.Context) (*[]Category, error) {
+func (cr *CategoryRepository) List(ctx context.Context) ([]Category, error) {
 	const q = `SELECT id, tag FROM categories`
 	return list[Category](ctx, cr.session, q)
 }
@@ -146,7 +146,7 @@ type PCRepository struct {
 
 type PCStore interface {
 	SetTags(context.Context, string, []string) error
-	List(context.Context, string) (*[]string, error)
+	List(context.Context, string) ([]string, error)
 }
 
 func NewPCStore(session db.Session) PCStore {
@@ -175,7 +175,7 @@ func (pcr *PCRepository) SetTags(ctx context.Context, product_id string, tags []
 	})
 }
 
-func (pcr *PCRepository) List(ctx context.Context, id string) (*[]string, error) {
+func (pcr *PCRepository) List(ctx context.Context, id string) ([]string, error) {
 	const q = `SELECT category_id FROM products_categories WHERE product_id = $1`
 	return list[string](ctx, pcr.session, q, id)
 }
