@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func TestCreateListDeleteComment(t *testing.T) {
+func TestBasicCommentStoreMethod(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
@@ -124,7 +124,7 @@ func TestCreateListDeleteComment(t *testing.T) {
 	}
 }
 
-func TestFullListComment(t *testing.T) {
+func TestFullListComments(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
@@ -186,16 +186,16 @@ func TestFullListComment(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		t.Run(test.name, func(tt *testing.T) {
+		t.Run(test.name, func(st *testing.T) {
 			flist, err := cs.FullList(ctx, test.username, test.pagination, test.page)
 			if err != nil {
 				if test.expectedCount == 0 {
 					return
 				}
-				t.Fatalf("unexpected error: %s", err)
+				st.Fatalf("unexpected error: %s", err)
 			}
 			if got := len(flist); got != test.expectedCount {
-				t.Errorf(`expected "%d" result, but got "%d"`, test.expectedCount, got)
+				st.Errorf(`expected "%d" result, but got "%d"`, test.expectedCount, got)
 			}
 		})
 	}

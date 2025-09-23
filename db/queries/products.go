@@ -19,7 +19,7 @@ type Product struct {
 	IsAvailable bool
 	IsActive    bool
 	Description *string
-	Details     PropertyMap
+	Details     map[string]string
 	ProductSummary
 }
 
@@ -33,13 +33,14 @@ type ProductRepository struct {
 }
 
 type ProductStore interface {
-	Create(context.Context, *OwnedProduct) error
-	List(context.Context, int, int) ([]ProductSummary, error)
-	Get(context.Context, string) (*Product, error)
-	Update(context.Context, *Product) error
-	Delete(context.Context, string) error
-	SetAvailable(context.Context, string, bool) error
-	SetActive(context.Context, string, bool) error
+	Create(ctx context.Context, product *OwnedProduct) error
+	List(ctx context.Context, pagination, page int) ([]ProductSummary, error)
+	FullList(ctx context.Context, id int, pagination, page int) ([]ProductSummary, error)
+	Get(ctx context.Context, id string) (*Product, error)
+	Update(ctx context.Context, product *Product) error
+	Delete(ctx context.Context, id string) error
+	SetAvailable(ctx context.Context, id string, isActive bool) error
+	SetActive(ctx context.Context, id string, isActive bool) error
 }
 
 func NewProductStore(session db.Session) ProductStore {
@@ -53,6 +54,7 @@ func (pr *ProductRepository) Create(ctx context.Context, product *OwnedProduct) 
 		"UserID":      product.UserID,
 		"Name":        product.Name,
 		"Description": product.Description,
+		"Price":       product.Price,
 		"Details":     product.Details,
 		"IsAvailable": product.IsAvailable,
 		"IsActive":    product.IsActive,
@@ -61,16 +63,33 @@ func (pr *ProductRepository) Create(ctx context.Context, product *OwnedProduct) 
 }
 
 func (pr *ProductRepository) List(ctx context.Context, pagination, page int) ([]ProductSummary, error) {
-	const q = `SELECT id, name, price, pub_time FROM products
+	const q = `SELECT id, name, price, pub_date FROM products
 		WHERE is_active = true AND is_available = true
-		ORDER BY pub_time DESC
+		ORDER BY pub_date DESC
 		LIMIT $1
 		OFFSET $2`
 	return list[ProductSummary](ctx, pr.session, q, pagination, (page-1)*pagination)
 }
 
+func (pr *ProductRepository) FullList(ctx context.Context, id int, pagination, page int) ([]ProductSummary, error) {
+	const baseQuery = `SELECT id, name, price, pub_date FROM products`
+	const limitOffset = ` LIMIT @Pagination OFFSET @Offset`
+	args := pgx.NamedArgs{
+		"Pagination": pagination,
+		"Offset":     (page - 1) * pagination,
+	}
+
+	if id == 0 {
+		q := baseQuery + ` ORDER BY pub_date DESC, is_active` + limitOffset
+		return list[ProductSummary](ctx, pr.session, q, args)
+	}
+	args["ID"] = id
+	q := baseQuery + ` WHERE user_id = @ID ORDER BY pub_date DESC` + limitOffset
+	return list[ProductSummary](ctx, pr.session, q, args)
+}
+
 func (pr *ProductRepository) Get(ctx context.Context, id string) (*Product, error) {
-	const q = `SELECT id, name, description, details, price, is_available, is_active FROM products
+	const q = `SELECT id, name, description, details, price, pub_date, is_available, is_active FROM products
 		WHERE id = $1::UUID
 		LIMIT 1`
 	return get[Product](ctx, pr.session, q, id)
