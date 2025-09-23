@@ -189,9 +189,6 @@ func TestBasicCategoryMethods(t *testing.T) {
 		if cat.Tag == "electronics" {
 			c1.ID = cat.ID
 		}
-		if cat.Tag == "books" {
-			c2.ID = cat.ID
-		}
 	}
 
 	if err := cs.Delete(ctx, c1.ID); err != nil {
