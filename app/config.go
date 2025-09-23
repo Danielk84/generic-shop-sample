@@ -4,28 +4,38 @@ import (
 	"log"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/joho/godotenv"
 )
 
-type AppConfig struct {
+type Config struct {
 	Mode, Addr              string
 	TrustedProxies, Origins []string
 	DatabaseURL             string
 }
 
-func NewAppConfig() *AppConfig {
-	if err := godotenv.Load(getDotEnvFilePath()); err != nil {
-		log.Panicln("error on loading .env file", err)
-	}
+var (
+	DefaultConfig *Config
+	once          sync.Once
+)
 
-	return &AppConfig{
-		Mode:           os.Getenv("MODE"),
-		Addr:           os.Getenv("ADDR"),
-		TrustedProxies: getStrSliceFromStr(os.Getenv("TRUSTED_PROXIES")),
-		Origins:        getStrSliceFromStr(os.Getenv("ORIGINS")),
-		DatabaseURL:    os.Getenv("DATABASE_URL"),
-	}
+func NewConfig() *Config {
+	once.Do(func() {
+		args, err := godotenv.Read(getDotEnvFilePath())
+		if err != nil {
+			log.Panicln("error on reading .env file", err)
+		}
+
+		DefaultConfig = &Config{
+			Mode:           args["MODE"],
+			Addr:           args["ADDR"],
+			TrustedProxies: getStrSliceFromStr(args["TRUSTED_PROXIES"]),
+			Origins:        getStrSliceFromStr(args["ORIGINS"]),
+			DatabaseURL:    args["DATABASE_URL"],
+		}
+	})
+	return DefaultConfig
 }
 
 func getDotEnvFilePath() string {

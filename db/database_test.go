@@ -9,7 +9,7 @@ import (
 )
 
 func TestDBEngine(t *testing.T) {
-	config := app.NewAppConfig()
+	config := app.NewConfig()
 	engine, err := db.New(t.Context(), config.DatabaseURL)
 	if err != nil {
 		t.Errorf("incorrect database connection: %s", err)

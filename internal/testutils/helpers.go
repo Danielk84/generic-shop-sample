@@ -10,14 +10,14 @@ import (
 )
 
 func RouterSetup(ctx context.Context) *gin.Engine {
-	config := app.NewAppConfig()
+	config := app.NewConfig()
 	app := app.NewApp(ctx, config)
 
 	return app.Router
 }
 
 func DBManagerSetup(ctx context.Context) db.DBManager {
-	config := app.NewAppConfig()
+	config := app.NewConfig()
 	engine, err := db.New(ctx, config.DatabaseURL)
 	if err != nil {
 		log.Panicln("error setup db: ", err)

@@ -13,10 +13,10 @@ import (
 type App struct {
 	ctx    context.Context
 	Router *gin.Engine
-	config *AppConfig
+	config *Config
 }
 
-func NewApp(ctx context.Context, config *AppConfig) *App {
+func NewApp(ctx context.Context, config *Config) *App {
 	gin.DisableConsoleColor()
 	gin.SetMode(config.Mode)
 	router := gin.Default()
@@ -33,7 +33,7 @@ func NewApp(ctx context.Context, config *AppConfig) *App {
 	}
 }
 
-func setMiddlewares(ctx context.Context, router *gin.Engine, config *AppConfig) {
+func setMiddlewares(ctx context.Context, router *gin.Engine, config *Config) {
 	corsConfig := &md.CorsConfig{
 		Origins:     config.Origins,
 		Credentials: true,

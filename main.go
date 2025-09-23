@@ -11,7 +11,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	config := app.NewAppConfig()
+	config := app.NewConfig()
 	app := app.NewApp(ctx, config)
 
 	app.Run()
