@@ -135,18 +135,18 @@ type CategoryRepository struct {
 }
 
 type CategoryStore interface {
-	Create(context.Context, *Category) error
-	List(context.Context) ([]Category, error)
-	Delete(context.Context, int32) error
+	Create(ctx context.Context, tag string) error
+	List(ctx context.Context) ([]Category, error)
+	Delete(ctx context.Context, product_id int32) error
 }
 
 func NewCategoryStore(session db.Session) CategoryStore {
 	return &CategoryRepository{session}
 }
 
-func (cr *CategoryRepository) Create(ctx context.Context, category *Category) error {
+func (cr *CategoryRepository) Create(ctx context.Context, tag string) error {
 	const q = `INSERT INTO categories(tag) VALUES ($1)`
-	return execOne(ctx, cr.session, q, category.Tag)
+	return execOne(ctx, cr.session, q, tag)
 }
 
 func (cr *CategoryRepository) List(ctx context.Context) ([]Category, error) {
@@ -164,8 +164,8 @@ type PCRepository struct {
 }
 
 type PCStore interface {
-	SetTags(context.Context, string, []string) error
-	List(context.Context, string) ([]string, error)
+	SetTags(ctx context.Context, product_id string, tags []string) error
+	List(ctx context.Context, product_id string) ([]string, error)
 }
 
 func NewPCStore(session db.Session) PCStore {

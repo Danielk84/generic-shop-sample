@@ -165,11 +165,11 @@ func TestBasicCategoryMethods(t *testing.T) {
 	}
 
 	c1 := &queries.Category{Tag: "electronics"}
-	if err := cs.Create(ctx, c1); err != nil {
+	if err := cs.Create(ctx, c1.Tag); err != nil {
 		t.Fatalf("failed to create category: %s", err)
 	}
 	c2 := &queries.Category{Tag: "books"}
-	if err := cs.Create(ctx, c2); err != nil {
+	if err := cs.Create(ctx, c2.Tag); err != nil {
 		t.Fatalf("failed to create category: %s", err)
 	}
 
@@ -226,7 +226,7 @@ func TestSetTagsListPCStore(t *testing.T) {
 
 	cs := queries.NewCategoryStore(session)
 	for _, tag := range []string{"1", "2", "3", "4", "5"} {
-		if err := cs.Create(ctx, &queries.Category{Tag: tag}); err != nil {
+		if err := cs.Create(ctx, tag); err != nil {
 			t.Error("failed to create category tags", err)
 		}
 	}
