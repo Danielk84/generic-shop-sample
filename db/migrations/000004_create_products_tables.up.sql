@@ -12,13 +12,13 @@ CREATE TABLE products (
 
 CREATE TABLE categories (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    tag TEXT UNIQUE
+    tag TEXT UNIQUE NOT NULL
 );
 
 CREATE TABLE products_categories (
     product_id UUID REFERENCES products(id) ON DELETE CASCADE,
-    category_id INTEGER REFERENCES categories(id) ON UPDATE CASCADE ON DELETE CASCADE,
-    CONSTRAINT product_categorie_pkey PRIMARY KEY (product_id, category_id)
+    tag TEXT REFERENCES categories(tag) ON UPDATE CASCADE ON DELETE CASCADE,
+    CONSTRAINT product_categorie_pkey PRIMARY KEY (product_id, tag)
 );
 
 CREATE TABLE product_images (

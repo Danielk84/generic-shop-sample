@@ -173,7 +173,7 @@ func NewPCStore(session db.Session) PCStore {
 }
 
 func (pcr *PCRepository) SetTags(ctx context.Context, product_id string, tags []string) error {
-	const q = `DELETE FROM products_categories WHERE product_id = $1`
+	const q = `DELETE FROM products_categories WHERE product_id = $1::UUID`
 
 	tagsLen := len(tags)
 	if tagsLen == 0 {
@@ -185,7 +185,7 @@ func (pcr *PCRepository) SetTags(ctx context.Context, product_id string, tags []
 		}
 		_, err := tx.CopyFrom(ctx,
 			pgx.Identifier{"products_categories"},
-			[]string{"product_id", "category_id"},
+			[]string{"product_id", "tag"},
 			pgx.CopyFromSlice(tagsLen, func(i int) ([]any, error) {
 				return []any{product_id, tags[i]}, nil
 			}),
@@ -195,6 +195,6 @@ func (pcr *PCRepository) SetTags(ctx context.Context, product_id string, tags []
 }
 
 func (pcr *PCRepository) List(ctx context.Context, id string) ([]string, error) {
-	const q = `SELECT category_id FROM products_categories WHERE product_id = $1`
+	const q = `SELECT tag FROM products_categories WHERE product_id = $1::UUID`
 	return list[string](ctx, pcr.session, q, id)
 }

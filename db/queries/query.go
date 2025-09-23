@@ -3,6 +3,7 @@ package queries
 import (
 	"context"
 	"generic-shop-sample/db"
+	"reflect"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -24,13 +25,21 @@ func list[T any](ctx context.Context, session db.Session, query string, args ...
 		return nil, err
 	}
 
-	items, err := pgx.CollectRows(rows, pgx.RowToStructByName[T])
+	var items []T
+	var t T
+	typ := reflect.TypeOf(t)
+	if typ.Kind() == reflect.Struct {
+		items, err = pgx.CollectRows(rows, pgx.RowToStructByName[T])
+	} else {
+		items, err = pgx.CollectRows(rows, pgx.RowTo[T])
+	}
 	if err != nil {
 		return nil, err
 	}
 	if len(items) == 0 {
 		return nil, pgx.ErrNoRows
 	}
+
 	return items, nil
 }
 

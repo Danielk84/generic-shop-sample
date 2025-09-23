@@ -213,3 +213,73 @@ func TestBasicCategoryMethods(t *testing.T) {
 		t.Errorf("expected error deleting non-existing category, but got nil")
 	}
 }
+
+func TestSetTagsListPCStore(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+
+	session := db.NewSession()
+
+	if _, err := session.Exec(ctx, "TRUNCATE products, categories RESTART IDENTITY CASCADE"); err != nil {
+		t.Fatalf("failed to truncate products_categories: %s", err)
+	}
+
+	cs := queries.NewCategoryStore(session)
+	for _, tag := range []string{"1", "2", "3", "4", "5"} {
+		if err := cs.Create(ctx, &queries.Category{Tag: tag}); err != nil {
+			t.Error("failed to create category tags", err)
+		}
+	}
+
+	ps := queries.NewProductStore(session)
+	desc := "some descriptions"
+	product := &queries.OwnedProduct{1, queries.Product{true, true, &desc, map[string]string{}, queries.ProductSummary{Name: "item 1", Price: 10}}}
+	if err := ps.Create(ctx, product); err != nil {
+		t.Error("failed to create product", err)
+	}
+
+	products, err := ps.List(ctx, 1, 1)
+	if err != nil {
+		t.Error("unexpected error in list method, ", err)
+	}
+	productID := products[0].ID
+
+	pcs := queries.NewPCStore(session)
+	initialTags := []string{"1", "2", "3"}
+	if err := pcs.SetTags(ctx, productID, initialTags); err != nil {
+		t.Fatalf("SetTags failed: %s", err)
+	}
+
+	got, err := pcs.List(ctx, productID)
+	if err != nil {
+		t.Fatalf("List failed: %s", err)
+	}
+	if len(got) != len(initialTags) {
+		t.Fatalf("expected %d tags, got %d", len(initialTags), len(got))
+	}
+
+	expected := map[string]bool{"1": true, "2": true, "3": true}
+	for _, tag := range got {
+		if !expected[tag] {
+			t.Errorf("unexpected tag %q found", tag)
+		}
+	}
+	newTags := []string{"4", "5"}
+	if err := pcs.SetTags(ctx, productID, newTags); err != nil {
+		t.Fatalf("SetTags overwrite failed: %s", err)
+	}
+
+	got, err = pcs.List(ctx, productID)
+	if err != nil {
+		t.Fatalf("List failed after overwrite: %s", err)
+	}
+	if len(got) != len(newTags) {
+		t.Fatalf("expected %d tags after overwrite, got %d", len(newTags), len(got))
+	}
+	expected = map[string]bool{"4": true, "5": true}
+	for _, tag := range got {
+		if !expected[tag] {
+			t.Errorf("unexpected tag after overwrite: %q", tag)
+		}
+	}
+}
