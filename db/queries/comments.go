@@ -111,8 +111,9 @@ func (cr *CommentRepository) FullList(ctx context.Context, username string, pagi
 }
 
 func (cr *CommentRepository) Delete(ctx context.Context, id string) error {
-	const q = `DELETE FROM comments WHERE id = $1::UUID`
-	return execOne(ctx, cr.session, q, id)
+	const q = `DELETE FROM comments WHERE id = $1::UUID OR parent = $1::UUID`
+	_, err := cr.session.Exec(ctx, q, id)
+	return err
 }
 
 func (cr *CommentRepository) SetActive(ctx context.Context, id string, isActive bool) error {

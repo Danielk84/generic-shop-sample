@@ -110,8 +110,17 @@ func TestCreateListDeleteComment(t *testing.T) {
 		t.Errorf("bad CommentStore.SetActive, %s", err)
 	}
 
+	const isCommentsExistsByID = "SELECT EXISTS(SELECT 1 FROM comments WHERE id = $1::UUID OR parent = $1::UUID)"
 	if err := cs.Delete(ctx, parentComment.ID); err != nil {
 		t.Errorf("failed to delete comment, %s", err)
+	} else {
+		var isExists bool
+		if err := session.QueryRow(ctx, isCommentsExistsByID, parentComment.ID).Scan(&isExists); err != nil {
+			t.Fatalf("failed to query existing of comments, %s", err)
+		}
+		if isExists {
+			t.Errorf("failed to delete parent comment and all related comments")
+		}
 	}
 }
 
