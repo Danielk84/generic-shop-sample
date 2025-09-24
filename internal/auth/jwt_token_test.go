@@ -1,8 +1,8 @@
-package internal_test
+package auth_test
 
 import (
 	"generic-shop-sample/db/queries"
-	"generic-shop-sample/internal"
+	"generic-shop-sample/internal/auth"
 	"reflect"
 	"testing"
 	"time"
@@ -12,7 +12,7 @@ import (
 
 func TestJWTToken(t *testing.T) {
 	t.Run("validate claims data", func(st *testing.T) {
-		claims := internal.AuthClaims{
+		claims := auth.AuthClaims{
 			ID:             123,
 			Username:       "adminUser",
 			PermissionType: queries.Admin,
@@ -22,11 +22,11 @@ func TestJWTToken(t *testing.T) {
 				IssuedAt:  jwt.NewNumericDate(time.Now()),
 			},
 		}
-		tokenString, err := internal.TokenEncoder(claims)
+		tokenString, err := auth.TokenEncoder(claims)
 		if err != nil {
 			st.Fatalf("failed to encoding claims in JWTEncoder, %s", err)
 		}
-		decodedClaims, err := internal.TokenDecoder(tokenString)
+		decodedClaims, err := auth.TokenDecoder(tokenString)
 		if err != nil {
 			st.Fatalf("failed to decoding tokenString in JWTDecoder, %s", err)
 		}
@@ -36,7 +36,7 @@ func TestJWTToken(t *testing.T) {
 		}
 	})
 	t.Run("check expiration", func(st *testing.T) {
-		claims := internal.AuthClaims{
+		claims := auth.AuthClaims{
 			ID:             123,
 			Username:       "adminUser",
 			PermissionType: queries.Admin,
@@ -46,12 +46,12 @@ func TestJWTToken(t *testing.T) {
 				IssuedAt:  jwt.NewNumericDate(time.Now()),
 			},
 		}
-		tokenString, err := internal.TokenEncoder(claims)
+		tokenString, err := auth.TokenEncoder(claims)
 		if err != nil {
 			st.Fatalf("failed to encoding claims in JWTEncoder, %s", err)
 		}
 		time.Sleep(2 * time.Second)
-		_, err = internal.TokenDecoder(tokenString)
+		_, err = auth.TokenDecoder(tokenString)
 		if err == nil {
 			st.Fatalf("failed to return error on expiration")
 		}

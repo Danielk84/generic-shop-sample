@@ -1,8 +1,8 @@
-package internal
+package auth
 
 import (
-	"generic-shop-sample/app"
 	"generic-shop-sample/db/queries"
+	"generic-shop-sample/internal"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -17,15 +17,14 @@ type AuthClaims struct {
 }
 
 func TokenEncoder(claims AuthClaims) (string, error) {
-	config := app.NewConfig()
+	config := internal.NewConfig()
 
 	token := jwt.NewWithClaims(algorithm, claims)
 	return token.SignedString(config.JWTSecretKey)
 }
 
 func TokenDecoder(tokenString string) (*AuthClaims, error) {
-	config := app.NewConfig()
-
+	config := internal.NewConfig()
 	token, err := jwt.ParseWithClaims(
 		tokenString,
 		&AuthClaims{},

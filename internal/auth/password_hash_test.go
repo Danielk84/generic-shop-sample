@@ -1,18 +1,18 @@
-package internal_test
+package auth_test
 
 import (
-	"generic-shop-sample/internal"
+	"generic-shop-sample/internal/auth"
 	"testing"
 )
 
 func TestPasswordHash(t *testing.T) {
 	pwd := "SecurePassword"
-	hash, err := internal.PasswordHash(pwd)
+	hash, err := auth.PasswordHash(pwd)
 	if err != nil {
 		t.Errorf("failed to generate hash from password, %s", err)
 	}
 
-	if !internal.ComparePassword(hash, pwd) {
+	if !auth.ComparePassword(hash, pwd) {
 		t.Errorf("failed to validate password")
 	}
 }
