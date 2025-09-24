@@ -30,12 +30,12 @@ type UserRepository struct {
 }
 
 type UserStore interface {
-	IsUsernameExists(context.Context, string) bool
-	Create(context.Context, *User) error
-	SetEmail(context.Context, *User) error
-	Get(context.Context, string) (*User, error)
-	Update(context.Context, *User) error
-	Delete(context.Context, int32) error
+	IsUsernameExists(ctx context.Context, username string) bool
+	Create(ctx context.Context, user *User) error
+	SetEmail(ctx context.Context, user *User) error
+	Get(ctx context.Context, username string) (*User, error)
+	Update(ctx context.Context, user *User) error
+	Delete(ctx context.Context, id int32) error
 }
 
 func NewUserStore(session db.Session) UserStore {
