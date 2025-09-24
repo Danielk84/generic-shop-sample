@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-type PermissionType int32
+type PermissionType = int32
 
 const (
 	Admin PermissionType = iota

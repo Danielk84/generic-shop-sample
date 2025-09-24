@@ -13,6 +13,7 @@ type Config struct {
 	Mode, Addr              string
 	TrustedProxies, Origins []string
 	DatabaseURL             string
+	JWTSecretKey            []byte
 }
 
 var (
@@ -33,6 +34,7 @@ func NewConfig() *Config {
 			TrustedProxies: getStrSliceFromStr(args["TRUSTED_PROXIES"]),
 			Origins:        getStrSliceFromStr(args["ORIGINS"]),
 			DatabaseURL:    args["DATABASE_URL"],
+			JWTSecretKey:   []byte(args["JWT_SECRET_KEY"]),
 		}
 	})
 	return DefaultConfig
