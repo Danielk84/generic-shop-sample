@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"generic-shop-sample/internal"
 	md "generic-shop-sample/middlewares"
 	"log"
 	"net/http"
@@ -13,10 +14,10 @@ import (
 type App struct {
 	ctx    context.Context
 	Router *gin.Engine
-	config *Config
+	config *internal.Config
 }
 
-func NewApp(ctx context.Context, config *Config) *App {
+func NewApp(ctx context.Context, config *internal.Config) *App {
 	gin.DisableConsoleColor()
 	gin.SetMode(config.Mode)
 	router := gin.Default()
@@ -33,7 +34,7 @@ func NewApp(ctx context.Context, config *Config) *App {
 	}
 }
 
-func setMiddlewares(ctx context.Context, router *gin.Engine, config *Config) {
+func setMiddlewares(ctx context.Context, router *gin.Engine, config *internal.Config) {
 	corsConfig := &md.CorsConfig{
 		Origins:     config.Origins,
 		Credentials: true,

@@ -2,14 +2,14 @@ package db_test
 
 import (
 	"context"
-	"generic-shop-sample/app"
 	"generic-shop-sample/db"
+	"generic-shop-sample/internal"
 	"testing"
 	"time"
 )
 
 func TestDBEngine(t *testing.T) {
-	config := app.NewConfig()
+	config := internal.NewConfig()
 	engine, err := db.New(t.Context(), config.DatabaseURL)
 	if err != nil {
 		t.Errorf("incorrect database connection: %s", err)
