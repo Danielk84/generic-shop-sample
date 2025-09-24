@@ -4,6 +4,7 @@ import (
 	"context"
 	"generic-shop-sample/internal"
 	md "generic-shop-sample/middlewares"
+	"generic-shop-sample/routes"
 	"log"
 	"net/http"
 	"time"
@@ -26,28 +27,13 @@ func NewApp(ctx context.Context, config *internal.Config) *App {
 	}
 
 	setMiddlewares(ctx, router, config)
+	setRoutes(ctx, router)
 
 	return &App{
 		ctx:    ctx,
 		Router: router,
 		config: config,
 	}
-}
-
-func setMiddlewares(ctx context.Context, router *gin.Engine, config *internal.Config) {
-	corsConfig := &md.CorsConfig{
-		Origins:     config.Origins,
-		Credentials: true,
-		Methods:     []string{http.MethodGet, http.MethodHead, http.MethodPost, http.MethodOptions, http.MethodPut, http.MethodDelete},
-	}
-
-	rl := md.NewRateLimiter(ctx, 500, 10*time.Minute, 30*time.Minute)
-
-	router.Use(
-		md.SecurityHeadersMiddleware(),
-		rl.RateLimiterMiddleware(),
-		md.CorsMiddleware(corsConfig),
-	)
 }
 
 func (a *App) Run() {
@@ -72,4 +58,24 @@ func (a *App) Run() {
 	if err := srv.Shutdown(shutdown); err != nil {
 		log.Println("error shutting down server: ", err)
 	}
+}
+
+func setMiddlewares(ctx context.Context, router *gin.Engine, config *internal.Config) {
+	corsConfig := &md.CorsConfig{
+		Origins:     config.Origins,
+		Credentials: true,
+		Methods:     []string{http.MethodGet, http.MethodHead, http.MethodPost, http.MethodOptions, http.MethodPut, http.MethodDelete},
+	}
+
+	rl := md.NewRateLimiter(ctx, 500, 10*time.Minute, 30*time.Minute)
+
+	router.Use(
+		md.SecurityHeadersMiddleware(),
+		rl.RateLimiterMiddleware(),
+		md.CorsMiddleware(corsConfig),
+	)
+}
+
+func setRoutes(ctx context.Context, router *gin.Engine) {
+	routes.APIRouter(ctx, router.Group("/api"))
 }
