@@ -52,10 +52,12 @@ func setMiddlewares(ctx context.Context, router *gin.Engine, config *internal.Co
 
 func (a *App) Run() {
 	srv := &http.Server{
-		Addr:         a.config.Addr,
-		Handler:      a.Router,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		Addr:              a.config.Addr,
+		Handler:           http.TimeoutHandler(a.Router, 10*time.Second, "request timeout"),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       5 * time.Second,
+		WriteTimeout:      5 * time.Second,
+		IdleTimeout:       20 * time.Second,
 	}
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
