@@ -59,7 +59,7 @@ func TestBasicProductRepositoryMethod(t *testing.T) {
 	newDescription := "Updated description"
 	product.Description = &newDescription
 	product.IsAvailable = false
-	if err := ps.Update(ctx, &product.Product); err != nil {
+	if err := ps.Update(ctx, &product); err != nil {
 		t.Fatalf("failed to update product, %s", err)
 	}
 
@@ -87,7 +87,7 @@ func TestBasicProductRepositoryMethod(t *testing.T) {
 		t.Errorf("expected isActive=false, isAvailable=true; got %+v", check)
 	}
 
-	if err := ps.Delete(ctx, product.ID); err != nil {
+	if err := ps.Delete(ctx, product.ID, product.UserID); err != nil {
 		t.Fatalf("failed to delete product, %s", err)
 	}
 
@@ -125,7 +125,7 @@ func TestFullListProducts(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		id            int
+		id            int32
 		pagination    int
 		page          int
 		expectedCount int

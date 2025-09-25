@@ -9,22 +9,22 @@ import (
 )
 
 type ProductSummary struct {
-	ID      string
-	Name    string
-	Price   int64
-	PubDate time.Time
+	ID      string    `json:"id"`
+	Name    string    `json:"name"`
+	Price   int64     `json:"price"`
+	PubDate time.Time `json:"pub_date"`
 }
 
 type Product struct {
-	IsAvailable bool
-	IsActive    bool
-	Description *string
-	Details     map[string]string
+	IsAvailable bool              `json:"is_available"`
+	IsActive    bool              `json:"is_active"`
+	Description *string           `json:"description"`
+	Details     map[string]string `json:"details"`
 	ProductSummary
 }
 
 type OwnedProduct struct {
-	UserID int32
+	UserID int32 `json:"user_id"`
 	Product
 }
 
@@ -35,10 +35,10 @@ type ProductRepository struct {
 type ProductStore interface {
 	Create(ctx context.Context, product *OwnedProduct) error
 	List(ctx context.Context, pagination, page int) ([]ProductSummary, error)
-	FullList(ctx context.Context, id int, pagination, page int) ([]ProductSummary, error)
-	Get(ctx context.Context, id string) (*Product, error)
-	Update(ctx context.Context, product *Product) error
-	Delete(ctx context.Context, id string) error
+	FullList(ctx context.Context, id int32, pagination, page int) ([]ProductSummary, error)
+	Get(ctx context.Context, id string) (*OwnedProduct, error)
+	Update(ctx context.Context, product *OwnedProduct) error
+	Delete(ctx context.Context, id string, userID int32) error
 	SetAvailable(ctx context.Context, id string, isActive bool) error
 	SetActive(ctx context.Context, id string, isActive bool) error
 }
@@ -71,7 +71,7 @@ func (pr *ProductRepository) List(ctx context.Context, pagination, page int) ([]
 	return list[ProductSummary](ctx, pr.session, q, pagination, (page-1)*pagination)
 }
 
-func (pr *ProductRepository) FullList(ctx context.Context, id int, pagination, page int) ([]ProductSummary, error) {
+func (pr *ProductRepository) FullList(ctx context.Context, id int32, pagination, page int) ([]ProductSummary, error) {
 	const baseQuery = `SELECT id, name, price, pub_date FROM products`
 	const limitOffset = ` LIMIT @Pagination OFFSET @Offset`
 	args := pgx.NamedArgs{
@@ -88,31 +88,31 @@ func (pr *ProductRepository) FullList(ctx context.Context, id int, pagination, p
 	return list[ProductSummary](ctx, pr.session, q, args)
 }
 
-func (pr *ProductRepository) Get(ctx context.Context, id string) (*Product, error) {
-	const q = `SELECT id, name, description, details, price, pub_date, is_available, is_active FROM products
+func (pr *ProductRepository) Get(ctx context.Context, id string) (*OwnedProduct, error) {
+	const q = `SELECT id, user_id, name, description, details, price, pub_date, is_available, is_active FROM products
 		WHERE id = $1::UUID
 		LIMIT 1`
-	return get[Product](ctx, pr.session, q, id)
+	return get[OwnedProduct](ctx, pr.session, q, id)
 }
 
-func (pr *ProductRepository) Update(ctx context.Context, product *Product) error {
+func (pr *ProductRepository) Update(ctx context.Context, product *OwnedProduct) error {
 	const q = `UPDATE products
-		SET name = @Name, description = @Description , details = @Details::JSONB, is_available = @IsAvailable, is_active = @IsActive
-		WHERE id = @ID`
+		SET name = @Name, description = @Description , details = @Details::JSONB, is_available = @IsAvailable
+		WHERE id = @ID and user_id = @UserID`
 	args := pgx.NamedArgs{
 		"Name":        product.Name,
 		"Description": product.Description,
 		"Details":     product.Details,
 		"IsAvailable": product.IsAvailable,
-		"IsActive":    product.IsActive,
 		"ID":          product.ID,
+		"UserID":      product.UserID,
 	}
 	return execOne(ctx, pr.session, q, args)
 }
 
-func (pr *ProductRepository) Delete(ctx context.Context, id string) error {
-	const q = `DELETE FROM products WHERE id = $1::UUID`
-	return execOne(ctx, pr.session, q, id)
+func (pr *ProductRepository) Delete(ctx context.Context, id string, userID int32) error {
+	const q = `DELETE FROM products WHERE id = $1::UUID and user_id = $2`
+	return execOne(ctx, pr.session, q, id, userID)
 }
 
 func (pr *ProductRepository) SetAvailable(ctx context.Context, id string, isAvailable bool) error {
