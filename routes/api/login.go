@@ -34,11 +34,11 @@ func loginEndpoint(c *gin.Context) {
 	us := queries.NewUserStore(db.NewSession())
 	user, err := us.Get(c.Request.Context(), json.Username)
 	if err != nil {
-		c.JSON(http.StatusNotFound, nil)
+		c.Status(http.StatusNotFound)
 		return
 	}
 	if !auth.ComparePassword(*user.PasswordHash, json.Password) {
-		c.JSON(http.StatusUnauthorized, nil)
+		c.Status(http.StatusUnauthorized)
 		return
 	}
 
@@ -54,7 +54,7 @@ func loginEndpoint(c *gin.Context) {
 	}
 	tokenString, err := auth.TokenEncoder(claims)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, nil)
+		c.Status(http.StatusUnauthorized)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"token": tokenString})
