@@ -9,4 +9,5 @@ import (
 
 func APIRouter(ctx context.Context, router *gin.RouterGroup) {
 	api.LoginRouter(ctx, router.Group("/auth"))
+	api.UsersRouter(router.Group("/users"))
 }
