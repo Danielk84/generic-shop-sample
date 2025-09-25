@@ -15,8 +15,8 @@ var userKey = userContextKey{}
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tokenString, ok := getToken(c.GetHeader("Authorization"), "Bearer ")
-		if !ok {
+		tokenString, found := strings.CutPrefix(c.GetHeader("Authorization"), "Bearer ")
+		if !found {
 			c.Header("WWW-Authenticate", "Bearer")
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
@@ -33,13 +33,10 @@ func AuthMiddleware() gin.HandlerFunc {
 	}
 }
 
-func getToken(s string, prefix string) (string, bool) {
-	if strings.HasPrefix(s, prefix) {
-		return strings.TrimPrefix(s, prefix), true
-	}
-	return "", false
-}
-
 func GetUserClaims(c *gin.Context) *auth.AuthClaims {
-	return c.Request.Context().Value(userKey).(*auth.AuthClaims)
+	claims, ok := c.Request.Context().Value(userKey).(*auth.AuthClaims)
+	if ok {
+		return claims
+	}
+	return nil
 }
