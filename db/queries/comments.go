@@ -9,17 +9,17 @@ import (
 )
 
 type Comment struct {
-	ID             string
-	Username       string
-	PubDate        time.Time
-	ChildrenAmount int32
-	Body           string
+	ID             string    `json:"id"`
+	Username       string    `json:"username"`
+	PubDate        time.Time `json:"pub_date"`
+	ChildrenAmount int32     `json:"children_amount"`
+	Body           string    `json:"body"`
 }
 
 type RelatedComment struct {
-	Parent   *string
-	Referrer string
-	IsActive bool
+	Parent   *string `json:"parent"`
+	Referrer string  `json:"referrer"`
+	IsActive bool    `json:"is_active"`
 	Comment
 }
 
@@ -42,7 +42,7 @@ func NewCommentStore(session db.Session) CommentStore {
 
 func (cr *CommentRepository) Create(ctx context.Context, comment *RelatedComment) error {
 	const createCommentQuery = `INSERT INTO comments(username, parent, children_amount, referrer, body, is_active)
-		VALUES (@Username, @Parent::UUID, 0, @Referrer, @Body, @IsActive)`
+		VALUES (@Username, @Parent::UUID, 0, @Referrer, @Body)`
 	const upadteChildrenCount = `UPDATE comments SET children_amount = children_amount + 1 WHERE id = $1::UUID`
 
 	args := pgx.NamedArgs{
@@ -50,7 +50,6 @@ func (cr *CommentRepository) Create(ctx context.Context, comment *RelatedComment
 		"Parent":   comment.Parent,
 		"Referrer": comment.Referrer,
 		"Body":     comment.Body,
-		"IsActive": comment.IsActive,
 	}
 	return pgx.BeginFunc(ctx, cr.session, func(tx pgx.Tx) error {
 		cTag, err := tx.Exec(ctx, createCommentQuery, args)
