@@ -164,11 +164,11 @@ func TestBasicCategoryMethods(t *testing.T) {
 		t.Fatalf("failed to truncate categories: %s", err)
 	}
 
-	c1 := &queries.Category{Tag: "electronics"}
+	c1 := &queries.Category{CategoryTag: queries.CategoryTag{"electronics"}}
 	if err := cs.Create(ctx, c1.Tag); err != nil {
 		t.Fatalf("failed to create category: %s", err)
 	}
-	c2 := &queries.Category{Tag: "books"}
+	c2 := &queries.CategoryTag{Tag: "books"}
 	if err := cs.Create(ctx, c2.Tag); err != nil {
 		t.Fatalf("failed to create category: %s", err)
 	}

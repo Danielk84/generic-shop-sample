@@ -125,9 +125,13 @@ func (pr *ProductRepository) SetActive(ctx context.Context, id string, isActive 
 	return execOne(ctx, pr.session, q, isActive, id)
 }
 
+type CategoryTag struct {
+	Tag string `json:"tag" binding:"required"`
+}
+
 type Category struct {
-	ID  int32
-	Tag string
+	ID int32 `json:"id"`
+	CategoryTag
 }
 
 type CategoryRepository struct {

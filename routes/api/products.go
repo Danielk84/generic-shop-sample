@@ -10,19 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type UpdateProduct struct {
-	ID          string            `json:"id"`
-	Name        string            `json:"name"`
-	Price       int64             `json:"price"`
-	IsAvailable bool              `json:"is_available"`
-	Description string            `json:"description"`
-	Details     map[string]string `json:"details"`
-}
-
-type SetFlag struct {
-	Accepted bool `json:"accepted"`
-}
-
 func ProductsRouter(router *gin.RouterGroup) {
 	router.GET("/", productsListEndpoint)
 	router.GET("/:id", getProductEndpoint)
@@ -36,6 +23,19 @@ func ProductsRouter(router *gin.RouterGroup) {
 
 	sRouter.PUT("/set-available/:id", setProductAvailableEndpoint)
 	sRouter.PUT("/set-active/:id", setProductActiveEndpoint)
+}
+
+type UpdateProduct struct {
+	ID          string            `json:"id"`
+	Name        string            `json:"name"`
+	Price       int64             `json:"price"`
+	IsAvailable bool              `json:"is_available"`
+	Description string            `json:"description"`
+	Details     map[string]string `json:"details"`
+}
+
+type SetFlag struct {
+	Accepted bool `json:"accepted"`
 }
 
 func productsListEndpoint(c *gin.Context) {
@@ -177,4 +177,63 @@ func setProductActiveEndpoint(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusAccepted)
+}
+
+func CategoriesRouter(router *gin.RouterGroup) {
+	router.GET("/", categoriesListEndpoint)
+
+	sRouter := router.Group("")
+	sRouter.Use(md.AuthMiddleware())
+	sRouter.POST("/", createCategoriesEndpoint)
+	sRouter.DELETE("/:id", deleteCategoryEndpoint)
+}
+
+func createCategoriesEndpoint(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if claims.PermissionType != queries.Admin {
+		c.Status(http.StatusForbidden)
+		return
+	}
+	var json queries.CategoryTag
+	if err := c.ShouldBindJSON(&json); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	cs := queries.NewCategoryStore(db.NewSession())
+	if err := cs.Create(c.Request.Context(), json.Tag); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+	c.Status(http.StatusCreated)
+}
+
+func categoriesListEndpoint(c *gin.Context) {
+	cs := queries.NewCategoryStore(db.NewSession())
+	categories, err := cs.List(c.Request.Context())
+	if err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	c.JSON(http.StatusOK, categories)
+}
+
+func deleteCategoryEndpoint(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if claims.PermissionType != queries.Admin {
+		c.Status(http.StatusForbidden)
+		return
+	}
+	id, err := strconv.Atoi(c.DefaultQuery("id", "0"))
+	if err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+
+	cs := queries.NewCategoryStore(db.NewSession())
+	if err := cs.Delete(c.Request.Context(), int32(id)); err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
