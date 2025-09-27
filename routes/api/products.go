@@ -237,3 +237,55 @@ func deleteCategoryEndpoint(c *gin.Context) {
 	}
 	c.Status(http.StatusNoContent)
 }
+
+func PCRouter(router *gin.RouterGroup) {
+	router.GET("/:id", pcListEndpoint)
+	router.POST("/set-tags", md.AuthMiddleware(), setPCTagsEndpoint)
+}
+
+type PC struct {
+	Tags []string `json:"tags"`
+}
+
+func setPCTagsEndpoint(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if claims.PermissionType > queries.Vendor {
+		c.Status(http.StatusForbidden)
+		return
+	}
+	var json PC
+	if err := c.ShouldBindJSON(&json); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+	id := c.Param("id")
+
+	ps := queries.NewProductStore(db.NewSession())
+	product, err := ps.Get(c.Request.Context(), id)
+	if err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	if !(product.UserID == claims.ID || claims.PermissionType == queries.Admin) {
+		c.Status(http.StatusForbidden)
+		return
+	}
+
+	pcs := queries.NewPCStore(db.NewSession())
+	if err := pcs.SetTags(c.Request.Context(), product.ID, json.Tags); err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	c.Status(http.StatusAccepted)
+}
+
+func pcListEndpoint(c *gin.Context) {
+	pcs := queries.NewPCStore(db.NewSession())
+	id := c.Param("id")
+	items, err := pcs.List(c.Request.Context(), id)
+	if err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	c.JSON(http.StatusOK, items)
+}
