@@ -11,42 +11,36 @@ import (
 )
 
 func ProductsRouter(router *gin.RouterGroup) {
-	router.GET("/", productsListEndpoint)
-	router.GET("/:id", getProductEndpoint)
+	ph := productHandler{queries.NewProductStore(db.NewSession())}
 
-	sRouter := router.Group("/p")
+	router.GET("/", ph.list)
+	router.GET("/:id", ph.get)
+
+	sRouter := router.Group("/user")
 	sRouter.Use(md.AuthMiddleware())
-	sRouter.GET("/", productsFullListEndpoint)
-	sRouter.GET("/:id", getProductEndpoint)
-	sRouter.PUT("/:id", updateProductEndpoint)
-	sRouter.DELETE("/:id", deleteProductEndPoint)
-
-	sRouter.PUT("/set-available/:id", setProductAvailableEndpoint)
-	sRouter.PUT("/set-active/:id", setProductActiveEndpoint)
-}
-
-type UpdateProduct struct {
-	ID          string            `json:"id"`
-	Name        string            `json:"name"`
-	Price       int64             `json:"price"`
-	IsAvailable bool              `json:"is_available"`
-	Description string            `json:"description"`
-	Details     map[string]string `json:"details"`
+	sRouter.GET("/", ph.fullList)
+	sRouter.GET("/:id", ph.get)
+	sRouter.PUT("/", ph.update)
+	sRouter.PUT("/set-available/:id", ph.setAvailable)
+	sRouter.PUT("/set-active/:id", ph.setActive)
+	sRouter.DELETE("/:id", ph.delete)
 }
 
 type SetFlag struct {
 	Accepted bool `json:"accepted"`
 }
 
-func productsListEndpoint(c *gin.Context) {
+type productHandler struct {
+	ps queries.ProductStore
+}
+
+func (ph *productHandler) list(c *gin.Context) {
 	page, err := strconv.Atoi((c.DefaultQuery("page", "1")))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid page number"})
-		return
+		page = 1
 	}
 
-	ps := queries.NewProductStore(db.NewSession())
-	products, err := ps.List(c.Request.Context(), 20, page)
+	products, err := ph.ps.List(c.Request.Context(), 20, page)
 	if err != nil {
 		c.Status(http.StatusNotFound)
 		return
@@ -54,21 +48,18 @@ func productsListEndpoint(c *gin.Context) {
 	c.JSON(http.StatusOK, products)
 }
 
-func productsFullListEndpoint(c *gin.Context) {
+func (ph *productHandler) fullList(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid page number"})
-		return
+		page = 1
 	}
 
-	ps := queries.NewProductStore(db.NewSession())
-	var id int32 = claims.ID
+	id := claims.ID
 	if claims.PermissionType == queries.Admin {
 		id = 0
 	}
-
-	products, err := ps.FullList(c.Request.Context(), id, 20, page)
+	products, err := ph.ps.FullList(c.Request.Context(), id, 20, page)
 	if err != nil {
 		c.Status(http.StatusNotFound)
 		return
@@ -76,11 +67,10 @@ func productsFullListEndpoint(c *gin.Context) {
 	c.JSON(http.StatusOK, products)
 }
 
-func getProductEndpoint(c *gin.Context) {
+func (ph *productHandler) get(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	id := c.Param("id")
-	ps := queries.NewProductStore(db.NewSession())
-	product, err := ps.Get(c.Request.Context(), id)
+	product, err := ph.ps.Get(c.Request.Context(), id)
 	if err != nil {
 		c.Status(http.StatusNotFound)
 		return
@@ -98,46 +88,31 @@ func getProductEndpoint(c *gin.Context) {
 	c.JSON(http.StatusOK, product)
 }
 
-func updateProductEndpoint(c *gin.Context) {
+func (ph *productHandler) update(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	var json UpdateProduct
+	var json queries.UpdateProductRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid data"})
 		return
 	}
-	product := &queries.OwnedProduct{
-		UserID: claims.ID,
-		Product: queries.Product{
-			IsAvailable: json.IsAvailable,
-			Description: &json.Description,
-			Details:     json.Details,
-			ProductSummary: queries.ProductSummary{
-				ID:    json.ID,
-				Name:  json.Name,
-				Price: json.Price,
-			},
-		},
-	}
-	ps := queries.NewProductStore(db.NewSession())
-	if err := ps.Update(c.Request.Context(), product); err != nil {
+	if err := ph.ps.Update(c.Request.Context(), claims.ID, &json); err != nil {
 		c.Status(http.StatusNotFound)
 		return
 	}
 	c.Status(http.StatusAccepted)
 }
 
-func deleteProductEndPoint(c *gin.Context) {
+func (ph *productHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	id := c.Param("id")
-	ps := queries.NewProductStore(db.NewSession())
-	if err := ps.Delete(c.Request.Context(), id, claims.ID); err != nil {
+	if err := ph.ps.Delete(c.Request.Context(), id, claims.ID); err != nil {
 		c.Status(http.StatusNotFound)
 		return
 	}
 	c.Status(http.StatusNoContent)
 }
 
-func setProductAvailableEndpoint(c *gin.Context) {
+func (ph *productHandler) setAvailable(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if claims.PermissionType != queries.Admin {
 		c.Status(http.StatusForbidden)
@@ -150,15 +125,14 @@ func setProductAvailableEndpoint(c *gin.Context) {
 	}
 
 	id := c.Param("id")
-	ps := queries.NewProductStore(db.NewSession())
-	if err := ps.SetAvailable(c.Request.Context(), id, json.Accepted); err != nil {
+	if err := ph.ps.SetAvailable(c.Request.Context(), id, json.Accepted); err != nil {
 		c.Status(http.StatusNotFound)
 		return
 	}
 	c.Status(http.StatusAccepted)
 }
 
-func setProductActiveEndpoint(c *gin.Context) {
+func (ph *productHandler) setActive(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if claims.PermissionType != queries.Admin {
 		c.Status(http.StatusForbidden)
@@ -171,8 +145,7 @@ func setProductActiveEndpoint(c *gin.Context) {
 	}
 
 	id := c.Param("id")
-	ps := queries.NewProductStore(db.NewSession())
-	if err := ps.SetActive(c.Request.Context(), id, json.Accepted); err != nil {
+	if err := ph.ps.SetActive(c.Request.Context(), id, json.Accepted); err != nil {
 		c.Status(http.StatusNotFound)
 		return
 	}

@@ -8,24 +8,37 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-type ProductSummary struct {
+type CreateProductRequest struct {
+	Name        string            `json:"name"`
+	Price       int64             `json:"price"`
+	Description string            `json:"description"`
+	Details     map[string]string `json:"details"`
+	IsAvailable bool              `json:"is_available"`
+}
+
+type UpdateProductRequest struct {
+	ID string `json:"id"`
+	CreateProductRequest
+}
+
+type ProductSummaryResponse struct {
 	ID      string    `json:"id"`
 	Name    string    `json:"name"`
 	Price   int64     `json:"price"`
 	PubDate time.Time `json:"pub_date"`
 }
 
-type Product struct {
-	IsAvailable bool              `json:"is_available"`
-	IsActive    bool              `json:"is_active"`
-	Description *string           `json:"description"`
-	Details     map[string]string `json:"details"`
-	ProductSummary
+type ProductStatusResponse struct {
+	ProductSummaryResponse
+	IsAvailable bool `json:"is_available"`
+	IsActive    bool `json:"is_active"`
 }
 
-type OwnedProduct struct {
-	UserID int32 `json:"user_id"`
-	Product
+type OwnedProductResponse struct {
+	ProductStatusResponse
+	UserID      int32             `json:"user_id"`
+	Description string            `json:"description"`
+	Details     map[string]string `json:"details"`
 }
 
 type ProductRepository struct {
@@ -33,11 +46,11 @@ type ProductRepository struct {
 }
 
 type ProductStore interface {
-	Create(ctx context.Context, product *OwnedProduct) error
-	List(ctx context.Context, pagination, page int) ([]ProductSummary, error)
-	FullList(ctx context.Context, id int32, pagination, page int) ([]ProductSummary, error)
-	Get(ctx context.Context, id string) (*OwnedProduct, error)
-	Update(ctx context.Context, product *OwnedProduct) error
+	Create(ctx context.Context, userID int32, Product *CreateProductRequest) error
+	List(ctx context.Context, pagination, page int) ([]ProductSummaryResponse, error)
+	FullList(ctx context.Context, userID int32, pagination, page int) ([]ProductStatusResponse, error)
+	Get(ctx context.Context, id string) (*OwnedProductResponse, error)
+	Update(ctx context.Context, userID int32, product *UpdateProductRequest) error
 	Delete(ctx context.Context, id string, userID int32) error
 	SetAvailable(ctx context.Context, id string, isActive bool) error
 	SetActive(ctx context.Context, id string, isActive bool) error
@@ -47,65 +60,65 @@ func NewProductStore(session db.Session) ProductStore {
 	return &ProductRepository{session: session}
 }
 
-func (pr *ProductRepository) Create(ctx context.Context, product *OwnedProduct) error {
-	const q = `INSERT INTO products(user_id, name, description, details, price, is_available, is_active)
-		VALUES (@UserID, @Name, @Description, @Details, @Price, @IsAvailable, @IsActive)`
+func (pr *ProductRepository) Create(ctx context.Context, userID int32, product *CreateProductRequest) error {
+	const q = `INSERT INTO products(user_id, name, description, details, price, is_available)
+		VALUES (@UserID, @Name, @Description, @Details, @Price, @IsAvailable)`
 	args := pgx.NamedArgs{
-		"UserID":      product.UserID,
+		"UserID":      userID,
 		"Name":        product.Name,
 		"Description": product.Description,
-		"Price":       product.Price,
 		"Details":     product.Details,
+		"Price":       product.Price,
 		"IsAvailable": product.IsAvailable,
-		"IsActive":    product.IsActive,
 	}
 	return execOne(ctx, pr.session, q, args)
 }
 
-func (pr *ProductRepository) List(ctx context.Context, pagination, page int) ([]ProductSummary, error) {
+func (pr *ProductRepository) List(ctx context.Context, pagination, page int) ([]ProductSummaryResponse, error) {
 	const q = `SELECT id, name, price, pub_date FROM products
 		WHERE is_active = true AND is_available = true
 		ORDER BY pub_date DESC
 		LIMIT $1
 		OFFSET $2`
-	return list[ProductSummary](ctx, pr.session, q, pagination, (page-1)*pagination)
+	return list[ProductSummaryResponse](ctx, pr.session, q, pagination, (page-1)*pagination)
 }
 
-func (pr *ProductRepository) FullList(ctx context.Context, id int32, pagination, page int) ([]ProductSummary, error) {
-	const baseQuery = `SELECT id, name, price, pub_date FROM products`
+func (pr *ProductRepository) FullList(ctx context.Context, userID int32, pagination, page int) ([]ProductStatusResponse, error) {
+	const baseQuery = `SELECT id, name, price, pub_date, is_available, is_active FROM products`
 	const limitOffset = ` LIMIT @Pagination OFFSET @Offset`
 	args := pgx.NamedArgs{
 		"Pagination": pagination,
 		"Offset":     (page - 1) * pagination,
 	}
 
-	if id == 0 {
+	if userID == 0 {
 		q := baseQuery + ` ORDER BY pub_date DESC, is_active` + limitOffset
-		return list[ProductSummary](ctx, pr.session, q, args)
+		return list[ProductStatusResponse](ctx, pr.session, q, args)
 	}
-	args["ID"] = id
-	q := baseQuery + ` WHERE user_id = @ID ORDER BY pub_date DESC` + limitOffset
-	return list[ProductSummary](ctx, pr.session, q, args)
+	args["UserID"] = userID
+	q := baseQuery + ` WHERE user_id = @UserID ORDER BY pub_date DESC` + limitOffset
+	return list[ProductStatusResponse](ctx, pr.session, q, args)
 }
 
-func (pr *ProductRepository) Get(ctx context.Context, id string) (*OwnedProduct, error) {
+func (pr *ProductRepository) Get(ctx context.Context, id string) (*OwnedProductResponse, error) {
 	const q = `SELECT id, user_id, name, description, details, price, pub_date, is_available, is_active FROM products
 		WHERE id = $1::UUID
 		LIMIT 1`
-	return get[OwnedProduct](ctx, pr.session, q, id)
+	return get[OwnedProductResponse](ctx, pr.session, q, id)
 }
 
-func (pr *ProductRepository) Update(ctx context.Context, product *OwnedProduct) error {
+func (pr *ProductRepository) Update(ctx context.Context, userID int32, product *UpdateProductRequest) error {
 	const q = `UPDATE products
-		SET name = @Name, description = @Description , details = @Details::JSONB, is_available = @IsAvailable
+		SET name = @Name, price = @Price, description = @Description , details = @Details::JSONB, is_available = @IsAvailable
 		WHERE id = @ID and user_id = @UserID`
 	args := pgx.NamedArgs{
 		"Name":        product.Name,
+		"Price":       product.Price,
 		"Description": product.Description,
 		"Details":     product.Details,
 		"IsAvailable": product.IsAvailable,
 		"ID":          product.ID,
-		"UserID":      product.UserID,
+		"UserID":      userID,
 	}
 	return execOne(ctx, pr.session, q, args)
 }
