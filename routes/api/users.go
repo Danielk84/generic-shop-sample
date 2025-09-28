@@ -62,11 +62,7 @@ func (uh *usersHandler) list(c *gin.Context) {
 		c.Status(http.StatusForbidden)
 		return
 	}
-	page, err := strconv.Atoi(c.DefaultQuery("page", "0"))
-	if err != nil {
-		page = 1
-	}
-	users, err := uh.us.List(c.Request.Context(), 20, page)
+	users, err := uh.us.List(c.Request.Context(), defaultPagination, getOffsetFromPageNum(c.Query("page")))
 	if err == nil {
 		c.Status(http.StatusNotFound)
 		return

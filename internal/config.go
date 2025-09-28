@@ -3,6 +3,7 @@ package internal
 import (
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -14,6 +15,7 @@ type Config struct {
 	TrustedProxies, Origins []string
 	DatabaseURL             string
 	JWTSecretKey            []byte
+	Pagination              int
 }
 
 var (
@@ -28,6 +30,10 @@ func NewConfig() *Config {
 			log.Panicln("error on reading .env file", err)
 		}
 
+		pagination, err := strconv.Atoi(args["PAGINATION"])
+		if err != nil {
+			log.Panicf("invalid pagination number, %s\n", err)
+		}
 		DefaultConfig = &Config{
 			Mode:           args["MODE"],
 			Addr:           args["ADDR"],
@@ -35,6 +41,7 @@ func NewConfig() *Config {
 			Origins:        getStrSliceFromStr(args["ORIGINS"]),
 			DatabaseURL:    args["DATABASE_URL"],
 			JWTSecretKey:   []byte(args["JWT_SECRET_KEY"]),
+			Pagination:     pagination,
 		}
 	})
 	return DefaultConfig

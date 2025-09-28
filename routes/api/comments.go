@@ -5,7 +5,6 @@ import (
 	"generic-shop-sample/db/queries"
 	md "generic-shop-sample/middlewares"
 	"net/http"
-	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -69,11 +68,6 @@ func (ch *commentsHandler) get(c *gin.Context) {
 }
 
 func (ch *commentsHandler) list(c *gin.Context) {
-	page, err := strconv.Atoi(c.DefaultQuery("page", "0"))
-	if err != nil {
-		c.Status(http.StatusBadRequest)
-		return
-	}
 	var json RelatedCommentsRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
 		c.Status(http.StatusBadRequest)
@@ -84,7 +78,7 @@ func (ch *commentsHandler) list(c *gin.Context) {
 		parent = &json.Parent
 	}
 
-	items, err := ch.cs.List(c.Request.Context(), parent, json.Referrer, 20, page)
+	items, err := ch.cs.List(c.Request.Context(), parent, json.Referrer, defaultPagination, getOffsetFromPageNum(c.Query("page")))
 	if err != nil {
 		c.Status(http.StatusNotFound)
 		return
@@ -94,17 +88,12 @@ func (ch *commentsHandler) list(c *gin.Context) {
 
 func (ch *commentsHandler) fullList(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	page, err := strconv.Atoi(c.DefaultQuery("page", "0"))
-	if err != nil {
-		c.Status(http.StatusBadRequest)
-		return
-	}
 	username := claims.Username
 	if claims.PermissionType == queries.Admin {
 		username = ""
 	}
 
-	items, err := ch.cs.FullList(c.Request.Context(), username, 20, page)
+	items, err := ch.cs.FullList(c.Request.Context(), username, defaultPagination, getOffsetFromPageNum(c.Query("page")))
 	if err != nil {
 		c.Status(http.StatusNotFound)
 		return

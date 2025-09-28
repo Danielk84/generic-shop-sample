@@ -31,12 +31,7 @@ type productsHandler struct {
 }
 
 func (ph *productsHandler) list(c *gin.Context) {
-	page, err := strconv.Atoi((c.DefaultQuery("page", "1")))
-	if err != nil {
-		page = 1
-	}
-
-	products, err := ph.ps.List(c.Request.Context(), 20, page)
+	products, err := ph.ps.List(c.Request.Context(), defaultPagination, getOffsetFromPageNum(c.Query("page")))
 	if err != nil {
 		c.Status(http.StatusNotFound)
 		return
@@ -46,16 +41,11 @@ func (ph *productsHandler) list(c *gin.Context) {
 
 func (ph *productsHandler) fullList(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
-	if err != nil {
-		page = 1
-	}
-
 	id := claims.ID
 	if claims.PermissionType == queries.Admin {
 		id = 0
 	}
-	products, err := ph.ps.FullList(c.Request.Context(), id, 20, page)
+	products, err := ph.ps.FullList(c.Request.Context(), id, defaultPagination, getOffsetFromPageNum(c.Query("page")))
 	if err != nil {
 		c.Status(http.StatusNotFound)
 		return
