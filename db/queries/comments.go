@@ -8,7 +8,14 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-type Comment struct {
+type CommentRequest struct {
+	Username string  `json:"username"`
+	Parent   *string `json:"parent"`
+	Referrer string  `json:"referrer"`
+	Body     string  `json:"body"`
+}
+
+type CommentResponse struct {
 	ID             string    `json:"id"`
 	Username       string    `json:"username"`
 	PubDate        time.Time `json:"pub_date"`
@@ -16,11 +23,11 @@ type Comment struct {
 	Body           string    `json:"body"`
 }
 
-type RelatedComment struct {
+type RelatedCommentResponse struct {
+	CommentResponse
 	Parent   *string `json:"parent"`
 	Referrer string  `json:"referrer"`
 	IsActive bool    `json:"is_active"`
-	Comment
 }
 
 type CommentRepository struct {
@@ -28,10 +35,10 @@ type CommentRepository struct {
 }
 
 type CommentStore interface {
-	Create(ctx context.Context, comment *RelatedComment) error
-	Get(ctx context.Context, id string) (*RelatedComment, error)
-	List(ctx context.Context, parent *string, referrer string, pagination, page int) ([]Comment, error)
-	FullList(ctx context.Context, username string, pagination, page int) ([]RelatedComment, error)
+	Create(ctx context.Context, comment *CommentRequest) error
+	Get(ctx context.Context, id string) (*RelatedCommentResponse, error)
+	List(ctx context.Context, parent *string, referrer string, pagination, page int) ([]CommentResponse, error)
+	FullList(ctx context.Context, username string, pagination, page int) ([]RelatedCommentResponse, error)
 	Delete(ctx context.Context, id string) error
 	SetActive(ctx context.Context, id string, isActive bool) error
 }
@@ -40,8 +47,8 @@ func NewCommentStore(session db.Session) CommentStore {
 	return &CommentRepository{session}
 }
 
-func (cr *CommentRepository) Create(ctx context.Context, comment *RelatedComment) error {
-	const createCommentQuery = `INSERT INTO comments(username, parent, children_amount, referrer, body, is_active)
+func (cr *CommentRepository) Create(ctx context.Context, comment *CommentRequest) error {
+	const createCommentQuery = `INSERT INTO comments(username, parent, children_amount, referrer, body)
 		VALUES (@Username, @Parent::UUID, 0, @Referrer, @Body)`
 	const upadteChildrenCount = `UPDATE comments SET children_amount = children_amount + 1 WHERE id = $1::UUID`
 
@@ -69,13 +76,13 @@ func (cr *CommentRepository) Create(ctx context.Context, comment *RelatedComment
 	})
 }
 
-func (cr *CommentRepository) Get(ctx context.Context, id string) (*RelatedComment, error) {
+func (cr *CommentRepository) Get(ctx context.Context, id string) (*RelatedCommentResponse, error) {
 	const q = `SELECT id, username, pub_date, parent, children_amount, referrer, body, is_active FROM comments
 		WHERE id = $1::UUID`
-	return get[RelatedComment](ctx, cr.session, q, id)
+	return get[RelatedCommentResponse](ctx, cr.session, q, id)
 }
 
-func (cr *CommentRepository) List(ctx context.Context, parent *string, referrer string, pagination, page int) ([]Comment, error) {
+func (cr *CommentRepository) List(ctx context.Context, parent *string, referrer string, pagination, page int) ([]CommentResponse, error) {
 	const q = `SELECT id, username, pub_date, children_amount, body FROM comments
 		WHERE (parent = @Parent::UUID OR (@Parent::UUID IS NULL AND parent IS NULL))
 			AND referrer = @Referrer
@@ -89,10 +96,10 @@ func (cr *CommentRepository) List(ctx context.Context, parent *string, referrer 
 		"Pagination": pagination,
 		"Offset":     (page - 1) * pagination,
 	}
-	return list[Comment](ctx, cr.session, q, args)
+	return list[CommentResponse](ctx, cr.session, q, args)
 }
 
-func (cr *CommentRepository) FullList(ctx context.Context, username string, pagination, page int) ([]RelatedComment, error) {
+func (cr *CommentRepository) FullList(ctx context.Context, username string, pagination, page int) ([]RelatedCommentResponse, error) {
 	const baseQuery = "SELECT id, username, pub_date, parent, children_amount, referrer, body, is_active FROM comments"
 	const limitOffset = ` LIMIT @Pagination OFFSET @Offset`
 	args := pgx.NamedArgs{
@@ -102,11 +109,11 @@ func (cr *CommentRepository) FullList(ctx context.Context, username string, pagi
 
 	if username == "" {
 		q := baseQuery + " ORDER BY pub_date DESC, is_active" + limitOffset
-		return list[RelatedComment](ctx, cr.session, q, args)
+		return list[RelatedCommentResponse](ctx, cr.session, q, args)
 	}
 	args["Username"] = username
 	q := baseQuery + " WHERE username = @Username ORDER BY pub_date DESC" + limitOffset
-	return list[RelatedComment](ctx, cr.session, q, args)
+	return list[RelatedCommentResponse](ctx, cr.session, q, args)
 }
 
 func (cr *CommentRepository) Delete(ctx context.Context, id string) error {

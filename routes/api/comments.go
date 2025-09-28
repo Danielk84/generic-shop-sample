@@ -11,55 +11,51 @@ import (
 )
 
 func CommentsRouter(router *gin.RouterGroup) {
-	router.GET("/", commentsListEndpoint)
+	ch := commentsHandler{queries.NewCommentStore(db.NewSession())}
+
+	router.GET("/", ch.list)
 
 	sRouter := router.Group("/p")
 	sRouter.Use(md.AuthMiddleware())
-	sRouter.POST("/", createCommentsEndpoint)
-	sRouter.GET("/:id", getCommentEndpoint)
-	sRouter.GET("/", commentsFullListEndpoint)
-	sRouter.DELETE("/:id", deleteCommentEndpoint)
-	sRouter.PUT("/set-active/:id", setCommentActiveEndpoint)
+	sRouter.GET("/", ch.fullList)
+	sRouter.GET("/:id", ch.get)
+	sRouter.POST("/", ch.create)
+	sRouter.PUT("/set-active/:id", ch.setActive)
+	sRouter.DELETE("/:id", ch.delete)
 }
 
-type CreateComment struct {
-	Body     string `json:"body"`
-	Parent   string `json:"parent"`
+type RelatedCommentsRequest struct {
+	Parent   string `json:"Parent"`
 	Referrer string `json:"referrer"`
 }
 
-func createCommentsEndpoint(c *gin.Context) {
+type commentsHandler struct {
+	cs queries.CommentStore
+}
+
+func (ch *commentsHandler) create(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if claims.PermissionType > queries.Customer {
 		c.Status(http.StatusForbidden)
 		return
 	}
-	var json CreateComment
+	var json queries.CommentRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
 		c.Status(http.StatusBadRequest)
 		return
 	}
 
-	cs := queries.NewCommentStore(db.NewSession())
-	if err := cs.Create(c.Request.Context(), &queries.RelatedComment{
-		Parent:   &json.Parent,
-		Referrer: json.Referrer,
-		Comment: queries.Comment{
-			Username: claims.Username,
-			Body:     json.Body,
-		},
-	}); err != nil {
+	if err := ch.cs.Create(c.Request.Context(), &json); err != nil {
 		c.Status(http.StatusBadRequest)
 		return
 	}
 	c.Status(http.StatusCreated)
 }
 
-func getCommentEndpoint(c *gin.Context) {
+func (ch *commentsHandler) get(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	id := c.Param("id")
-	cs := queries.NewCommentStore(db.NewSession())
-	comment, err := cs.Get(c.Request.Context(), id)
+	comment, err := ch.cs.Get(c.Request.Context(), id)
 	if err != nil {
 		c.Status(http.StatusNotFound)
 		return
@@ -72,18 +68,13 @@ func getCommentEndpoint(c *gin.Context) {
 	c.JSON(http.StatusOK, comment)
 }
 
-type CommentsList struct {
-	Parent   string `json:"Parent"`
-	Referrer string `json:"referrer"`
-}
-
-func commentsListEndpoint(c *gin.Context) {
+func (ch *commentsHandler) list(c *gin.Context) {
 	page, err := strconv.Atoi(c.DefaultQuery("page", "0"))
 	if err != nil {
 		c.Status(http.StatusBadRequest)
 		return
 	}
-	var json CommentsList
+	var json RelatedCommentsRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
 		c.Status(http.StatusBadRequest)
 		return
@@ -93,8 +84,7 @@ func commentsListEndpoint(c *gin.Context) {
 		parent = &json.Parent
 	}
 
-	cs := queries.NewCommentStore(db.NewSession())
-	items, err := cs.List(c.Request.Context(), parent, json.Referrer, 20, page)
+	items, err := ch.cs.List(c.Request.Context(), parent, json.Referrer, 20, page)
 	if err != nil {
 		c.Status(http.StatusNotFound)
 		return
@@ -102,7 +92,7 @@ func commentsListEndpoint(c *gin.Context) {
 	c.JSON(http.StatusOK, items)
 }
 
-func commentsFullListEndpoint(c *gin.Context) {
+func (ch *commentsHandler) fullList(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	page, err := strconv.Atoi(c.DefaultQuery("page", "0"))
 	if err != nil {
@@ -114,8 +104,7 @@ func commentsFullListEndpoint(c *gin.Context) {
 		username = ""
 	}
 
-	cs := queries.NewCommentStore(db.NewSession())
-	items, err := cs.FullList(c.Request.Context(), username, 20, page)
+	items, err := ch.cs.FullList(c.Request.Context(), username, 20, page)
 	if err != nil {
 		c.Status(http.StatusNotFound)
 		return
@@ -123,12 +112,11 @@ func commentsFullListEndpoint(c *gin.Context) {
 	c.JSON(http.StatusOK, items)
 }
 
-func deleteCommentEndpoint(c *gin.Context) {
+func (ch *commentsHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	id := c.Param("id")
 
-	cs := queries.NewCommentStore(db.NewSession())
-	comment, err := cs.Get(c.Request.Context(), id)
+	comment, err := ch.cs.Get(c.Request.Context(), id)
 	if err != nil {
 		c.Status(http.StatusNotFound)
 		return
@@ -138,13 +126,14 @@ func deleteCommentEndpoint(c *gin.Context) {
 		c.Status(http.StatusForbidden)
 		return
 	}
-	if err := cs.Delete(c.Request.Context(), id); err != nil {
+	if err := ch.cs.Delete(c.Request.Context(), id); err != nil {
 		c.Status(http.StatusBadRequest)
 		return
 	}
+	c.Status(http.StatusNoContent)
 }
 
-func setCommentActiveEndpoint(c *gin.Context) {
+func (ch *commentsHandler) setActive(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if claims.PermissionType != queries.Admin {
 		c.Status(http.StatusForbidden)
@@ -157,6 +146,9 @@ func setCommentActiveEndpoint(c *gin.Context) {
 	}
 	id := c.Param("id")
 
-	cs := queries.NewCommentStore(db.NewSession())
-	cs.SetActive(c.Request.Context(), id, json.Accepted)
+	if err := ch.cs.SetActive(c.Request.Context(), id, json.Accepted); err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	c.Status(http.StatusAccepted)
 }

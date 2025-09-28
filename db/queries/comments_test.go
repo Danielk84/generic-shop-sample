@@ -8,19 +8,25 @@ import (
 	"time"
 )
 
-func TestBasicCommentStoreMethod(t *testing.T) {
+func TestBasicCommentStoreMethods(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
-	const getIdQuery = `SELECT id FROM comments WHERE username = $1 LIMIT 1`
 	session := db.NewSession()
 	cs := queries.NewCommentStore(session)
 
-	parentComment := &queries.RelatedComment{nil, "/", true, queries.Comment{Username: "adminUser", Body: "some content"}}
+	if _, err := session.Exec(ctx, "TRUNCATE comments"); err != nil {
+		t.Errorf("error truncate comments, %s", err)
+		return
+	}
+
+	parentComment := &queries.CommentRequest{"adminUser", nil, "/", "some content"}
 	if err := cs.Create(ctx, parentComment); err != nil {
 		t.Errorf("failed to create parent comment, %s", err)
 	}
-	if err := session.QueryRow(ctx, getIdQuery, parentComment.Username).Scan(&parentComment.ID); err != nil {
+	var parentCommentID string
+	const getIdQuery = `SELECT id FROM comments WHERE username = $1 LIMIT 1`
+	if err := session.QueryRow(ctx, getIdQuery, parentComment.Username).Scan(&parentCommentID); err != nil {
 		t.Errorf("failed to find parent comment id, %s", err)
 	}
 
@@ -28,36 +34,37 @@ func TestBasicCommentStoreMethod(t *testing.T) {
 	invalidCommentID := "bad id"
 	tests := []struct {
 		name       string
-		comment    queries.RelatedComment
+		comment    queries.CommentRequest
 		isErrExist bool
 	}{
 		{
 			"adminUserCommand",
-			queries.RelatedComment{nil, "/", true, queries.Comment{Username: "adminUser", Body: body}},
+			queries.CommentRequest{"adminUser", nil, "/", body},
 			false,
 		},
 		{
 			"subVendorUserCommand",
-			queries.RelatedComment{&parentComment.ID, "/", true, queries.Comment{Username: "vendorUser", Body: body}},
+			queries.CommentRequest{"vendorUser", &parentCommentID, "/", body},
 			false,
 		},
 		{
 			"costumerUserCommand",
-			queries.RelatedComment{nil, "/", true, queries.Comment{Username: "customerUser", Body: body}},
+			queries.CommentRequest{"customerUser", nil, "/", body},
 			false,
 		},
 		{
 			"subAdminCommand",
-			queries.RelatedComment{&parentComment.ID, "/", true, queries.Comment{Username: "adminUser", Body: body}},
+			queries.CommentRequest{"adminUser", &parentCommentID, "/", body},
 			false,
 		},
 		{
 			"invalidParentAdminCommand",
-			queries.RelatedComment{&invalidCommentID, "/", true, queries.Comment{Username: "adminUser", Body: body}},
+			queries.CommentRequest{"adminUser", &invalidCommentID, "/", body},
 			true,
 		},
 	}
 
+	var childrenAmount int32
 	const getChildrenAmountQuery = `SELECT children_amount FROM comments WHERE id = $1::UUID`
 	for _, test := range tests {
 		if err := cs.Create(ctx, &test.comment); err != nil && !test.isErrExist {
@@ -68,13 +75,18 @@ func TestBasicCommentStoreMethod(t *testing.T) {
 			if err := session.QueryRow(ctx, getChildrenAmountQuery, *test.comment.Parent).Scan(&n); err != nil {
 				t.Errorf(`failed to find children amount from id, %s`, err)
 			}
-			expected := parentComment.ChildrenAmount + 1
+			expected := childrenAmount + 1
 			if n == expected {
-				parentComment.ChildrenAmount = n
+				childrenAmount = n
 			} else {
 				t.Errorf(`expected "%d" children for parent comment, but got "%d", name="%s"`, expected, n, test.name)
 			}
 		}
+	}
+
+	if _, err := session.Exec(ctx, "UPDATE comments SET is_active = true"); err != nil {
+		t.Errorf("failed to adtivate comments, %s", err)
+		return
 	}
 
 	list, err := cs.List(ctx, nil, "/", 3, 1)
@@ -98,24 +110,24 @@ func TestBasicCommentStoreMethod(t *testing.T) {
 		}
 	}
 
-	if comment, err := cs.Get(ctx, parentComment.ID); err != nil {
+	if comment, err := cs.Get(ctx, parentCommentID); err != nil {
 		t.Errorf("failed to get comment, %s", err)
 	} else {
-		if comment.Body != body && comment.ID != parentComment.ID && comment.Username != parentComment.Username {
+		if comment.Body != body && comment.ID != parentCommentID && comment.Username != parentComment.Username {
 			t.Errorf(`unexpected invalid matching, body="%s", id="%s", username="%s"`, comment.Body, comment.ID, comment.Username)
 		}
 	}
 
-	if err := cs.SetActive(ctx, parentComment.ID, false); err != nil {
+	if err := cs.SetActive(ctx, parentCommentID, false); err != nil {
 		t.Errorf("bad CommentStore.SetActive, %s", err)
 	}
 
 	const isCommentsExistsByID = "SELECT EXISTS(SELECT 1 FROM comments WHERE id = $1::UUID OR parent = $1::UUID)"
-	if err := cs.Delete(ctx, parentComment.ID); err != nil {
+	if err := cs.Delete(ctx, parentCommentID); err != nil {
 		t.Errorf("failed to delete comment, %s", err)
 	} else {
 		var isExists bool
-		if err := session.QueryRow(ctx, isCommentsExistsByID, parentComment.ID).Scan(&isExists); err != nil {
+		if err := session.QueryRow(ctx, isCommentsExistsByID, parentCommentID).Scan(&isExists); err != nil {
 			t.Fatalf("failed to query existing of comments, %s", err)
 		}
 		if isExists {
@@ -136,11 +148,11 @@ func TestFullListComments(t *testing.T) {
 
 	cs := queries.NewCommentStore(session)
 
-	comments := []queries.RelatedComment{
-		{nil, "/", true, queries.Comment{Username: "adminUser", Body: "admin body"}},
-		{nil, "/", true, queries.Comment{Username: "vendorUser", Body: "vendor body"}},
-		{nil, "/", false, queries.Comment{Username: "customerUser", Body: "customer body"}},
-		{nil, "/", true, queries.Comment{Username: "adminUser", Body: "admin body"}},
+	comments := []queries.CommentRequest{
+		{"adminUser", nil, "/", "admin body"},
+		{"vendorUser", nil, "/", "vendor body"},
+		{"customerUser", nil, "/", "customer body"},
+		{"adminUser", nil, "/", "admin body"},
 	}
 	for i, comment := range comments {
 		if err := cs.Create(ctx, &comment); err != nil {
