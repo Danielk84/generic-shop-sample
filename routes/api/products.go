@@ -26,10 +26,6 @@ func ProductsRouter(router *gin.RouterGroup) {
 	sRouter.DELETE("/:id", ph.delete)
 }
 
-type SetFlag struct {
-	Accepted bool `json:"accepted"`
-}
-
 type productsHandler struct {
 	ps queries.ProductStore
 }
