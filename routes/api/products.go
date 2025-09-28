@@ -11,7 +11,7 @@ import (
 )
 
 func ProductsRouter(router *gin.RouterGroup) {
-	ph := productHandler{queries.NewProductStore(db.NewSession())}
+	ph := productsHandler{queries.NewProductStore(db.NewSession())}
 
 	router.GET("/", ph.list)
 	router.GET("/:id", ph.get)
@@ -30,11 +30,11 @@ type SetFlag struct {
 	Accepted bool `json:"accepted"`
 }
 
-type productHandler struct {
+type productsHandler struct {
 	ps queries.ProductStore
 }
 
-func (ph *productHandler) list(c *gin.Context) {
+func (ph *productsHandler) list(c *gin.Context) {
 	page, err := strconv.Atoi((c.DefaultQuery("page", "1")))
 	if err != nil {
 		page = 1
@@ -48,7 +48,7 @@ func (ph *productHandler) list(c *gin.Context) {
 	c.JSON(http.StatusOK, products)
 }
 
-func (ph *productHandler) fullList(c *gin.Context) {
+func (ph *productsHandler) fullList(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	page, err := strconv.Atoi(c.DefaultQuery("page", "1"))
 	if err != nil {
@@ -67,7 +67,7 @@ func (ph *productHandler) fullList(c *gin.Context) {
 	c.JSON(http.StatusOK, products)
 }
 
-func (ph *productHandler) get(c *gin.Context) {
+func (ph *productsHandler) get(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	id := c.Param("id")
 	product, err := ph.ps.Get(c.Request.Context(), id)
@@ -88,7 +88,7 @@ func (ph *productHandler) get(c *gin.Context) {
 	c.JSON(http.StatusOK, product)
 }
 
-func (ph *productHandler) update(c *gin.Context) {
+func (ph *productsHandler) update(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	var json queries.UpdateProductRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
@@ -102,7 +102,7 @@ func (ph *productHandler) update(c *gin.Context) {
 	c.Status(http.StatusAccepted)
 }
 
-func (ph *productHandler) delete(c *gin.Context) {
+func (ph *productsHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	id := c.Param("id")
 	if err := ph.ps.Delete(c.Request.Context(), id, claims.ID); err != nil {
@@ -112,7 +112,7 @@ func (ph *productHandler) delete(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func (ph *productHandler) setAvailable(c *gin.Context) {
+func (ph *productsHandler) setAvailable(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if claims.PermissionType != queries.Admin {
 		c.Status(http.StatusForbidden)
@@ -132,7 +132,7 @@ func (ph *productHandler) setAvailable(c *gin.Context) {
 	c.Status(http.StatusAccepted)
 }
 
-func (ph *productHandler) setActive(c *gin.Context) {
+func (ph *productsHandler) setActive(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if claims.PermissionType != queries.Admin {
 		c.Status(http.StatusForbidden)
@@ -153,15 +153,21 @@ func (ph *productHandler) setActive(c *gin.Context) {
 }
 
 func CategoriesRouter(router *gin.RouterGroup) {
-	router.GET("/", categoriesListEndpoint)
+	cs := categoriesHandler{queries.NewCategoryStore(db.NewSession())}
 
-	sRouter := router.Group("")
+	router.GET("/", cs.list)
+
+	sRouter := router.Group("user")
 	sRouter.Use(md.AuthMiddleware())
-	sRouter.POST("/", createCategoriesEndpoint)
-	sRouter.DELETE("/:id", deleteCategoryEndpoint)
+	sRouter.POST("/", cs.create)
+	sRouter.DELETE("/:id", cs.delete)
 }
 
-func createCategoriesEndpoint(c *gin.Context) {
+type categoriesHandler struct {
+	cs queries.CategoryStore
+}
+
+func (ch *categoriesHandler) create(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if claims.PermissionType != queries.Admin {
 		c.Status(http.StatusForbidden)
@@ -173,17 +179,15 @@ func createCategoriesEndpoint(c *gin.Context) {
 		return
 	}
 
-	cs := queries.NewCategoryStore(db.NewSession())
-	if err := cs.Create(c.Request.Context(), json.Tag); err != nil {
+	if err := ch.cs.Create(c.Request.Context(), json.Tag); err != nil {
 		c.Status(http.StatusBadRequest)
 		return
 	}
 	c.Status(http.StatusCreated)
 }
 
-func categoriesListEndpoint(c *gin.Context) {
-	cs := queries.NewCategoryStore(db.NewSession())
-	categories, err := cs.List(c.Request.Context())
+func (ch *categoriesHandler) list(c *gin.Context) {
+	categories, err := ch.cs.List(c.Request.Context())
 	if err != nil {
 		c.Status(http.StatusNotFound)
 		return
@@ -191,7 +195,7 @@ func categoriesListEndpoint(c *gin.Context) {
 	c.JSON(http.StatusOK, categories)
 }
 
-func deleteCategoryEndpoint(c *gin.Context) {
+func (ch *categoriesHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if claims.PermissionType != queries.Admin {
 		c.Status(http.StatusForbidden)
@@ -203,8 +207,7 @@ func deleteCategoryEndpoint(c *gin.Context) {
 		return
 	}
 
-	cs := queries.NewCategoryStore(db.NewSession())
-	if err := cs.Delete(c.Request.Context(), int32(id)); err != nil {
+	if err := ch.cs.Delete(c.Request.Context(), int32(id)); err != nil {
 		c.Status(http.StatusNotFound)
 		return
 	}
@@ -212,15 +215,21 @@ func deleteCategoryEndpoint(c *gin.Context) {
 }
 
 func PCRouter(router *gin.RouterGroup) {
-	router.GET("/:id", pcListEndpoint)
-	router.POST("/set-tags", md.AuthMiddleware(), setPCTagsEndpoint)
+	pch := pcHandler{queries.NewPCStore(db.NewSession())}
+
+	router.GET("/:id", pch.list)
+	router.POST("/set-tags", md.AuthMiddleware(), pch.setTags)
 }
 
 type PC struct {
 	Tags []string `json:"tags"`
 }
 
-func setPCTagsEndpoint(c *gin.Context) {
+type pcHandler struct {
+	pcs queries.PCStore
+}
+
+func (pch *pcHandler) setTags(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if claims.PermissionType > queries.Vendor {
 		c.Status(http.StatusForbidden)
@@ -252,10 +261,9 @@ func setPCTagsEndpoint(c *gin.Context) {
 	c.Status(http.StatusAccepted)
 }
 
-func pcListEndpoint(c *gin.Context) {
-	pcs := queries.NewPCStore(db.NewSession())
+func (pch *pcHandler) list(c *gin.Context) {
 	id := c.Param("id")
-	items, err := pcs.List(c.Request.Context(), id)
+	items, err := pch.pcs.List(c.Request.Context(), id)
 	if err != nil {
 		c.Status(http.StatusNotFound)
 		return
