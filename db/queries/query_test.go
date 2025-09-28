@@ -61,18 +61,20 @@ func TestMain(m *testing.M) {
 
 func createTemporaryUsers(ctx context.Context, session db.Session) error {
 	batch := &pgx.Batch{}
-	const q = `INSERT INTO users (username, permission_type, is_active)
-		VALUES (@Username, @PermissionType, @IsActive)`
-	var users = []queries.User{
-		{Username: "adminUser", PermissionType: queries.Admin, IsActive: true},
-		{Username: "vendorUser", PermissionType: queries.Vendor, IsActive: true},
-		{Username: "customerUser", PermissionType: queries.Customer, IsActive: true},
-		{Username: "blockUser", PermissionType: queries.BlockUser, IsActive: false},
+	const q = `INSERT INTO users (username, password, permission_type, is_active)
+		VALUES (@Username, @Password, @PermissionType, @IsActive)`
+	password := "secure password"
+	var users = []queries.CreateUserRequest{
+		{queries.LoginRequest{"adminUser", password}, queries.UserPermissionRequest{queries.Admin, true}},
+		{queries.LoginRequest{"vendorUser", password}, queries.UserPermissionRequest{queries.Vendor, true}},
+		{queries.LoginRequest{"customerUser", password}, queries.UserPermissionRequest{queries.Customer, true}},
+		{queries.LoginRequest{"blockUser", password}, queries.UserPermissionRequest{queries.BlockUser, false}},
 	}
 
 	for _, user := range users {
 		args := pgx.NamedArgs{
 			"Username":       user.Username,
+			"Password":       user.Password,
 			"PermissionType": user.PermissionType,
 			"IsActive":       user.IsActive,
 		}

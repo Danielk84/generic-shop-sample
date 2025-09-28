@@ -20,10 +20,9 @@ func TestIsUsernameExists(t *testing.T) {
 func TestCreateUser(t *testing.T) {
 	us := queries.NewUserStore(db.NewSession())
 
-	user := &queries.User{
-		Username:       "validUser",
-		PermissionType: queries.Customer,
-		IsActive:       true,
+	user := &queries.CreateUserRequest{
+		queries.LoginRequest{"validUser", "secure_password"},
+		queries.UserPermissionRequest{queries.Customer, true},
 	}
 	if err := us.Create(t.Context(), user); err != nil {
 		t.Errorf("expected to creating valid user, but got: %s", err)
@@ -38,7 +37,6 @@ func TestCreateUser(t *testing.T) {
 }
 
 func TestSetEmail(t *testing.T) {
-	const getEmailQuery = `SELECT email FROM users WHERE id = $1`
 	const getIDFromUsernameQuery = `SELECT id FROM users WHERE username = $1`
 	session := db.NewSession()
 	us := queries.NewUserStore(session)
@@ -47,49 +45,43 @@ func TestSetEmail(t *testing.T) {
 		t.Errorf("failed to query id from username, %s", err)
 	}
 
-	email := "someaddr@email.blab"
-	user := &queries.User{
-		ID:    id,
-		Email: &email,
-	}
-	if err := us.SetEmail(t.Context(), user); err != nil {
+	email := &queries.EmailAddrRequest{"someaddr@email.blab"}
+	if err := us.SetEmail(t.Context(), id, email); err != nil {
 		t.Errorf("bad SetEmail operation, %s", err)
 	}
-
-	if err := session.QueryRow(t.Context(), getEmailQuery, user.ID).Scan(&email); err != nil {
+	var newEmail string
+	const getEmailQuery = `SELECT email FROM users WHERE id = $1`
+	if err := session.QueryRow(t.Context(), getEmailQuery, id).Scan(&newEmail); err != nil {
 		t.Errorf("failed to query email address with id, %s", err)
 	}
 
-	if email != *user.Email {
-		t.Errorf(`expected email="%s", but got "%s"`, *user.Email, email)
+	if newEmail != email.Email {
+		t.Errorf(`expected email="%s", but got "%s"`, email.Email, newEmail)
 	}
 }
 
 func TestGetUser(t *testing.T) {
 	us := queries.NewUserStore(db.NewSession())
 
-	passwordHash := "simpleHash"
-	user := queries.User{
-		Username:       "NewSimpleUser",
-		PermissionType: queries.Customer,
-		PasswordHash:   &passwordHash,
-		IsActive:       true,
+	user := queries.CreateUserRequest{
+		queries.LoginRequest{"NewSimpleUser", "secure password"},
+		queries.UserPermissionRequest{queries.Customer, true},
 	}
 	if err := us.Create(t.Context(), &user); err != nil {
 		t.Errorf("failed to creating new user, %s", err)
 	}
 
-	rUser, err := us.Get(t.Context(), user.Username)
+	gUser, err := us.Get(t.Context(), user.Username)
 	if err != nil {
 		t.Errorf(`failed to get user "%s", %s`, user.Username, err)
 	}
 
-	if rUser.PasswordHash != user.PasswordHash && !rUser.IsActive && rUser.PermissionType != queries.Customer {
+	if gUser.Password != user.Password && !gUser.IsActive && gUser.PermissionType != queries.Customer {
 		t.Errorf("failed to match fields")
 	}
 }
 
-func TestUpdateUser(t *testing.T) {
+func TestUpdateUserPermission(t *testing.T) {
 	us := queries.NewUserStore(db.NewSession())
 
 	username := "blockUser"
@@ -98,9 +90,7 @@ func TestUpdateUser(t *testing.T) {
 		t.Errorf(`failed to get user "%s", %s`, username, err)
 	}
 
-	user.IsActive = true
-	user.PermissionType = queries.BlockUser
-	if err := us.Update(t.Context(), user); err != nil {
+	if err := us.UpdatePermission(t.Context(), user.ID, &queries.UserPermissionRequest{queries.BlockUser, true}); err != nil {
 		t.Errorf(`failed to update user "%s", %s`, username, err)
 	}
 
@@ -117,21 +107,20 @@ func TestUpdateUser(t *testing.T) {
 func TestDeleteUser(t *testing.T) {
 	us := queries.NewUserStore(db.NewSession())
 
-	user := &queries.User{
-		Username:       "deleteUser",
-		PermissionType: queries.BlockUser,
-		IsActive:       false,
+	user := &queries.CreateUserRequest{
+		queries.LoginRequest{"deleteUser", "secure password"},
+		queries.UserPermissionRequest{queries.BlockUser, false},
 	}
 	if err := us.Create(t.Context(), user); err != nil {
 		t.Errorf(`failed to create user "%s", %s`, user.Username, err)
 	}
 
-	rUser, err := us.Get(t.Context(), user.Username)
+	gUser, err := us.Get(t.Context(), user.Username)
 	if err != nil {
 		t.Errorf(`failed to get user "%s", %s`, user.Username, err)
 	}
 
-	if err := us.Delete(t.Context(), rUser.ID); err != nil {
+	if err := us.Delete(t.Context(), gUser.ID); err != nil {
 		t.Errorf(`failed to delete user "%s, %s`, user.Username, err)
 	}
 	if us.IsUsernameExists(t.Context(), user.Username) {

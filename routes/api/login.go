@@ -19,13 +19,8 @@ func LoginRouter(ctx context.Context, router *gin.RouterGroup) {
 	router.POST("/login", loginEndpoint)
 }
 
-type Login struct {
-	Username string `json:"username" binding:"required,min=4,max=128,alphanum"`
-	Password string `json:"password" binding:"required,min=8,max=32,ascii"`
-}
-
 func loginEndpoint(c *gin.Context) {
-	var json Login
+	var json queries.LoginRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid username or password"})
 		return
@@ -37,7 +32,7 @@ func loginEndpoint(c *gin.Context) {
 		c.Status(http.StatusNotFound)
 		return
 	}
-	if !auth.ComparePassword(*user.PasswordHash, json.Password) {
+	if !auth.ComparePassword(user.Password, json.Password) {
 		c.Status(http.StatusUnauthorized)
 		return
 	}

@@ -12,69 +12,71 @@ import (
 )
 
 func UsersRouter(router *gin.RouterGroup) {
+	uh := usersHandler{queries.NewUserStore(db.NewSession())}
+
 	router.Use(md.AuthMiddleware())
-	router.POST("/", createUserByAdminEndpoint)
-	router.GET("/:username", getUserEndpoint)
-	router.PUT("/:id", updateUserPermissionEndpoint)
-	router.DELETE("/", deleteUserEndpoint)
-	router.PUT("/set-email", setEmailEndpoint)
+	router.GET("/", uh.list)
+	router.GET("/:username", uh.get)
+	router.POST("/", uh.createUserByAdmin)
+	router.PUT("/:id", uh.updateUserPermission)
+	router.PUT("/set-email", uh.setEmail)
+	router.DELETE("/", uh.delete)
 }
 
-type UserPermission struct {
-	PermissionType queries.PermissionType `json:"permission_type" binding:"required,number,gt=0,lte=4"`
-	IsActive       bool                   `json:"is_active" binding:"required,boolean"`
+type usersHandler struct {
+	us queries.UserStore
 }
 
-type UserCreator struct {
-	Login
-	UserPermission
-}
-
-type Email struct {
-	Email string `json:"email" binding:"required,min=10,max=256,email"`
-}
-
-func createUserByAdminEndpoint(c *gin.Context) {
+func (uh *usersHandler) createUserByAdmin(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if claims.PermissionType != queries.Admin {
 		c.Status(http.StatusForbidden)
 		return
 	}
-	var json UserCreator
+	var json queries.CreateUserRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user data"})
 		return
 	}
 
-	us := queries.NewUserStore(db.NewSession())
-	if us.IsUsernameExists(c.Request.Context(), json.Username) {
+	if uh.us.IsUsernameExists(c.Request.Context(), json.Username) {
 		c.JSON(http.StatusConflict, gin.H{"error": "username already exists"})
 		return
 	}
-	passwordHash, err := auth.PasswordHash(json.Password)
+	var err error
+	json.Password, err = auth.PasswordHash(json.Password)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid password string"})
 		return
 	}
-	if err := us.Create(
-		c.Request.Context(),
-		&queries.User{
-			Username:       json.Username,
-			PasswordHash:   &passwordHash,
-			PermissionType: json.PermissionType,
-			IsActive:       json.IsActive,
-		},
-	); err != nil {
+	if err = uh.us.Create(c.Request.Context(), &json); err != nil {
 		c.Status(http.StatusBadRequest)
 		return
 	}
 	c.Status(http.StatusNoContent)
 }
 
-func getUserEndpoint(c *gin.Context) {
+func (uh *usersHandler) list(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if claims.PermissionType != queries.Admin {
+		c.Status(http.StatusForbidden)
+		return
+	}
+	page, err := strconv.Atoi(c.DefaultQuery("page", "0"))
+	if err != nil {
+		page = 1
+	}
+	users, err := uh.us.List(c.Request.Context(), 20, page)
+	if err == nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	c.JSON(http.StatusOK, users)
+}
+
+func (uh *usersHandler) get(c *gin.Context) {
 	username := c.Param("username")
-	us := queries.NewUserStore(db.NewSession())
-	user, err := us.Get(c.Request.Context(), username)
+	user, err := uh.us.Get(c.Request.Context(), username)
 	if err != nil {
 		c.Status(http.StatusNotFound)
 		return
@@ -82,7 +84,7 @@ func getUserEndpoint(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
-func updateUserPermissionEndpoint(c *gin.Context) {
+func (uh *usersHandler) updateUserPermission(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if claims.PermissionType != queries.Admin {
 		c.Status(http.StatusForbidden)
@@ -93,43 +95,36 @@ func updateUserPermissionEndpoint(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
 	}
-	var json UserPermission
+	var json queries.UserPermissionRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid permission_id or is_active"})
 		return
 	}
 
-	us := queries.NewUserStore(db.NewSession())
-	if err := us.Update(
-		c.Request.Context(),
-		&queries.User{ID: int32(id), PermissionType: json.PermissionType, IsActive: json.IsActive},
-	); err != nil {
+	if err := uh.us.UpdatePermission(c.Request.Context(), int32(id), &json); err != nil {
 		c.Status(http.StatusNotFound)
 		return
 	}
 	c.Status(http.StatusNoContent)
 }
 
-func deleteUserEndpoint(c *gin.Context) {
+func (uh *usersHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	us := queries.NewUserStore(db.NewSession())
-	if err := us.Delete(c.Request.Context(), claims.ID); err != nil {
+	if err := uh.us.Delete(c.Request.Context(), claims.ID); err != nil {
 		c.Status(http.StatusNotFound)
 		return
 	}
 	c.Status(http.StatusOK)
 }
 
-func setEmailEndpoint(c *gin.Context) {
-	var json Email
+func (uh *usersHandler) setEmail(c *gin.Context) {
+	var json queries.EmailAddrRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid email"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid email address"})
 		return
 	}
 	claims := md.GetUserClaims(c)
-
-	us := queries.NewUserStore(db.NewSession())
-	if err := us.SetEmail(c.Request.Context(), &queries.User{ID: claims.ID, Email: &json.Email}); err != nil {
+	if err := uh.us.SetEmail(c.Request.Context(), claims.ID, &json); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "email already exists"})
 		return
 	}

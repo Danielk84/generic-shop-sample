@@ -2,7 +2,7 @@ CREATE TABLE users (
     id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     username VARCHAR(128) UNIQUE NOT NULL,
     email VARCHAR(256) UNIQUE,
-    password_hash TEXT,
+    password TEXT NOT NULL,
     permission_type INTEGER NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT FALSE
 );
