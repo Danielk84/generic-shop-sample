@@ -20,7 +20,7 @@ func TestBasicCommentStoreMethods(t *testing.T) {
 		return
 	}
 
-	parentComment := &queries.CommentRequest{"adminUser", nil, "/", "some content"}
+	parentComment := &queries.CommentRequest{"adminUser", "", "/", "some content"}
 	if err := cs.Create(ctx, parentComment); err != nil {
 		t.Errorf("failed to create parent comment, %s", err)
 	}
@@ -39,27 +39,27 @@ func TestBasicCommentStoreMethods(t *testing.T) {
 	}{
 		{
 			"adminUserCommand",
-			queries.CommentRequest{"adminUser", nil, "/", body},
+			queries.CommentRequest{"adminUser", "", "/", body},
 			false,
 		},
 		{
 			"subVendorUserCommand",
-			queries.CommentRequest{"vendorUser", &parentCommentID, "/", body},
+			queries.CommentRequest{"vendorUser", parentCommentID, "/", body},
 			false,
 		},
 		{
 			"costumerUserCommand",
-			queries.CommentRequest{"customerUser", nil, "/", body},
+			queries.CommentRequest{"customerUser", "", "/", body},
 			false,
 		},
 		{
 			"subAdminCommand",
-			queries.CommentRequest{"adminUser", &parentCommentID, "/", body},
+			queries.CommentRequest{"adminUser", parentCommentID, "/", body},
 			false,
 		},
 		{
 			"invalidParentAdminCommand",
-			queries.CommentRequest{"adminUser", &invalidCommentID, "/", body},
+			queries.CommentRequest{"adminUser", invalidCommentID, "/", body},
 			true,
 		},
 	}
@@ -70,9 +70,9 @@ func TestBasicCommentStoreMethods(t *testing.T) {
 		if err := cs.Create(ctx, &test.comment); err != nil && !test.isErrExist {
 			t.Errorf(`[%s] unexpected error creating comment, %s`, test.name, err)
 		}
-		if !test.isErrExist && test.comment.Parent != nil {
+		if !test.isErrExist && test.comment.Parent != "" {
 			var n int32
-			if err := session.QueryRow(ctx, getChildrenAmountQuery, *test.comment.Parent).Scan(&n); err != nil {
+			if err := session.QueryRow(ctx, getChildrenAmountQuery, test.comment.Parent).Scan(&n); err != nil {
 				t.Errorf(`failed to find children amount from id, %s`, err)
 			}
 			expected := childrenAmount + 1
@@ -89,7 +89,7 @@ func TestBasicCommentStoreMethods(t *testing.T) {
 		return
 	}
 
-	list, err := cs.List(ctx, nil, "/", 3, 1)
+	list, err := cs.List(ctx, "", "/", 3, 1)
 	if err != nil {
 		t.Errorf("failed to query comments list, %s", err)
 		return
@@ -149,10 +149,10 @@ func TestFullListComments(t *testing.T) {
 	cs := queries.NewCommentStore(session)
 
 	comments := []queries.CommentRequest{
-		{"adminUser", nil, "/", "admin body"},
-		{"vendorUser", nil, "/", "vendor body"},
-		{"customerUser", nil, "/", "customer body"},
-		{"adminUser", nil, "/", "admin body"},
+		{"adminUser", "", "/", "admin body"},
+		{"vendorUser", "", "/", "vendor body"},
+		{"customerUser", "", "/", "customer body"},
+		{"adminUser", "", "/", "admin body"},
 	}
 	for i, comment := range comments {
 		if err := cs.Create(ctx, &comment); err != nil {

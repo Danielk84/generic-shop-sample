@@ -73,12 +73,8 @@ func (ch *commentsHandler) list(c *gin.Context) {
 		c.Status(http.StatusBadRequest)
 		return
 	}
-	var parent *string = nil
-	if json.Parent != "" {
-		parent = &json.Parent
-	}
 
-	items, err := ch.cs.List(c.Request.Context(), parent, json.Referrer, defaultPagination, getOffsetFromPageNum(c.Query("page")))
+	items, err := ch.cs.List(c.Request.Context(), json.Parent, json.Referrer, defaultPagination, getOffsetFromPageNum(c.Query("page")))
 	if err != nil {
 		c.Status(http.StatusNotFound)
 		return
