@@ -10,7 +10,7 @@ CREATE TABLE users (
 CREATE TABLE user_profile (
     user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     img_path TEXT,
-    age INTEGER CHECK (age > 0),
+    birthday DATE,
     phone_number TEXT,
     bio VARCHAR(450),
     UNIQUE (img_path, phone_number)

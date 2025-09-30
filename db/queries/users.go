@@ -3,6 +3,7 @@ package queries
 import (
 	"context"
 	"generic-shop-sample/db"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -43,6 +44,17 @@ type UserResponse struct {
 	IsActive       bool   `json:"is_active"`
 }
 
+type UserDetailsResponse struct {
+	// users table
+	UserResponse
+
+	// user_profile table
+	ImgPath     string `json:"img_path"`
+	Birthday    string `json:"birthday"`
+	PhoneNumber string `json:"phone_number"`
+	Bio         string `json:"bio"`
+}
+
 type UserRepository struct {
 	session db.Session
 }
@@ -52,6 +64,7 @@ type UserStore interface {
 	Create(ctx context.Context, user *CreateUserRequest) error
 	List(ctx context.Context, pagination, page int) ([]UserResponse, error)
 	Get(ctx context.Context, username string) (*UserResponse, error)
+	GetDetails(ctx context.Context, username string) (*UserDetailsResponse, error)
 	UpdatePermission(ctx context.Context, id int32, user *UserPermissionRequest) error
 	Delete(ctx context.Context, id int32) error
 	SetEmail(ctx context.Context, id int32, email *EmailAddrRequest) error
@@ -71,9 +84,12 @@ func (ur *UserRepository) IsUsernameExists(ctx context.Context, username string)
 }
 
 func (ur *UserRepository) Create(ctx context.Context, user *CreateUserRequest) error {
-	const q = `INSERT INTO users (username, password, permission_type, is_active)
-		VALUES (@Username, @Password, @PermissionType, @IsActive)`
-
+	const q = `WITH create_user_cte AS (
+		INSERT INTO users (username, password, permission_type, is_active)
+			VALUES (@Username, @Password, @PermissionType, @IsActive)
+			RETURNING id
+	)
+	INSERT INTO user_profile(user_id) SELECT c.id FROM create_user_cte c`
 	args := pgx.NamedArgs{
 		"Username":       user.Username,
 		"Password":       user.Password,
@@ -84,7 +100,7 @@ func (ur *UserRepository) Create(ctx context.Context, user *CreateUserRequest) e
 }
 
 func (ur *UserRepository) List(ctx context.Context, pagination, page int) ([]UserResponse, error) {
-	const q = `SELECT id, username, password, permission_type, is_active FROM users
+	const q = `SELECT id, username, '' as password, permission_type, is_active FROM users
 	ORDER BY is_active DESC
 	LIMIT $1
 	OFFSET $2`
@@ -96,6 +112,16 @@ func (ur *UserRepository) Get(ctx context.Context, username string) (*UserRespon
 	WHERE username = $1
 	LIMIT 1`
 	return get[UserResponse](ctx, ur.session, q, username)
+}
+
+func (ur *UserRepository) GetDetails(ctx context.Context, username string) (*UserDetailsResponse, error) {
+	const q = `SELECT u.id, u.username, COALESCE(u.email, "") as email, '' as password, u.permission_type, u.is_active,
+		COALESCE(up.img_path, '') as img_path, COALESCE(up.birthday, '') as birthday,
+		COALESCE(up.phone_number, '') as phone_number, COALESCE(up.bio, '') as bio
+	FROM users AS u LEFT JOIN user_profile AS up ON u.id = up.user_id
+	WHERE username = $1
+	LIMIT 1`
+	return get[UserDetailsResponse](ctx, ur.session, q, username)
 }
 
 func (ur *UserRepository) UpdatePermission(ctx context.Context, id int32, user *UserPermissionRequest) error {
@@ -116,10 +142,51 @@ func (ur *UserRepository) Delete(ctx context.Context, id int32) error {
 }
 
 func (ur *UserRepository) SetEmail(ctx context.Context, id int32, email *EmailAddrRequest) error {
-	const q = `UPDATE ONLY users SET email = @Email WHERE id = @ID`
+	const q = `UPDATE ONLY users SET email = $1 WHERE id = $2`
+	return execOne(ctx, ur.session, q, email.Email, id)
+}
+
+type UserProfileRequest struct {
+	Birthday time.Time `json:"age"`
+	Bio      string    `json:"bio"`
+}
+
+type PhoneNumberRequest struct {
+	PhoneNumber string `json:"phone_number"`
+}
+
+type UserProfileRepository struct {
+	session db.Session
+}
+
+type UserProfileStore interface {
+	Upsert(ctx context.Context, userID int32, userProfile *UserProfileRequest) error
+	SetImgPath(ctx context.Context, userID int32, imgPath string) error
+	SetPhoneNumber(ctx context.Context, userID int32, phoneNumber string) error
+}
+
+func NewUserProfileStore(session db.Session) UserProfileStore {
+	return &UserProfileRepository{session}
+}
+
+func (upr *UserProfileRepository) Upsert(ctx context.Context, userID int32, userProfile *UserProfileRequest) error {
+	const q = `INSERT INTO user_profile(user_id, birthday, bio) VALUES (@UserID, @Birthday, @Bio)
+		ON CONFILICT(user_id)
+		DO UPDATE SET age = @Birthday, bio = @Bio`
 	args := pgx.NamedArgs{
-		"Email": email.Email,
-		"ID":    id,
+		"UserID":   userID,
+		"Birthday": userProfile.Birthday,
+		"Bio":      userProfile.Bio,
 	}
-	return execOne(ctx, ur.session, q, args)
+	return execOne(ctx, upr.session, q, args)
+}
+
+func (upr *UserProfileRepository) SetImgPath(ctx context.Context, userID int32, imgPath string) error {
+	const q = `UPDATE user_profile SET img_path = NULLIF($1, '') WHERE user_id = $2`
+	return execOne(ctx, upr.session, q, imgPath, userID)
+}
+
+func (upr *UserProfileRepository) SetPhoneNumber(ctx context.Context, userID int32, phoneNumber string) error {
+	const q = `UPDATE user_profile SET phone_number = $1 WHERE user_id = $2`
+	return execOne(ctx, upr.session, q, phoneNumber, userID)
 }
