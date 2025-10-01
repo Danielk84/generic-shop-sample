@@ -5,6 +5,7 @@ import (
 	"generic-shop-sample/db/queries"
 	md "generic-shop-sample/middlewares"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -255,4 +256,87 @@ func (pch *pcHandler) list(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, items)
+}
+
+func ProductImagesRouter(router *gin.RouterGroup) {
+	session := db.NewSession()
+	pih := productImagesHandler{
+		ps:  queries.NewProductStore(session),
+		pis: queries.NewProductImagesStore(session),
+	}
+
+	router.GET("/:id", pih.list)
+
+	sRouter := router.Group("/user")
+	sRouter.POST("/", pih.create)
+	sRouter.DELETE("/:productID/:id", pih.delete)
+}
+
+type productImagesHandler struct {
+	ps  queries.ProductStore
+	pis queries.ProductImagesStore
+}
+
+func (pih *productImagesHandler) create(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	productID := c.Param("productID")
+	product, err := pih.ps.Get(c.Request.Context(), productID)
+	if err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	if product.UserID != claims.ID {
+		c.Status(http.StatusForbidden)
+		return
+	}
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+	resultPath, err := UploadFile(file, claims, "product-images", "")
+	if err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+	pih.pis.Create(c.Request.Context(), productID, resultPath)
+	c.Status(http.StatusAccepted)
+}
+
+func (pih *productImagesHandler) list(c *gin.Context) {
+	productID := c.Param("ProductID")
+	items, err := pih.pis.List(c.Request.Context(), productID)
+	if err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	c.JSON(http.StatusOK, items)
+}
+
+func (pih *productImagesHandler) delete(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	productID := c.Param("ProductID")
+	product, err := pih.ps.Get(c.Request.Context(), productID)
+	if err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	if product.UserID != claims.ID {
+		c.Status(http.StatusForbidden)
+		return
+	}
+	id := c.Param("id")
+	imgPath, err := pih.pis.Delete(c.Request.Context(), id)
+	if err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	if err := os.Remove(imgPath); err != nil {
+		if err != os.ErrNotExist {
+			c.Status(http.StatusForbidden)
+			return
+		}
+	}
+	c.Status(http.StatusNoContent)
 }

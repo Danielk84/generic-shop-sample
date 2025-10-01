@@ -2,10 +2,15 @@ package queries
 
 import (
 	"context"
+	"fmt"
 	"generic-shop-sample/db"
 	"reflect"
 
 	"github.com/jackc/pgx/v5"
+)
+
+var (
+	ErrFullCapacity = fmt.Errorf("error full capacity")
 )
 
 func execOne(ctx context.Context, session db.Session, query string, args ...any) error {

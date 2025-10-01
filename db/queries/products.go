@@ -3,6 +3,7 @@ package queries
 import (
 	"context"
 	"generic-shop-sample/db"
+	"generic-shop-sample/internal"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -214,4 +215,50 @@ func (pcr *PCRepository) SetTags(ctx context.Context, product_id string, tags []
 func (pcr *PCRepository) List(ctx context.Context, id string) ([]string, error) {
 	const q = `SELECT tag FROM products_categories WHERE product_id = $1::UUID`
 	return list[string](ctx, pcr.session, q, id)
+}
+
+type ProductImageResponse struct {
+	ID      string `json:"id"`
+	ImgPath string `json:"img_path"`
+}
+
+type ProductImagesRepository struct {
+	session db.Session
+}
+
+type ProductImagesStore interface {
+	Create(ctx context.Context, productID, imgPath string) error
+	List(ctx context.Context, productID string) ([]ProductImageResponse, error)
+	Delete(ctx context.Context, id string) (string, error)
+}
+
+func NewProductImagesStore(session db.Session) ProductImagesStore {
+	return &ProductImagesRepository{session}
+}
+
+func (pir *ProductImagesRepository) Create(ctx context.Context, productID, imgPath string) error {
+	const productImagesCountQuery = `SELECT count(*) FROM product_images WHERE produt_id = $1::UUID`
+	count, err := get[int](ctx, pir.session, productImagesCountQuery, productID)
+	if err != nil {
+		return err
+	}
+	config := internal.NewConfig()
+	if *count >= config.MaxProductImagesAmount {
+		return ErrFullCapacity
+	}
+
+	const createProductImageQuery = `INSERT INTO product_images(product_id, img_path) VALUES ($1::UUID, $2)`
+	return execOne(ctx, pir.session, createProductImageQuery, productID, imgPath)
+}
+
+func (pir *ProductImagesRepository) List(ctx context.Context, productID string) ([]ProductImageResponse, error) {
+	const q = `SELECT id, img_path FROM product_images WHERE product_id = $1::UUID`
+	return list[ProductImageResponse](ctx, pir.session, q, productID)
+}
+
+func (pir *ProductImagesRepository) Delete(ctx context.Context, id string) (string, error) {
+	const q = `DELETE FROM product_images WHERE id = $1::UUID RETURNING img_path`
+	imgPath := ""
+	err := pir.session.QueryRow(ctx, q, id).Scan(imgPath)
+	return imgPath, err
 }

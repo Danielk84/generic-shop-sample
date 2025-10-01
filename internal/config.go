@@ -19,6 +19,7 @@ type Config struct {
 	MaxMultipartMemory      int64
 	AllowedImgMimetype      []string
 	UploadPath              string
+	MaxProductImagesAmount  int
 }
 
 var (
@@ -34,16 +35,17 @@ func NewConfig() *Config {
 		}
 
 		DefaultConfig = &Config{
-			Mode:               args["MODE"],
-			Addr:               args["ADDR"],
-			TrustedProxies:     getStrSliceFromStr(args["TRUSTED_PROXIES"]),
-			Origins:            getStrSliceFromStr(args["ORIGINS"]),
-			DatabaseURL:        args["DATABASE_URL"],
-			JWTSecretKey:       []byte(args["JWT_SECRET_KEY"]),
-			Pagination:         getNumberFromStr(args["PAGINATION"]),
-			MaxMultipartMemory: int64(getNumberFromStr(args["MAX_MULTIPART_MEMORY"])),
-			AllowedImgMimetype: getStrSliceFromStr(args["ALLOWED_IMAGE_MIMETYPE"]),
-			UploadPath:         strings.TrimSuffix(args["UPLOAD_PATH"], "/"),
+			Mode:                   args["MODE"],
+			Addr:                   args["ADDR"],
+			TrustedProxies:         getStrSliceFromStr(args["TRUSTED_PROXIES"]),
+			Origins:                getStrSliceFromStr(args["ORIGINS"]),
+			DatabaseURL:            args["DATABASE_URL"],
+			JWTSecretKey:           []byte(args["JWT_SECRET_KEY"]),
+			Pagination:             getNumberFromStr(args["PAGINATION"]),
+			MaxMultipartMemory:     int64(getNumberFromStr(args["MAX_MULTIPART_MEMORY"])),
+			AllowedImgMimetype:     getStrSliceFromStr(args["ALLOWED_IMAGE_MIMETYPE"]),
+			UploadPath:             strings.TrimSuffix(args["UPLOAD_PATH"], "/"),
+			MaxProductImagesAmount: getNumberFromStr(args["PRODUCT_IMAGES_AMOUNT"]),
 		}
 	})
 	return DefaultConfig

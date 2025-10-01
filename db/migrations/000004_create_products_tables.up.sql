@@ -22,6 +22,7 @@ CREATE TABLE products_categories (
 );
 
 CREATE TABLE product_images (
+    id UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
     product_id UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
     img_path TEXT NOT NULL UNIQUE
 );
