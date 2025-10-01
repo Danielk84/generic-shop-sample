@@ -72,7 +72,7 @@ func (uh *usersHandler) list(c *gin.Context) {
 
 func (uh *usersHandler) get(c *gin.Context) {
 	username := c.Param("username")
-	user, err := uh.us.Get(c.Request.Context(), username)
+	user, err := uh.us.GetDetails(c.Request.Context(), username)
 	if err != nil {
 		c.Status(http.StatusNotFound)
 		return
@@ -125,4 +125,71 @@ func (uh *usersHandler) setEmail(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+func UserProfileRouter(router *gin.RouterGroup) {
+	uph := userProfileHandler{queries.NewUserProfileStore(db.NewSession())}
+
+	router.Use(md.AuthMiddleware())
+	router.POST("/", uph.upsert)
+	router.POST("/upload", uph.uploadProfileImg)
+	router.PUT("/set-phone-number", uph.setPhoneNumber)
+}
+
+type userProfileHandler struct {
+	ups queries.UserProfileStore
+}
+
+func (uph *userProfileHandler) upsert(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	var json queries.UserProfileRequest
+	if err := c.ShouldBindJSON(&json); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+	if err := uph.ups.Upsert(c.Request.Context(), claims.ID, &json); err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	c.Status(http.StatusAccepted)
+}
+
+func (uph *userProfileHandler) uploadProfileImg(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+	dst := ""
+	if fpath, err := uph.ups.GetImgPath(c.Request.Context(), claims.ID); err == nil {
+		dst = fpath
+	}
+	resultPath, err := UploadFile(file, claims, "user-profile", dst)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to process file"})
+		return
+	}
+	if resultPath != dst {
+		if err := uph.ups.SetImgPath(c.Request.Context(), claims.ID, resultPath); err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "failed to save file"})
+			return
+		}
+	}
+
+	c.Status(http.StatusAccepted)
+}
+
+func (uph *userProfileHandler) setPhoneNumber(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	var json queries.PhoneNumberRequest
+	if err := c.ShouldBindJSON(&json); err != nil {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+	if err := uph.ups.SetPhoneNumber(c.Request.Context(), claims.ID, &json); err != nil {
+		c.Status(http.StatusNotFound)
+		return
+	}
+	c.Status(http.StatusAccepted)
 }

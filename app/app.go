@@ -22,6 +22,7 @@ func NewApp(ctx context.Context, config *internal.Config) *App {
 	gin.DisableConsoleColor()
 	gin.SetMode(config.Mode)
 	router := gin.Default()
+	router.MaxMultipartMemory = config.MaxMultipartMemory << 20
 	if err := router.SetTrustedProxies(config.TrustedProxies); err != nil {
 		log.Panicln(err)
 	}

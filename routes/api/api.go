@@ -1,8 +1,17 @@
 package api
 
 import (
+	"fmt"
 	"generic-shop-sample/internal"
+	"generic-shop-sample/internal/auth"
+	"io"
+	"mime/multipart"
+	"os"
+	"path/filepath"
 	"strconv"
+	"time"
+
+	"github.com/gabriel-vasile/mimetype"
 )
 
 type SetFlag struct {
@@ -17,4 +26,41 @@ func getOffsetFromPageNum(p string) int {
 		return 1
 	}
 	return (page - 1) * defaultPagination
+}
+
+func UploadFile(file *multipart.FileHeader, claims *auth.AuthClaims, group, dst string) (string, error) {
+	src, err := file.Open()
+	if err != nil {
+		return "", fmt.Errorf("failed to open file")
+	}
+	defer src.Close()
+
+	buf := make([]byte, 512)
+	n, _ := src.Read(buf)
+	if _, err = src.Seek(0, io.SeekStart); err != nil {
+		return "", err
+	}
+	mtype := mimetype.Detect(buf[:n])
+	config := internal.NewConfig()
+	if !mimetype.EqualsAny(mtype.String(), config.AllowedImgMimetype...) {
+		return "", err
+	}
+
+	if dst == "" {
+		y, m, d := time.Now().Date()
+		dst = fmt.Sprintf("%s/%s/%d/%d/%d/%s%s", config.UploadPath, group, y, m, d, claims.Username, mtype.Extension())
+	}
+	if err = os.MkdirAll(filepath.Dir(dst), 0750); err != nil {
+		return "", err
+	}
+	out, err := os.Create(dst)
+	if err != nil {
+		return "", err
+	}
+	defer out.Close()
+
+	if _, err := io.Copy(out, src); err != nil {
+		return "", err
+	}
+	return dst, nil
 }

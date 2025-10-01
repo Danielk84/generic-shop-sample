@@ -161,8 +161,9 @@ type UserProfileRepository struct {
 
 type UserProfileStore interface {
 	Upsert(ctx context.Context, userID int32, userProfile *UserProfileRequest) error
+	GetImgPath(ctx context.Context, userID int32) (string, error)
 	SetImgPath(ctx context.Context, userID int32, imgPath string) error
-	SetPhoneNumber(ctx context.Context, userID int32, phoneNumber string) error
+	SetPhoneNumber(ctx context.Context, userID int32, phoneNumber *PhoneNumberRequest) error
 }
 
 func NewUserProfileStore(session db.Session) UserProfileStore {
@@ -181,12 +182,18 @@ func (upr *UserProfileRepository) Upsert(ctx context.Context, userID int32, user
 	return execOne(ctx, upr.session, q, args)
 }
 
+func (upr *UserProfileRepository) GetImgPath(ctx context.Context, userID int32) (string, error) {
+	const q = `SELECT COALESCE(img_path, '') FROM user_profile WHERE user_id = $1`
+	filepath, err := get[string](ctx, upr.session, q, userID)
+	return *filepath, err
+}
+
 func (upr *UserProfileRepository) SetImgPath(ctx context.Context, userID int32, imgPath string) error {
 	const q = `UPDATE user_profile SET img_path = NULLIF($1, '') WHERE user_id = $2`
 	return execOne(ctx, upr.session, q, imgPath, userID)
 }
 
-func (upr *UserProfileRepository) SetPhoneNumber(ctx context.Context, userID int32, phoneNumber string) error {
+func (upr *UserProfileRepository) SetPhoneNumber(ctx context.Context, userID int32, phoneNumber *PhoneNumberRequest) error {
 	const q = `UPDATE user_profile SET phone_number = $1 WHERE user_id = $2`
-	return execOne(ctx, upr.session, q, phoneNumber, userID)
+	return execOne(ctx, upr.session, q, phoneNumber.PhoneNumber, userID)
 }
