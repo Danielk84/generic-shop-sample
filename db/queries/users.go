@@ -27,7 +27,7 @@ type LoginRequest struct {
 }
 
 type UserPermissionRequest struct {
-	PermissionType PermissionType `json:"permission_type" binding:"required,number,gt=0,lte=4"`
+	PermissionType PermissionType `json:"permission_type" binding:"number,gte=0,lt=4"`
 	IsActive       bool           `json:"is_active" binding:"required,boolean"`
 }
 
