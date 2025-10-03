@@ -1,14 +1,18 @@
 package middlewares_test
 
 import (
-	tu "generic-shop-sample/internal/testutils"
+	md "generic-shop-sample/middlewares"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/gin-gonic/gin"
 )
 
 func TestSecurityHeadersMiddleware(t *testing.T) {
-	router := tu.RouterSetup(t.Context())
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.Use(md.SecurityHeadersMiddleware())
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/", nil)
@@ -25,7 +29,7 @@ func TestSecurityHeadersMiddleware(t *testing.T) {
 
 	for key, value := range tests {
 		if got := header.Get(key); got != value {
-			t.Errorf("expected %s=%s but got %s", key, value, got)
+			t.Errorf(`expected "%s=%s" but got "%s"`, key, value, got)
 		}
 	}
 }
