@@ -45,7 +45,7 @@ func NewConfig() *Config {
 			MaxMultipartMemory:     int64(getNumberFromStr(args["MAX_MULTIPART_MEMORY"])),
 			AllowedImgMimetype:     getStrSliceFromStr(args["ALLOWED_IMAGE_MIMETYPE"]),
 			UploadPath:             strings.TrimSuffix(args["UPLOAD_PATH"], "/"),
-			MaxProductImagesAmount: getNumberFromStr(args["PRODUCT_IMAGES_AMOUNT"]),
+			MaxProductImagesAmount: getNumberFromStr(args["MAX_PRODUCT_IMAGES_AMOUNT"]),
 		}
 	})
 	return DefaultConfig

@@ -1,9 +1,11 @@
 package queries_test
 
 import (
+	"context"
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
 	"testing"
+	"time"
 )
 
 func TestIsUsernameExists(t *testing.T) {
@@ -17,8 +19,9 @@ func TestIsUsernameExists(t *testing.T) {
 	}
 }
 
-func TestCreateUser(t *testing.T) {
-	us := queries.NewUserStore(db.NewSession())
+func TestCreateGetDetailsUser(t *testing.T) {
+	session := db.NewSession()
+	us := queries.NewUserStore(session)
 
 	user := &queries.CreateUserRequest{
 		queries.LoginRequest{"validUser", "secure_password"},
@@ -33,6 +36,16 @@ func TestCreateUser(t *testing.T) {
 
 	if err := us.Create(t.Context(), user); err == nil {
 		t.Errorf("error duplicate user created")
+	}
+
+	userDetails, err := us.GetDetails(t.Context(), user.Username)
+	if err != nil {
+		t.Errorf("failed to get user details, %s", err)
+	}
+	const isUserProfileExistsQuery = `SELECT EXISTS(SELECT 1 FROM user_profile WHERE user_id = $1)`
+	var isExists bool
+	if err := session.QueryRow(t.Context(), isUserProfileExistsQuery, userDetails.ID).Scan(&isExists); err != nil || !isExists {
+		t.Errorf("failed to query existing of user_profile on user creation, %s", err)
 	}
 }
 
@@ -125,5 +138,46 @@ func TestDeleteUser(t *testing.T) {
 	}
 	if us.IsUsernameExists(t.Context(), user.Username) {
 		t.Errorf(`expected to user be deleted, but got existing of user "%s"`, user.Username)
+	}
+}
+
+func TestUserProfileMethods(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+
+	session := db.NewSession()
+	us := queries.NewUserStore(session)
+	ups := queries.NewUserProfileStore(session)
+
+	username := "adminUser"
+	userDetails, err := us.GetDetails(ctx, username)
+	if err != nil {
+		t.Errorf("failed to get user details, %s", err)
+	}
+	upr := &queries.UserProfileRequest{
+		Birthday: time.Now(),
+		Bio:      "some descriptions",
+	}
+	if err = ups.Upsert(ctx, userDetails.ID, upr); err != nil {
+		t.Errorf("failed to upsert birthday and bio on user_profile, %s", err)
+	}
+	imgPath := "/some/path/to/img.img"
+	if err := ups.SetImgPath(ctx, userDetails.ID, imgPath); err != nil {
+		t.Errorf("failed to set img path, %s", err)
+	}
+	phoneNumber := "123393"
+	if err := ups.SetPhoneNumber(ctx, userDetails.ID, &queries.PhoneNumberRequest{phoneNumber}); err != nil {
+		t.Errorf("failed to set phone number, %s", err)
+	}
+
+	if gotImgPatherr, err := ups.GetImgPath(ctx, userDetails.ID); err != nil || gotImgPatherr != imgPath {
+		t.Errorf(`expected imgPath="%s", but got "%s", %s`, imgPath, gotImgPatherr, err)
+	}
+	userDetails, err = us.GetDetails(ctx, username)
+	if err != nil {
+		t.Errorf("failed to get user Details after updating user profile fields, %s", err)
+	}
+	if userDetails.Birthday != upr.Birthday.Format(time.DateOnly) || userDetails.Bio != upr.Bio || userDetails.PhoneNumber != phoneNumber {
+		t.Errorf(`unexpected output birthday="%s", bio="%s", phoneNumber="%s"`, userDetails.Birthday, userDetails.Bio, userDetails.PhoneNumber)
 	}
 }

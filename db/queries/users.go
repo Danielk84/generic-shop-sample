@@ -47,6 +47,7 @@ type UserResponse struct {
 type UserDetailsResponse struct {
 	// users table
 	UserResponse
+	Email string `json:"email"`
 
 	// user_profile table
 	ImgPath     string `json:"img_path"`
@@ -115,8 +116,8 @@ func (ur *UserRepository) Get(ctx context.Context, username string) (*UserRespon
 }
 
 func (ur *UserRepository) GetDetails(ctx context.Context, username string) (*UserDetailsResponse, error) {
-	const q = `SELECT u.id, u.username, COALESCE(u.email, "") as email, '' as password, u.permission_type, u.is_active,
-		COALESCE(up.img_path, '') as img_path, COALESCE(up.birthday, '') as birthday,
+	const q = `SELECT u.id, u.username, COALESCE(u.email, '') as email, '' as password, u.permission_type, u.is_active,
+		COALESCE(up.img_path, '') as img_path, COALESCE(up.birthday::TEXT, '') as birthday,
 		COALESCE(up.phone_number, '') as phone_number, COALESCE(up.bio, '') as bio
 	FROM users AS u LEFT JOIN user_profile AS up ON u.id = up.user_id
 	WHERE username = $1
@@ -172,8 +173,8 @@ func NewUserProfileStore(session db.Session) UserProfileStore {
 
 func (upr *UserProfileRepository) Upsert(ctx context.Context, userID int32, userProfile *UserProfileRequest) error {
 	const q = `INSERT INTO user_profile(user_id, birthday, bio) VALUES (@UserID, @Birthday, @Bio)
-		ON CONFILICT(user_id)
-		DO UPDATE SET age = @Birthday, bio = @Bio`
+		ON CONFLICT(user_id)
+		DO UPDATE SET birthday = @Birthday::DATE, bio = @Bio`
 	args := pgx.NamedArgs{
 		"UserID":   userID,
 		"Birthday": userProfile.Birthday,
