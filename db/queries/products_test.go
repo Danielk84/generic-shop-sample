@@ -2,8 +2,10 @@ package queries_test
 
 import (
 	"context"
+	"fmt"
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
+	"generic-shop-sample/internal"
 	"testing"
 	"time"
 )
@@ -290,5 +292,67 @@ func TestSetTagsListPCStore(t *testing.T) {
 		if !expected[tag] {
 			t.Errorf("unexpected tag after overwrite: %q", tag)
 		}
+	}
+}
+
+func TestProductImagesStore(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	session := db.NewSession()
+	ps := queries.NewProductStore(session)
+	pis := queries.NewProductImagesStore(session)
+
+	if _, err := session.Exec(ctx, "TRUNCATE products RESTART IDENTITY CASCADE"); err != nil {
+		t.Errorf("failed to truncate products, %s", err)
+	}
+
+	if err := ps.Create(ctx, 1, &queries.CreateProductRequest{
+		Name:        "new product",
+		Price:       10,
+		IsAvailable: true,
+	}); err != nil {
+		t.Errorf("failed to create product, %s", err)
+	}
+	if _, err := session.Exec(ctx, "UPDATE products SET is_active = true"); err != nil {
+		t.Errorf("failed to activate products, %s", err)
+	}
+	var product queries.ProductSummaryResponse
+	if products, err := ps.List(ctx, 10, 1); err == nil {
+		product = products[0]
+	} else {
+		t.Errorf("failed to get products list, %s", err)
+	}
+
+	config := internal.NewConfig()
+	tests := make([]string, config.MaxProductImagesAmount)
+	for i := range tests {
+		tests[i] = fmt.Sprintf("path/to/img%d.img", i)
+	}
+
+	for i, imgPath := range tests {
+		if err := pis.Create(ctx, product.ID, imgPath); err != nil {
+			if i == config.MaxProductImagesAmount {
+				break
+			}
+			t.Errorf("failed to create product image row, %s", err)
+		}
+		if i == config.MaxProductImagesAmount {
+			t.Errorf("failed to return error for creating more than max value")
+		}
+	}
+	productImages, err := pis.List(ctx, product.ID)
+	if err != nil {
+		t.Errorf("failed to get product images list, %s", err)
+	}
+	if got := len(productImages); got != len(tests) {
+		t.Errorf(`expected list return "%d" product images, but got "%d"`, len(tests), got)
+	}
+	if imgPath, err := pis.Delete(ctx, productImages[0].ID); err == nil {
+		if imgPath != productImages[0].ImgPath {
+			t.Error("failed to match imgPath")
+		}
+	} else {
+		t.Errorf("failed to delete product image, %s", err)
 	}
 }

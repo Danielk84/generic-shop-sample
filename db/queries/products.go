@@ -237,7 +237,7 @@ func NewProductImagesStore(session db.Session) ProductImagesStore {
 }
 
 func (pir *ProductImagesRepository) Create(ctx context.Context, productID, imgPath string) error {
-	const productImagesCountQuery = `SELECT count(*) FROM product_images WHERE produt_id = $1::UUID`
+	const productImagesCountQuery = `SELECT count(*) FROM product_images WHERE product_id = $1::UUID`
 	count, err := get[int](ctx, pir.session, productImagesCountQuery, productID)
 	if err != nil {
 		return err
@@ -259,6 +259,6 @@ func (pir *ProductImagesRepository) List(ctx context.Context, productID string) 
 func (pir *ProductImagesRepository) Delete(ctx context.Context, id string) (string, error) {
 	const q = `DELETE FROM product_images WHERE id = $1::UUID RETURNING img_path`
 	imgPath := ""
-	err := pir.session.QueryRow(ctx, q, id).Scan(imgPath)
+	err := pir.session.QueryRow(ctx, q, id).Scan(&imgPath)
 	return imgPath, err
 }
