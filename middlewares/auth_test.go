@@ -42,11 +42,21 @@ func TestAuthMiddleware(t *testing.T) {
 		c.Status(http.StatusForbidden)
 	})
 
+	// test authorization header
 	req, _ := http.NewRequest(http.MethodGet, "/", nil)
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenString))
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
-		t.Errorf(`failed to auth user, status="%d"`, w.Code)
+		t.Errorf(`failed to auth user with authorization header, status="%d"`, w.Code)
+	}
+
+	// test __Host-auth-token cookie
+	req, _ = http.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Cookie", fmt.Sprintf("__Host-auth-token=%s", tokenString))
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf(`failed to auth user with cookie, status=%d`, w.Code)
 	}
 }

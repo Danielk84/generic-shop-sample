@@ -48,13 +48,14 @@ func (ah *authHandler) login(c *gin.Context) {
 		Unauthorized(c, "")
 		return
 	}
-	cacheKey := fmt.Sprintf("login:%d", user.ID)
-	if val, err := ah.cache.Get(c.Request.Context(), cacheKey).Result(); err == nil {
-		loginResponse(c, val)
-		return
-	}
 	config := internal.NewConfig()
 	authExpiration := time.Now().Add(config.AuthExpiration * time.Minute)
+	maxAge := time.Until(authExpiration).Seconds()
+	cacheKey := fmt.Sprintf("login:%d", user.ID)
+	if val, err := ah.cache.Get(c.Request.Context(), cacheKey).Result(); err == nil {
+		loginResponse(c, val, int(maxAge))
+		return
+	}
 	claims := auth.AuthClaims{
 		ID:             user.ID,
 		Username:       user.Username,
@@ -70,12 +71,14 @@ func (ah *authHandler) login(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	if err := ah.cache.Set(c.Request.Context(), cacheKey, tokenString, time.Until(authExpiration)).Err(); err == nil {
+	if err := ah.cache.Set(c.Request.Context(), cacheKey, tokenString, time.Duration(maxAge)).Err(); err != nil {
 		log.Println("failed to set tokenString, ", err)
 	}
-	loginResponse(c, tokenString)
+	loginResponse(c, tokenString, int(maxAge))
 }
 
-func loginResponse(c *gin.Context, tokenString string) {
+func loginResponse(c *gin.Context, tokenString string, maxAge int) {
+	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie("__Host-auth-token", tokenString, maxAge, "/", "", true, true)
 	c.JSON(http.StatusOK, gin.H{"token": tokenString})
 }

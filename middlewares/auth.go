@@ -15,16 +15,21 @@ var userKey = userContextKey{}
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tokenString, found := strings.CutPrefix(c.GetHeader("Authorization"), "Bearer ")
-		if !found {
-			c.Header("WWW-Authenticate", "Bearer")
-			c.AbortWithStatus(http.StatusUnauthorized)
-			return
+		var tokenString string
+		if cookie, err := c.Cookie("__Host-auth-token"); err == nil {
+			tokenString = cookie
+		} else {
+			var found bool
+			tokenString, found = strings.CutPrefix(c.GetHeader("Authorization"), "Bearer ")
+			if !found {
+				c.Header("WWW-Authenticate", "Bearer")
+				c.AbortWithStatus(http.StatusUnauthorized)
+				return
+			}
 		}
-
 		claims, err := auth.TokenDecoder(tokenString)
 		if err != nil {
-			c.AbortWithStatus(http.StatusNotFound)
+			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}
 		ctx := context.WithValue(c.Request.Context(), userKey, claims)
