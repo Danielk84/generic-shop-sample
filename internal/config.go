@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -20,6 +21,7 @@ type Config struct {
 	AllowedImgMimetype      []string
 	UploadPath              string
 	MaxProductImagesAmount  int
+	AuthExpiration          time.Duration
 }
 
 var (
@@ -47,6 +49,7 @@ func NewConfig() *Config {
 			AllowedImgMimetype:     getStrSliceFromStr(args["ALLOWED_IMAGE_MIMETYPE"]),
 			UploadPath:             strings.TrimSuffix(args["UPLOAD_PATH"], "/"),
 			MaxProductImagesAmount: getNumberFromStr(args["MAX_PRODUCT_IMAGES_AMOUNT"]),
+			AuthExpiration:         time.Duration(getNumberFromStr(args["AUTH_EXPIRATION"])),
 		}
 	})
 	return DefaultConfig
