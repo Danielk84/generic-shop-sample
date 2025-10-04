@@ -18,12 +18,12 @@ const (
 )
 
 type EmailAddrRequest struct {
-	Email string `json:"email" binding:"required,min=10,max=256,email"`
+	Email string `json:"email" binding:"required,email,min=10,max=256"`
 }
 
 type LoginRequest struct {
-	Username string `json:"username" binding:"required,min=4,max=128,alphanum"`
-	Password string `json:"password" binding:"required,min=8,max=32,ascii"`
+	Username string `json:"username" binding:"required,alphanum,min=4,max=128"`
+	Password string `json:"password" binding:"required,password,min=8,max=32"`
 }
 
 type UserPermissionRequest struct {
