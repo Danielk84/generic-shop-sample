@@ -24,8 +24,8 @@ func CommentsRouter(router *gin.RouterGroup) {
 }
 
 type RelatedCommentsRequest struct {
-	Parent   string `json:"Parent"`
-	Referrer string `json:"referrer"`
+	Parent   string `json:"Parent" binding:"required,uuid"`
+	Referrer string `json:"referrer" binding:"required"`
 }
 
 type commentsHandler struct {

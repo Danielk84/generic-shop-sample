@@ -9,9 +9,9 @@ import (
 )
 
 type CommentRequest struct {
-	Username string `json:"username"`
-	Parent   string `json:"parent"`
-	Referrer string `json:"referrer"`
+	Username string `json:"username" binding:"required,alphanum,min=4,max=128"`
+	Parent   string `json:"parent" binding:"required,uuid"`
+	Referrer string `json:"referrer" binding:"required"`
 	Body     string `json:"body"`
 }
 

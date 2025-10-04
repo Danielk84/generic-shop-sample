@@ -10,15 +10,15 @@ import (
 )
 
 type CreateProductRequest struct {
-	Name        string            `json:"name"`
-	Price       int64             `json:"price"`
-	Description string            `json:"description"`
-	Details     map[string]string `json:"details"`
-	IsAvailable bool              `json:"is_available"`
+	Name        string            `json:"name" binding:"required,min=4,max=256"`
+	Price       int64             `json:"price" binding:"required,number,gte=0"`
+	Description string            `json:"description" binding:"required"`
+	Details     map[string]string `json:"details" binding:"json"`
+	IsAvailable bool              `json:"is_available" binding:"required"`
 }
 
 type UpdateProductRequest struct {
-	ID string `json:"id"`
+	ID string `json:"id" binding:"uuid"`
 	CreateProductRequest
 }
 

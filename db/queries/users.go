@@ -23,7 +23,7 @@ type EmailAddrRequest struct {
 
 type LoginRequest struct {
 	Username string `json:"username" binding:"required,alphanum,min=4,max=128"`
-	Password string `json:"password" binding:"required,password,min=8,max=32"`
+	Password string `json:"password" binding:"required,password"`
 }
 
 type UserPermissionRequest struct {
