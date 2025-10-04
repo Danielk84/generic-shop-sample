@@ -30,27 +30,27 @@ type usersHandler struct {
 func (uh *usersHandler) createUserByAdmin(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if claims.PermissionType != queries.Admin {
-		c.Status(http.StatusForbidden)
+		Forbidden(c, "")
 		return
 	}
 	var json queries.CreateUserRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user data"})
+		BadRequest(c, "invalid user data")
 		return
 	}
 
 	if uh.us.IsUsernameExists(c.Request.Context(), json.Username) {
-		c.JSON(http.StatusConflict, gin.H{"error": "username already exists"})
+		c.JSON(http.StatusConflict, gin.H{"msg": "username already exists"})
 		return
 	}
 	var err error
 	json.Password, err = auth.PasswordHash(json.Password)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid password string"})
+		BadRequest(c, "invalid password string")
 		return
 	}
 	if err = uh.us.Create(c.Request.Context(), &json); err != nil {
-		c.Status(http.StatusBadRequest)
+		BadRequest(c, "")
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -59,12 +59,12 @@ func (uh *usersHandler) createUserByAdmin(c *gin.Context) {
 func (uh *usersHandler) list(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if claims.PermissionType != queries.Admin {
-		c.Status(http.StatusForbidden)
+		Forbidden(c, "")
 		return
 	}
 	users, err := uh.us.List(c.Request.Context(), defaultPagination, getOffsetFromPageNum(c.Query("page")))
 	if err == nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
 	c.JSON(http.StatusOK, users)
@@ -74,7 +74,7 @@ func (uh *usersHandler) get(c *gin.Context) {
 	username := c.Param("username")
 	user, err := uh.us.GetDetails(c.Request.Context(), username)
 	if err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
 	c.JSON(http.StatusOK, user)
@@ -83,45 +83,45 @@ func (uh *usersHandler) get(c *gin.Context) {
 func (uh *usersHandler) updateUserPermission(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if claims.PermissionType != queries.Admin {
-		c.Status(http.StatusForbidden)
+		Forbidden(c, "")
 		return
 	}
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		BadRequest(c, "invalid id")
 		return
 	}
 	var json queries.UserPermissionRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid permission_id or is_active"})
+		BadRequest(c, "invalid permission_id or is_active")
 		return
 	}
 
 	if err := uh.us.UpdatePermission(c.Request.Context(), int32(id), &json); err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
-	c.Status(http.StatusNoContent)
+	Accepted(c, "")
 }
 
 func (uh *usersHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if err := uh.us.Delete(c.Request.Context(), claims.ID); err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
-	c.Status(http.StatusOK)
+	c.Status(http.StatusNoContent)
 }
 
 func (uh *usersHandler) setEmail(c *gin.Context) {
 	var json queries.EmailAddrRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid email address"})
+		BadRequest(c, "invalid email address")
 		return
 	}
 	claims := md.GetUserClaims(c)
 	if err := uh.us.SetEmail(c.Request.Context(), claims.ID, &json); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "email already exists"})
+		BadRequest(c, "email already exists")
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -144,11 +144,11 @@ func (uph *userProfileHandler) upsert(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	var json queries.UserProfileRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
-		c.Status(http.StatusBadRequest)
+		BadRequest(c, "")
 		return
 	}
 	if err := uph.ups.Upsert(c.Request.Context(), claims.ID, &json); err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
 	c.Status(http.StatusAccepted)
@@ -158,7 +158,7 @@ func (uph *userProfileHandler) uploadProfileImg(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	file, err := c.FormFile("file")
 	if err != nil {
-		c.Status(http.StatusBadRequest)
+		BadRequest(c, "")
 		return
 	}
 	dst := ""
@@ -167,28 +167,27 @@ func (uph *userProfileHandler) uploadProfileImg(c *gin.Context) {
 	}
 	resultPath, err := UploadFile(file, claims, "user-profile", dst)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to process file"})
+		BadRequest(c, "failed to process file")
 		return
 	}
 	if resultPath != dst {
 		if err := uph.ups.SetImgPath(c.Request.Context(), claims.ID, resultPath); err != nil {
-			c.JSON(http.StatusNotFound, gin.H{"error": "failed to save file"})
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "failed to save file"})
 			return
 		}
 	}
-
-	c.Status(http.StatusAccepted)
+	Accepted(c, "")
 }
 
 func (uph *userProfileHandler) setPhoneNumber(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	var json queries.PhoneNumberRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
-		c.Status(http.StatusBadRequest)
+		BadRequest(c, "")
 		return
 	}
 	if err := uph.ups.SetPhoneNumber(c.Request.Context(), claims.ID, &json); err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
 	c.Status(http.StatusAccepted)

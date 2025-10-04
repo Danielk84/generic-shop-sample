@@ -34,7 +34,7 @@ type productsHandler struct {
 func (ph *productsHandler) list(c *gin.Context) {
 	products, err := ph.ps.List(c.Request.Context(), defaultPagination, getOffsetFromPageNum(c.Query("page")))
 	if err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
 	c.JSON(http.StatusOK, products)
@@ -48,7 +48,7 @@ func (ph *productsHandler) fullList(c *gin.Context) {
 	}
 	products, err := ph.ps.FullList(c.Request.Context(), id, defaultPagination, getOffsetFromPageNum(c.Query("page")))
 	if err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
 	c.JSON(http.StatusOK, products)
@@ -59,16 +59,16 @@ func (ph *productsHandler) get(c *gin.Context) {
 	id := c.Param("id")
 	product, err := ph.ps.Get(c.Request.Context(), id)
 	if err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
 	if !product.IsActive {
 		if claims == nil {
-			c.Status(http.StatusUnauthorized)
+			Unauthorized(c, "")
 			return
 		}
 		if claims.PermissionType != queries.Admin || claims.ID != product.UserID {
-			c.Status(http.StatusForbidden)
+			Forbidden(c, "")
 			return
 		}
 	}
@@ -79,21 +79,21 @@ func (ph *productsHandler) update(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	var json queries.UpdateProductRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid data"})
+		BadRequest(c, "")
 		return
 	}
 	if err := ph.ps.Update(c.Request.Context(), claims.ID, &json); err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
-	c.Status(http.StatusAccepted)
+	Accepted(c, "")
 }
 
 func (ph *productsHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	id := c.Param("id")
 	if err := ph.ps.Delete(c.Request.Context(), id, claims.ID); err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -102,41 +102,41 @@ func (ph *productsHandler) delete(c *gin.Context) {
 func (ph *productsHandler) setAvailable(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if claims.PermissionType != queries.Admin {
-		c.Status(http.StatusForbidden)
+		Forbidden(c, "")
 		return
 	}
 	var json SetFlag
 	if err := c.ShouldBindJSON(&json); err != nil {
-		c.Status(http.StatusBadRequest)
+		BadRequest(c, "")
 		return
 	}
 
 	id := c.Param("id")
 	if err := ph.ps.SetAvailable(c.Request.Context(), id, json.Accepted); err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
-	c.Status(http.StatusAccepted)
+	Accepted(c, "")
 }
 
 func (ph *productsHandler) setActive(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if claims.PermissionType != queries.Admin {
-		c.Status(http.StatusForbidden)
+		Forbidden(c, "")
 		return
 	}
 	var json SetFlag
 	if err := c.ShouldBindJSON(&json); err != nil {
-		c.Status(http.StatusBadRequest)
+		BadRequest(c, "")
 		return
 	}
 
 	id := c.Param("id")
 	if err := ph.ps.SetActive(c.Request.Context(), id, json.Accepted); err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
-	c.Status(http.StatusAccepted)
+	Accepted(c, "")
 }
 
 func CategoriesRouter(router *gin.RouterGroup) {
@@ -157,17 +157,17 @@ type categoriesHandler struct {
 func (ch *categoriesHandler) create(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if claims.PermissionType != queries.Admin {
-		c.Status(http.StatusForbidden)
+		Forbidden(c, "")
 		return
 	}
 	var json queries.CategoryTag
 	if err := c.ShouldBindJSON(&json); err != nil {
-		c.Status(http.StatusBadRequest)
+		BadRequest(c, "")
 		return
 	}
 
 	if err := ch.cs.Create(c.Request.Context(), json.Tag); err != nil {
-		c.Status(http.StatusBadRequest)
+		BadRequest(c, "")
 		return
 	}
 	c.Status(http.StatusCreated)
@@ -176,7 +176,7 @@ func (ch *categoriesHandler) create(c *gin.Context) {
 func (ch *categoriesHandler) list(c *gin.Context) {
 	categories, err := ch.cs.List(c.Request.Context())
 	if err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
 	c.JSON(http.StatusOK, categories)
@@ -185,17 +185,17 @@ func (ch *categoriesHandler) list(c *gin.Context) {
 func (ch *categoriesHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if claims.PermissionType != queries.Admin {
-		c.Status(http.StatusForbidden)
+		Forbidden(c, "")
 		return
 	}
 	id, err := strconv.Atoi(c.DefaultQuery("id", "0"))
 	if err != nil {
-		c.Status(http.StatusBadRequest)
+		BadRequest(c, "")
 		return
 	}
 
 	if err := ch.cs.Delete(c.Request.Context(), int32(id)); err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -219,12 +219,12 @@ type pcHandler struct {
 func (pch *pcHandler) setTags(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if claims.PermissionType > queries.Vendor {
-		c.Status(http.StatusForbidden)
+		Forbidden(c, "")
 		return
 	}
 	var json PC
 	if err := c.ShouldBindJSON(&json); err != nil {
-		c.Status(http.StatusBadRequest)
+		BadRequest(c, "")
 		return
 	}
 	id := c.Param("id")
@@ -232,27 +232,27 @@ func (pch *pcHandler) setTags(c *gin.Context) {
 	ps := queries.NewProductStore(db.NewSession())
 	product, err := ps.Get(c.Request.Context(), id)
 	if err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
 	if !(product.UserID == claims.ID || claims.PermissionType == queries.Admin) {
-		c.Status(http.StatusForbidden)
+		Forbidden(c, "")
 		return
 	}
 
 	pcs := queries.NewPCStore(db.NewSession())
 	if err := pcs.SetTags(c.Request.Context(), product.ID, json.Tags); err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
-	c.Status(http.StatusAccepted)
+	Accepted(c, "")
 }
 
 func (pch *pcHandler) list(c *gin.Context) {
 	id := c.Param("id")
 	items, err := pch.pcs.List(c.Request.Context(), id)
 	if err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
 	c.JSON(http.StatusOK, items)
@@ -282,33 +282,33 @@ func (pih *productImagesHandler) create(c *gin.Context) {
 	productID := c.Param("productID")
 	product, err := pih.ps.Get(c.Request.Context(), productID)
 	if err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
 	if product.UserID != claims.ID {
-		c.Status(http.StatusForbidden)
+		Forbidden(c, "")
 		return
 	}
 
 	file, err := c.FormFile("file")
 	if err != nil {
-		c.Status(http.StatusBadRequest)
+		BadRequest(c, "")
 		return
 	}
 	resultPath, err := UploadFile(file, claims, "product-images", "")
 	if err != nil {
-		c.Status(http.StatusBadRequest)
+		BadRequest(c, "")
 		return
 	}
 	pih.pis.Create(c.Request.Context(), productID, resultPath)
-	c.Status(http.StatusAccepted)
+	Accepted(c, "")
 }
 
 func (pih *productImagesHandler) list(c *gin.Context) {
 	productID := c.Param("ProductID")
 	items, err := pih.pis.List(c.Request.Context(), productID)
 	if err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
 	c.JSON(http.StatusOK, items)
@@ -319,22 +319,22 @@ func (pih *productImagesHandler) delete(c *gin.Context) {
 	productID := c.Param("ProductID")
 	product, err := pih.ps.Get(c.Request.Context(), productID)
 	if err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
 	if product.UserID != claims.ID {
-		c.Status(http.StatusForbidden)
+		Forbidden(c, "")
 		return
 	}
 	id := c.Param("id")
 	imgPath, err := pih.pis.Delete(c.Request.Context(), id)
 	if err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
 	if err := os.Remove(imgPath); err != nil {
 		if err != os.ErrNotExist {
-			c.Status(http.StatusForbidden)
+			Forbidden(c, "")
 			return
 		}
 	}

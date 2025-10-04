@@ -35,17 +35,17 @@ type authHandler struct {
 func (ah *authHandler) login(c *gin.Context) {
 	var json queries.LoginRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid username or password"})
+		BadRequest(c, "invalid username or password")
 		return
 	}
 
 	user, err := ah.us.Get(c.Request.Context(), json.Username)
 	if err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
 	if !auth.ComparePassword(user.Password, json.Password) {
-		c.Status(http.StatusUnauthorized)
+		Unauthorized(c, "")
 		return
 	}
 	cacheKey := fmt.Sprintf("login:%d", user.ID)
@@ -67,7 +67,7 @@ func (ah *authHandler) login(c *gin.Context) {
 	}
 	tokenString, err := auth.TokenEncoder(claims)
 	if err != nil {
-		c.Status(http.StatusUnauthorized)
+		BadRequest(c, "")
 		return
 	}
 	if err := ah.cache.Set(c.Request.Context(), cacheKey, tokenString, time.Until(authExpiration)).Err(); err == nil {

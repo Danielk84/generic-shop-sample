@@ -35,20 +35,20 @@ type commentsHandler struct {
 func (ch *commentsHandler) create(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if claims.PermissionType > queries.Customer {
-		c.Status(http.StatusForbidden)
+		Forbidden(c, "")
 		return
 	}
 	var json queries.CommentRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
-		c.Status(http.StatusBadRequest)
+		BadRequest(c, "")
 		return
 	}
 
 	if err := ch.cs.Create(c.Request.Context(), &json); err != nil {
-		c.Status(http.StatusBadRequest)
+		BadRequest(c, "")
 		return
 	}
-	c.Status(http.StatusCreated)
+	Created(c, "")
 }
 
 func (ch *commentsHandler) get(c *gin.Context) {
@@ -56,12 +56,12 @@ func (ch *commentsHandler) get(c *gin.Context) {
 	id := c.Param("id")
 	comment, err := ch.cs.Get(c.Request.Context(), id)
 	if err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
 
 	if !(comment.Username == claims.Username || claims.PermissionType == queries.Admin) {
-		c.Status(http.StatusForbidden)
+
 		return
 	}
 	c.JSON(http.StatusOK, comment)
@@ -70,13 +70,13 @@ func (ch *commentsHandler) get(c *gin.Context) {
 func (ch *commentsHandler) list(c *gin.Context) {
 	var json RelatedCommentsRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
-		c.Status(http.StatusBadRequest)
+		BadRequest(c, "")
 		return
 	}
 
 	items, err := ch.cs.List(c.Request.Context(), json.Parent, json.Referrer, defaultPagination, getOffsetFromPageNum(c.Query("page")))
 	if err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
 	c.JSON(http.StatusOK, items)
@@ -91,7 +91,7 @@ func (ch *commentsHandler) fullList(c *gin.Context) {
 
 	items, err := ch.cs.FullList(c.Request.Context(), username, defaultPagination, getOffsetFromPageNum(c.Query("page")))
 	if err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
 	c.JSON(http.StatusOK, items)
@@ -103,16 +103,16 @@ func (ch *commentsHandler) delete(c *gin.Context) {
 
 	comment, err := ch.cs.Get(c.Request.Context(), id)
 	if err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
 
 	if !(comment.Username == claims.Username || claims.PermissionType == queries.Admin) {
-		c.Status(http.StatusForbidden)
+		Forbidden(c, "")
 		return
 	}
 	if err := ch.cs.Delete(c.Request.Context(), id); err != nil {
-		c.Status(http.StatusBadRequest)
+		BadRequest(c, "")
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -121,19 +121,19 @@ func (ch *commentsHandler) delete(c *gin.Context) {
 func (ch *commentsHandler) setActive(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if claims.PermissionType != queries.Admin {
-		c.Status(http.StatusForbidden)
+		Forbidden(c, "")
 		return
 	}
 	var json SetFlag
 	if err := c.ShouldBindJSON(&json); err != nil {
-		c.Status(http.StatusBadRequest)
+		BadRequest(c, "")
 		return
 	}
 	id := c.Param("id")
 
 	if err := ch.cs.SetActive(c.Request.Context(), id, json.Accepted); err != nil {
-		c.Status(http.StatusNotFound)
+		NotFound(c, "")
 		return
 	}
-	c.Status(http.StatusAccepted)
+	Accepted(c, "")
 }
