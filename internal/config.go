@@ -13,7 +13,7 @@ import (
 type Config struct {
 	Mode, Addr              string
 	TrustedProxies, Origins []string
-	DatabaseURL             string
+	DatabaseURL, CacheURL   string
 	JWTSecretKey            []byte
 	Pagination              int
 	MaxMultipartMemory      int64
@@ -40,6 +40,7 @@ func NewConfig() *Config {
 			TrustedProxies:         getStrSliceFromStr(args["TRUSTED_PROXIES"]),
 			Origins:                getStrSliceFromStr(args["ORIGINS"]),
 			DatabaseURL:            args["DATABASE_URL"],
+			CacheURL:               args["CACHE_URL"],
 			JWTSecretKey:           []byte(args["JWT_SECRET_KEY"]),
 			Pagination:             getNumberFromStr(args["PAGINATION"]),
 			MaxMultipartMemory:     int64(getNumberFromStr(args["MAX_MULTIPART_MEMORY"])),

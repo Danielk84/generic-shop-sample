@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"log"
 	"sync"
 	"time"
 
@@ -20,7 +21,7 @@ type DBEngine struct {
 
 var (
 	DefaultDBEngine *DBEngine
-	once            sync.Once
+	onceDBEngine    sync.Once
 )
 
 func NewDBEngine(ctx context.Context, addr string) (*DBEngine, error) {
@@ -47,7 +48,7 @@ func (db *DBEngine) Close() {
 
 func New(ctx context.Context, addr string) (DBManager, error) {
 	var err error
-	once.Do(func() {
+	onceDBEngine.Do(func() {
 		var engine *DBEngine
 		engine, err = NewDBEngine(ctx, addr)
 		if err == nil {
@@ -58,5 +59,8 @@ func New(ctx context.Context, addr string) (DBManager, error) {
 }
 
 func NewSession() Session {
+	if DefaultDBEngine == nil {
+		log.Panicln("not initiated db engine")
+	}
 	return DefaultDBEngine.session
 }

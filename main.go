@@ -20,9 +20,15 @@ func main() {
 	if err != nil {
 		log.Panicln(err)
 	}
-	engine.Close()
+	defer engine.Close()
+
+	cacheDBs := []int{db.PublicCache, db.UsersCache, db.ProductsCache}
+	cache, err := db.NewCacheManager(ctx, config.CacheURL, cacheDBs)
+	if err != nil {
+		log.Panicln(err)
+	}
+	defer cache.Close()
 
 	app := app.NewApp(ctx, config)
-
 	app.Run()
 }
