@@ -5,7 +5,6 @@ import (
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
 	tu "generic-shop-sample/internal/testutils"
-	"log"
 	"os"
 	"testing"
 	"time"
@@ -49,12 +48,7 @@ func TestMain(m *testing.M) {
 	engine.Close()
 	cancel()
 
-	if len(errs) > 0 {
-		for _, err := range errs {
-			log.Println(err)
-		}
-		os.Exit(1)
-	}
+	tu.CeckErrList(errs)
 
 	os.Exit(exitVal)
 }
@@ -86,7 +80,7 @@ func createTemporaryUsers(ctx context.Context, session db.Session) error {
 }
 
 func truncateTables(ctx context.Context, session db.Session) error {
-	const q = `TRUNCATE users, categories RESTART IDENTITY CASCADE`
+	const q = `TRUNCATE users, products, categories RESTART IDENTITY CASCADE`
 	_, err := session.Exec(ctx, q)
 	return err
 }
