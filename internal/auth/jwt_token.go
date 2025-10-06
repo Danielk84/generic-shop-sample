@@ -3,6 +3,7 @@ package auth
 import (
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal"
+	"log/slog"
 
 	"github.com/golang-jwt/jwt/v5"
 )
@@ -20,7 +21,11 @@ func TokenEncoder(claims AuthClaims) (string, error) {
 	config := internal.NewConfig()
 
 	token := jwt.NewWithClaims(algorithm, claims)
-	return token.SignedString(config.JWTSecretKey)
+	tokenString, err := token.SignedString(config.JWTSecretKey)
+	if err != nil {
+		slog.Warn("failed to encode claims", "error", err)
+	}
+	return tokenString, err
 }
 
 func TokenDecoder(tokenString string) (*AuthClaims, error) {
@@ -34,6 +39,9 @@ func TokenDecoder(tokenString string) (*AuthClaims, error) {
 		jwt.WithValidMethods([]string{algorithm.Alg()}),
 	)
 	if err != nil {
+		if err != jwt.ErrTokenExpired {
+			slog.Warn("failed to decode jwt tokem", "error", err)
+		}
 		return nil, err
 	}
 

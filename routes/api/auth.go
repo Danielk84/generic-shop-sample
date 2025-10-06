@@ -8,7 +8,7 @@ import (
 	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/auth"
 	md "generic-shop-sample/middlewares"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -35,6 +35,7 @@ type authHandler struct {
 func (ah *authHandler) login(c *gin.Context) {
 	var json queries.LoginRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
+		slog.Debug("failed to validate json", "error", err)
 		BadRequest(c, "invalid username or password")
 		return
 	}
@@ -55,6 +56,10 @@ func (ah *authHandler) login(c *gin.Context) {
 	if val, err := ah.cache.Get(c.Request.Context(), cacheKey).Result(); err == nil {
 		loginResponse(c, val, int(maxAge))
 		return
+	} else {
+		slog.Debug("failed to get jwt token",
+			"cacheKey", cacheKey,
+			"error", err)
 	}
 	claims := auth.AuthClaims{
 		ID:             user.ID,
@@ -71,10 +76,11 @@ func (ah *authHandler) login(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	if err := ah.cache.Set(c.Request.Context(), cacheKey, tokenString, time.Duration(maxAge)).Err(); err != nil {
-		log.Println("failed to set tokenString, ", err)
+	bearerToken := "Bearer " + tokenString
+	if err := ah.cache.Set(c.Request.Context(), cacheKey, bearerToken, time.Duration(maxAge)).Err(); err != nil {
+		slog.Warn("failed to set tokenString", "error", err)
 	}
-	loginResponse(c, tokenString, int(maxAge))
+	loginResponse(c, bearerToken, int(maxAge))
 }
 
 func loginResponse(c *gin.Context, tokenString string, maxAge int) {
