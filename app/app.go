@@ -6,6 +6,7 @@ import (
 	md "generic-shop-sample/middlewares"
 	"generic-shop-sample/routes"
 	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -27,7 +28,14 @@ func NewApp(ctx context.Context, config *internal.Config) *App {
 		log.Panicln(err)
 	}
 
+	logLevel := slog.LevelInfo
+	if gin.Mode() != gin.ReleaseMode {
+		logLevel = slog.LevelDebug
+	}
+	internal.InitAppLogger(logLevel, config.AppLoggerFilepath)
+
 	setMiddlewares(ctx, router, config)
+	setCustomValidators()
 	setRoutes(ctx, router)
 
 	return &App{
@@ -71,6 +79,8 @@ func setMiddlewares(ctx context.Context, router *gin.Engine, config *internal.Co
 	rl := md.NewRateLimiter(ctx, 500, 10*time.Minute, 30*time.Minute)
 
 	router.Use(
+		md.RequestLoggerMiddleware(config.RequestLoggerFilepath),
+		gin.Recovery(),
 		md.SecurityHeadersMiddleware(),
 		rl.RateLimiterMiddleware(),
 		md.CorsMiddleware(corsConfig),

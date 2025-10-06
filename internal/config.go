@@ -22,6 +22,8 @@ type Config struct {
 	UploadPath              string
 	MaxProductImagesAmount  int
 	AuthExpiration          time.Duration
+	RequestLoggerFilepath   string
+	AppLoggerFilepath       string
 }
 
 var (
@@ -50,6 +52,8 @@ func NewConfig() *Config {
 			UploadPath:             strings.TrimSuffix(args["UPLOAD_PATH"], "/"),
 			MaxProductImagesAmount: getNumberFromStr(args["MAX_PRODUCT_IMAGES_AMOUNT"]),
 			AuthExpiration:         time.Duration(getNumberFromStr(args["AUTH_EXPIRATION"])),
+			RequestLoggerFilepath:  args["REQUEST_LOGGER_FILEPATH"],
+			AppLoggerFilepath:      args["APP_LOGGER_FILEPATH"],
 		}
 	})
 	return DefaultConfig
