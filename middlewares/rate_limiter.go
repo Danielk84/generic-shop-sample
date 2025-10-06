@@ -2,7 +2,6 @@ package middlewares
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"strconv"
 	"sync"
@@ -13,7 +12,7 @@ import (
 
 func NewRateLimiter(ctx context.Context, requestLimit int, timePeriod, cleanupPeriod time.Duration) *RateLimter {
 	if timePeriod == 0 || cleanupPeriod == 0 {
-		log.Panic("timePeriod or cleanupPeriod must be non-zero")
+		panic("timePeriod or cleanupPeriod must be non-zero")
 	}
 
 	rl := &RateLimter{

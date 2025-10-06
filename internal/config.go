@@ -1,7 +1,7 @@
 package internal
 
 import (
-	"log"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -35,7 +35,7 @@ func NewConfig() *Config {
 	once.Do(func() {
 		args, err := godotenv.Read(getDotEnvFilePath())
 		if err != nil {
-			log.Panicln("error on reading .env file", err)
+			panic(fmt.Errorf("failed to read .env file, %s", err))
 		}
 
 		DefaultConfig = &Config{
@@ -73,7 +73,7 @@ func getStrSliceFromStr(s string) []string {
 func getNumberFromStr(arg string) int {
 	num, err := strconv.Atoi(arg)
 	if err != nil {
-		log.Panicf(`invalid arg number "%s", %s\n`, arg, err)
+		panic(fmt.Errorf(`invalid arg number "%s", %s\n`, arg, err))
 	}
 	return num
 }

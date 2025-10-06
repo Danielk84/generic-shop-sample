@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -81,7 +80,7 @@ func NewCacheManager(ctx context.Context, addr string, dbs []int) (CacheManager,
 
 func NewCache(db int) CacheClient {
 	if DefaultCacheEngine == nil {
-		log.Panicln("not initiated cache engine")
+		panic("not initiated cache engine")
 	}
 	DefaultCacheEngine.mu.RLock()
 	defer DefaultCacheEngine.mu.RUnlock()

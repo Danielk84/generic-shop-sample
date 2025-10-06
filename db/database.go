@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"log"
 	"sync"
 	"time"
 
@@ -60,7 +59,7 @@ func New(ctx context.Context, addr string) (DBManager, error) {
 
 func NewSession() Session {
 	if DefaultDBEngine == nil {
-		log.Panicln("not initiated db engine")
+		panic("not initiated db engine")
 	}
 	return DefaultDBEngine.session
 }

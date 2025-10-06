@@ -2,10 +2,10 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"generic-shop-sample/internal"
 	md "generic-shop-sample/middlewares"
 	"generic-shop-sample/routes"
-	"log"
 	"log/slog"
 	"net/http"
 	"time"
@@ -25,7 +25,7 @@ func NewApp(ctx context.Context, config *internal.Config) *App {
 	router := gin.Default()
 	router.MaxMultipartMemory = config.MaxMultipartMemory << 20
 	if err := router.SetTrustedProxies(config.TrustedProxies); err != nil {
-		log.Panicln(err)
+		panic(fmt.Errorf("failed to set trusted proxies, %s", err))
 	}
 
 	logLevel := slog.LevelInfo
@@ -56,7 +56,7 @@ func (a *App) Run() {
 	}
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("listen: %s\n", err)
+			slog.Error("failed to listen and server", "error", err)
 		}
 	}()
 
@@ -65,7 +65,7 @@ func (a *App) Run() {
 	shutdown, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 	if err := srv.Shutdown(shutdown); err != nil {
-		log.Println("error shutting down server: ", err)
+		slog.Warn("failed to shutdown server", "error", err)
 	}
 }
 
