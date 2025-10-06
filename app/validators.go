@@ -1,7 +1,6 @@
 package app
 
 import (
-	"log"
 	"regexp"
 
 	"github.com/gin-gonic/gin/binding"
@@ -10,19 +9,26 @@ import (
 
 func setCustomValidators() {
 	cv := map[string]validator.Func{
+		"username": usernameValidator,
 		"password": passwordValidator,
 	}
 
 	v, ok := binding.Validator.Engine().(*validator.Validate)
 	if !ok {
-		log.Panicln("failed to get validator engine")
+		panic("failed to get validator engine")
 	}
 	for key, value := range cv {
 		v.RegisterValidation(key, value)
 	}
 }
 
-var basicPasswordRegex = regexp.MustCompile("(?s)(^[a-zA-Z][!-~]{8,64}$)")
+var usernameValidatorRegex = regexp.MustCompile("(?s)(^([a-z]|[0-9]|[_-]){4,128}$)")
+
+func usernameValidator(fl validator.FieldLevel) bool {
+	return usernameValidatorRegex.MatchString(fl.Field().String())
+}
+
+var basicPasswordRegex = regexp.MustCompile("(?s)(^[a-zA-Z][!-~]{7,63}$)")
 var isUpperExistRegex = regexp.MustCompile("[A-Z]")
 
 func passwordValidator(fl validator.FieldLevel) bool {
