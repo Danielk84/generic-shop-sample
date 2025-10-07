@@ -1,12 +1,16 @@
 package testutils
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"generic-shop-sample/app"
 	"generic-shop-sample/db"
 	"generic-shop-sample/internal"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"os"
 
 	"github.com/gin-gonic/gin"
@@ -40,8 +44,18 @@ func CacheSetup(ctx context.Context) db.CacheManager {
 func CeckErrList(errs []error) {
 	if len(errs) > 0 {
 		for _, err := range errs {
-			slog.Error("", "error", err)
+			slog.Error(err.Error())
 		}
 		os.Exit(1)
 	}
+}
+
+func LoginSetup(app *gin.Engine, username, password string) string {
+	w := httptest.NewRecorder()
+	body, _ := json.Marshal(map[string]string{"username": username, "password": password})
+	req, _ := http.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewBuffer(body))
+	app.ServeHTTP(w, req)
+	var resJson map[string]string
+	_ = json.NewDecoder(w.Body).Decode(&resJson)
+	return resJson["token"]
 }
