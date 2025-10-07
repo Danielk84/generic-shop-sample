@@ -22,7 +22,7 @@ type App struct {
 func NewApp(ctx context.Context, config *internal.Config) *App {
 	gin.DisableConsoleColor()
 	gin.SetMode(config.Mode)
-	router := gin.Default()
+	router := gin.New()
 	router.MaxMultipartMemory = config.MaxMultipartMemory << 20
 	if err := router.SetTrustedProxies(config.TrustedProxies); err != nil {
 		panic(fmt.Errorf("failed to set trusted proxies, %s", err))
