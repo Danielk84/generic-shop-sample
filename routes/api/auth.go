@@ -42,6 +42,7 @@ func (ah *authHandler) login(c *gin.Context) {
 
 	user, err := ah.us.Get(c.Request.Context(), json.Username)
 	if err != nil {
+		slog.Debug("failed to found user", "error", err)
 		NotFound(c, "")
 		return
 	}

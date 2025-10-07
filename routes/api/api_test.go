@@ -26,6 +26,10 @@ func TestMain(m *testing.M) {
 			UserPermissionRequest: queries.UserPermissionRequest{PermissionType: queries.Admin, IsActive: true},
 		},
 		{
+			LoginRequest:          queries.LoginRequest{Username: "admin_user2", Password: password},
+			UserPermissionRequest: queries.UserPermissionRequest{PermissionType: queries.Admin, IsActive: true},
+		},
+		{
 			LoginRequest:          queries.LoginRequest{Username: "vendor_user", Password: password},
 			UserPermissionRequest: queries.UserPermissionRequest{PermissionType: queries.Vendor, IsActive: true},
 		},

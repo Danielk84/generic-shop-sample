@@ -1,10 +1,12 @@
 package api
 
 import (
+	"fmt"
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal/auth"
 	md "generic-shop-sample/middlewares"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -12,7 +14,10 @@ import (
 )
 
 func UsersRouter(router *gin.RouterGroup) {
-	uh := usersHandler{queries.NewUserStore(db.NewSession())}
+	uh := usersHandler{
+		queries.NewUserStore(db.NewSession()),
+		db.NewCache(db.UsersCache),
+	}
 
 	router.Use(md.AuthMiddleware())
 	router.GET("/", uh.list)
@@ -24,7 +29,8 @@ func UsersRouter(router *gin.RouterGroup) {
 }
 
 type usersHandler struct {
-	us queries.UserStore
+	us    queries.UserStore
+	cache db.CacheClient
 }
 
 func (uh *usersHandler) createUserByAdmin(c *gin.Context) {
@@ -53,7 +59,7 @@ func (uh *usersHandler) createUserByAdmin(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	c.Status(http.StatusNoContent)
+	Created(c, "")
 }
 
 func (uh *usersHandler) list(c *gin.Context) {
@@ -63,7 +69,7 @@ func (uh *usersHandler) list(c *gin.Context) {
 		return
 	}
 	users, err := uh.us.List(c.Request.Context(), defaultPagination, getOffsetFromPageNum(c.Query("page")))
-	if err == nil {
+	if err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -93,6 +99,7 @@ func (uh *usersHandler) updateUserPermission(c *gin.Context) {
 	}
 	var json queries.UserPermissionRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
+		slog.Debug(err.Error())
 		BadRequest(c, "invalid permission_id or is_active")
 		return
 	}
@@ -101,6 +108,7 @@ func (uh *usersHandler) updateUserPermission(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
+	_ = uh.cache.Del(c.Request.Context(), fmt.Sprintf("login:%d", claims.ID))
 	Accepted(c, "")
 }
 
@@ -110,12 +118,14 @@ func (uh *usersHandler) delete(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
+
 	c.Status(http.StatusNoContent)
 }
 
 func (uh *usersHandler) setEmail(c *gin.Context) {
 	var json queries.EmailAddrRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
+		slog.Debug(err.Error())
 		BadRequest(c, "invalid email address")
 		return
 	}
@@ -124,7 +134,7 @@ func (uh *usersHandler) setEmail(c *gin.Context) {
 		BadRequest(c, "email already exists")
 		return
 	}
-	c.Status(http.StatusNoContent)
+	Accepted(c, "")
 }
 
 func UserProfileRouter(router *gin.RouterGroup) {
