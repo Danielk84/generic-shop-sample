@@ -3,6 +3,7 @@ package queries
 import (
 	"context"
 	"generic-shop-sample/db"
+	"log/slog"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -17,6 +18,12 @@ const (
 	BlockUser
 )
 
+type ValidUserRquest struct {
+	ID             int32
+	Username       string
+	PermissionType PermissionType
+}
+
 type EmailAddrRequest struct {
 	Email string `json:"email" binding:"required,email,min=10,max=256"`
 }
@@ -28,7 +35,7 @@ type LoginRequest struct {
 
 type UserPermissionRequest struct {
 	PermissionType PermissionType `json:"permission_type" binding:"number,gte=0,lt=4"`
-	IsActive       bool           `json:"is_active" binding:"required,boolean"`
+	IsActive       bool           `json:"is_active" binding:"boolean"`
 }
 
 type CreateUserRequest struct {
@@ -62,6 +69,7 @@ type UserRepository struct {
 
 type UserStore interface {
 	IsUsernameExists(ctx context.Context, username string) bool
+	IsValidUser(ctx context.Context, user *ValidUserRquest) bool
 	Create(ctx context.Context, user *CreateUserRequest) error
 	List(ctx context.Context, pagination, page int) ([]UserResponse, error)
 	Get(ctx context.Context, username string) (*UserResponse, error)
@@ -79,9 +87,29 @@ func (ur *UserRepository) IsUsernameExists(ctx context.Context, username string)
 	const q = "SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)"
 	var isExists bool
 	if err := ur.session.QueryRow(ctx, q, username).Scan(&isExists); err != nil || isExists {
+		if err != nil {
+			slog.Debug(err.Error())
+		}
 		return true
 	}
 	return false
+}
+
+func (ur *UserRepository) IsValidUser(ctx context.Context, user *ValidUserRquest) bool {
+	const q = "SELECT EXISTS(SELECT 1 FROM users WHERE id = @ID AND username = @Username AND permission_type = @PermissionType)"
+	args := pgx.NamedArgs{
+		"ID":             user.ID,
+		"Username":       user.Username,
+		"PermissionType": user.PermissionType,
+	}
+	var isExists bool
+	if err := ur.session.QueryRow(ctx, q, args).Scan(&isExists); err != nil || !isExists {
+		if err != nil {
+			slog.Debug(err.Error())
+		}
+		return false
+	}
+	return true
 }
 
 func (ur *UserRepository) Create(ctx context.Context, user *CreateUserRequest) error {
