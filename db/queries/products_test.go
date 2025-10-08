@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func TestBasicProductStoreMethods(t *testing.T) {
+func TestBasicProductStore(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
@@ -21,7 +21,7 @@ func TestBasicProductStoreMethods(t *testing.T) {
 		Name:        "TestProduct",
 		Price:       1999,
 		Description: "Test product description",
-		Details:     map[string]string{"color": "red", "size": "M"},
+		Details:     `{"color": "red", "size": "M"}`,
 		IsAvailable: true,
 	}
 
@@ -60,7 +60,7 @@ func TestBasicProductStoreMethods(t *testing.T) {
 			Name:        "TestProduct",
 			Price:       1999,
 			Description: "New Test product description",
-			Details:     map[string]string{"color": "red", "size": "M"},
+			Details:     `{"color": "red", "size": "M"}`,
 			IsAvailable: false,
 		},
 	}
@@ -114,16 +114,16 @@ func TestFullListProducts(t *testing.T) {
 	ps := queries.NewProductStore(session)
 
 	description := "some descriptions"
-	info := "some info"
+	info := `{"info": "some info"}`
 	products := []struct {
 		userID  int32
 		product queries.CreateProductRequest
 	}{
-		{1, queries.CreateProductRequest{Name: "item 1", Price: 10, Description: description, Details: map[string]string{"info": info}, IsAvailable: true}},
-		{1, queries.CreateProductRequest{Name: "item 2", Price: 10, Description: description, Details: map[string]string{"info": info}, IsAvailable: true}},
-		{1, queries.CreateProductRequest{Name: "item 3", Price: 10, Description: description, Details: map[string]string{"info": info}, IsAvailable: true}},
-		{2, queries.CreateProductRequest{Name: "item 4", Price: 10, Description: description, Details: map[string]string{"info": info}, IsAvailable: true}},
-		{3, queries.CreateProductRequest{Name: "item 5", Price: 10, Description: description, Details: map[string]string{"info": info}, IsAvailable: true}},
+		{1, queries.CreateProductRequest{Name: "item 1", Price: 10, Description: description, Details: info, IsAvailable: true}},
+		{1, queries.CreateProductRequest{Name: "item 2", Price: 10, Description: description, Details: info, IsAvailable: true}},
+		{1, queries.CreateProductRequest{Name: "item 3", Price: 10, Description: description, Details: info, IsAvailable: true}},
+		{2, queries.CreateProductRequest{Name: "item 4", Price: 10, Description: description, Details: info, IsAvailable: true}},
+		{3, queries.CreateProductRequest{Name: "item 5", Price: 10, Description: description, Details: info, IsAvailable: true}},
 	}
 	for i, product := range products {
 		if err := ps.Create(ctx, product.userID, &product.product); err != nil {
@@ -241,7 +241,7 @@ func TestSetTagsListPCStore(t *testing.T) {
 	}
 
 	ps := queries.NewProductStore(session)
-	product := queries.CreateProductRequest{Name: "item 1", Price: 10, Description: "some description", Details: map[string]string{"info": "some info"}, IsAvailable: true}
+	product := queries.CreateProductRequest{Name: "item 1", Price: 10, Description: "some description", Details: `{"info": "some info"}`, IsAvailable: true}
 	if err := ps.Create(ctx, 1, &product); err != nil {
 		t.Error("failed to create product", err)
 	}

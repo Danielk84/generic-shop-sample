@@ -10,11 +10,11 @@ import (
 )
 
 type CreateProductRequest struct {
-	Name        string            `json:"name" binding:"required,min=4,max=256"`
-	Price       int64             `json:"price" binding:"required,number,gte=0"`
-	Description string            `json:"description" binding:"required"`
-	Details     map[string]string `json:"details" binding:"json"`
-	IsAvailable bool              `json:"is_available" binding:"required"`
+	Name        string `json:"name" binding:"required,min=4,max=256"`
+	Price       int64  `json:"price" binding:"required,number,gte=0"`
+	Description string `json:"description" binding:"required"`
+	Details     string `json:"details" binding:"json"`
+	IsAvailable bool   `json:"is_available" binding:"required"`
 }
 
 type UpdateProductRequest struct {
@@ -37,9 +37,9 @@ type ProductStatusResponse struct {
 
 type OwnedProductResponse struct {
 	ProductStatusResponse
-	UserID      int32             `json:"user_id"`
-	Description string            `json:"description"`
-	Details     map[string]string `json:"details"`
+	UserID      int32  `json:"user_id"`
+	Description string `json:"description"`
+	Details     string `json:"details"`
 }
 
 type ProductRepository struct {
@@ -63,7 +63,7 @@ func NewProductStore(session db.Session) ProductStore {
 
 func (pr *ProductRepository) Create(ctx context.Context, userID int32, product *CreateProductRequest) error {
 	const q = `INSERT INTO products(user_id, name, description, details, price, is_available)
-		VALUES (@UserID, @Name, @Description, @Details, @Price, @IsAvailable)`
+		VALUES (@UserID, @Name, @Description, NULLIF(@Details, '')::JSONB, @Price, @IsAvailable)`
 	args := pgx.NamedArgs{
 		"UserID":      userID,
 		"Name":        product.Name,
@@ -102,7 +102,7 @@ func (pr *ProductRepository) FullList(ctx context.Context, userID int32, paginat
 }
 
 func (pr *ProductRepository) Get(ctx context.Context, id string) (*OwnedProductResponse, error) {
-	const q = `SELECT id, user_id, name, description, details, price, pub_date, is_available, is_active FROM products
+	const q = `SELECT id, user_id, name, description, COALESCE(details::TEXT, '{}') AS details, price, pub_date, is_available, is_active FROM products
 		WHERE id = $1::UUID
 		LIMIT 1`
 	return get[OwnedProductResponse](ctx, pr.session, q, id)
@@ -110,7 +110,7 @@ func (pr *ProductRepository) Get(ctx context.Context, id string) (*OwnedProductR
 
 func (pr *ProductRepository) Update(ctx context.Context, userID int32, product *UpdateProductRequest) error {
 	const q = `UPDATE products
-		SET name = @Name, price = @Price, description = @Description , details = @Details::JSONB, is_available = @IsAvailable
+		SET name = @Name, price = @Price, description = @Description , details = NULLIF(@Details, '')::JSONB, is_available = @IsAvailable
 		WHERE id = @ID and user_id = @UserID`
 	args := pgx.NamedArgs{
 		"Name":        product.Name,
