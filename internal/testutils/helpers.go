@@ -8,10 +8,13 @@ import (
 	"generic-shop-sample/app"
 	"generic-shop-sample/db"
 	"generic-shop-sample/internal"
+	"io"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 )
@@ -58,4 +61,31 @@ func LoginSetup(app *gin.Engine, username, password string) string {
 	var resJson map[string]string
 	_ = json.NewDecoder(w.Body).Decode(&resJson)
 	return resJson["token"]
+}
+
+func FileUploadRequest(url, token, fileName, path string) (*http.Request, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	defer writer.Close()
+
+	part, err := writer.CreateFormFile(fileName, filepath.Base(path))
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = io.Copy(part, file)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPost, url, body)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Authorization", token)
+	return req, err
 }

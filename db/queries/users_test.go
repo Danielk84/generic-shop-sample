@@ -141,7 +141,7 @@ func TestDeleteUser(t *testing.T) {
 	}
 }
 
-func TestUserProfileMethods(t *testing.T) {
+func TestUserProfileStore(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
@@ -155,7 +155,7 @@ func TestUserProfileMethods(t *testing.T) {
 		t.Errorf("failed to get user details, %s", err)
 	}
 	upr := &queries.UserProfileRequest{
-		Birthday: time.Now(),
+		Birthday: time.Now().Format(time.DateOnly),
 		Bio:      "some descriptions",
 	}
 	if err = ups.Upsert(ctx, userDetails.ID, upr); err != nil {
@@ -177,7 +177,7 @@ func TestUserProfileMethods(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to get user Details after updating user profile fields, %s", err)
 	}
-	if userDetails.Birthday != upr.Birthday.Format(time.DateOnly) || userDetails.Bio != upr.Bio || userDetails.PhoneNumber != phoneNumber {
+	if userDetails.Birthday != upr.Birthday || userDetails.Bio != upr.Bio || userDetails.PhoneNumber != phoneNumber {
 		t.Errorf(`unexpected output birthday="%s", bio="%s", phoneNumber="%s"`, userDetails.Birthday, userDetails.Bio, userDetails.PhoneNumber)
 	}
 }
