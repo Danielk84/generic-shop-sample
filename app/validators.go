@@ -2,6 +2,7 @@ package app
 
 import (
 	"regexp"
+	"time"
 
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
@@ -11,6 +12,7 @@ func setCustomValidators() {
 	cv := map[string]validator.Func{
 		"username": usernameValidator,
 		"password": passwordValidator,
+		"date":     dateValidator,
 	}
 
 	v, ok := binding.Validator.Engine().(*validator.Validate)
@@ -38,6 +40,13 @@ func passwordValidator(fl validator.FieldLevel) bool {
 		if !rp.MatchString(value) {
 			return false
 		}
+	}
+	return true
+}
+
+func dateValidator(fl validator.FieldLevel) bool {
+	if _, err := time.Parse(time.DateOnly, fl.Field().String()); err != nil {
+		return false
 	}
 	return true
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"generic-shop-sample/db"
 	"log/slog"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -176,8 +175,8 @@ func (ur *UserRepository) SetEmail(ctx context.Context, id int32, email *EmailAd
 }
 
 type UserProfileRequest struct {
-	Birthday time.Time `json:"age"`
-	Bio      string    `json:"bio"`
+	Birthday string `json:"birthday" binding:"required,date"`
+	Bio      string `json:"bio" binding:"required"`
 }
 
 type PhoneNumberRequest struct {
@@ -192,6 +191,7 @@ type UserProfileStore interface {
 	Upsert(ctx context.Context, userID int32, userProfile *UserProfileRequest) error
 	GetImgPath(ctx context.Context, userID int32) (string, error)
 	SetImgPath(ctx context.Context, userID int32, imgPath string) error
+	DeleteImgPath(ctx context.Context, userID int32) (string, error)
 	SetPhoneNumber(ctx context.Context, userID int32, phoneNumber *PhoneNumberRequest) error
 }
 
@@ -200,7 +200,7 @@ func NewUserProfileStore(session db.Session) UserProfileStore {
 }
 
 func (upr *UserProfileRepository) Upsert(ctx context.Context, userID int32, userProfile *UserProfileRequest) error {
-	const q = `INSERT INTO user_profile(user_id, birthday, bio) VALUES (@UserID, @Birthday, @Bio)
+	const q = `INSERT INTO user_profile(user_id, birthday, bio) VALUES (@UserID, @Birthday::DATE, @Bio)
 		ON CONFLICT(user_id)
 		DO UPDATE SET birthday = @Birthday::DATE, bio = @Bio`
 	args := pgx.NamedArgs{
@@ -213,13 +213,23 @@ func (upr *UserProfileRepository) Upsert(ctx context.Context, userID int32, user
 
 func (upr *UserProfileRepository) GetImgPath(ctx context.Context, userID int32) (string, error) {
 	const q = `SELECT COALESCE(img_path, '') FROM user_profile WHERE user_id = $1`
-	filepath, err := get[string](ctx, upr.session, q, userID)
-	return *filepath, err
+	var imgPath string
+	err := upr.session.QueryRow(ctx, q, userID).Scan(&imgPath)
+	return imgPath, err
 }
 
 func (upr *UserProfileRepository) SetImgPath(ctx context.Context, userID int32, imgPath string) error {
+	slog.Debug(imgPath)
 	const q = `UPDATE user_profile SET img_path = NULLIF($1, '') WHERE user_id = $2`
 	return execOne(ctx, upr.session, q, imgPath, userID)
+}
+
+func (upr *UserProfileRepository) DeleteImgPath(ctx context.Context, UserID int32) (string, error) {
+	const q = `UPDATE user_profile SET img_path = null WHERE user_id = $1
+		RETURNING (SELECT img_path FROM user_profile WHERE user_id = $1) AS old_img_path`
+	imgPath := ""
+	err := upr.session.QueryRow(ctx, q, UserID).Scan(&imgPath)
+	return imgPath, err
 }
 
 func (upr *UserProfileRepository) SetPhoneNumber(ctx context.Context, userID int32, phoneNumber *PhoneNumberRequest) error {
