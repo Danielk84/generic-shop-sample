@@ -207,11 +207,11 @@ func PCRouter(router *gin.RouterGroup) {
 	pch := pcHandler{queries.NewPCStore(db.NewSession())}
 
 	router.GET("/:id", pch.list)
-	router.POST("/set-tags", md.AuthMiddleware(), pch.setTags)
+	router.POST("/set-tags/:id", md.AuthMiddleware(), pch.setTags)
 }
 
 type PC struct {
-	Tags []string `json:"tags"`
+	Tags []string `json:"tags" binding:"required"`
 }
 
 type pcHandler struct {
@@ -244,6 +244,7 @@ func (pch *pcHandler) setTags(c *gin.Context) {
 
 	pcs := queries.NewPCStore(db.NewSession())
 	if err := pcs.SetTags(c.Request.Context(), product.ID, json.Tags); err != nil {
+		slog.Debug(err.Error())
 		NotFound(c, "")
 		return
 	}
