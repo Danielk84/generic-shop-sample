@@ -14,7 +14,7 @@ type CreateProductRequest struct {
 	Price       int64  `json:"price" binding:"required,number,gte=0"`
 	Description string `json:"description" binding:"required"`
 	Details     string `json:"details" binding:"json"`
-	IsAvailable bool   `json:"is_available" binding:"required"`
+	IsAvailable bool   `json:"is_available" binding:"boolean"`
 }
 
 type UpdateProductRequest struct {

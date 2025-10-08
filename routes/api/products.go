@@ -172,7 +172,7 @@ func (ch *categoriesHandler) create(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	c.Status(http.StatusCreated)
+	Created(c, "")
 }
 
 func (ch *categoriesHandler) list(c *gin.Context) {
@@ -190,7 +190,7 @@ func (ch *categoriesHandler) delete(c *gin.Context) {
 		Forbidden(c, "")
 		return
 	}
-	id, err := strconv.Atoi(c.DefaultQuery("id", "0"))
+	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		BadRequest(c, "")
 		return

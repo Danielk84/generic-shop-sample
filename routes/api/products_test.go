@@ -177,3 +177,62 @@ func TestProductsHandler(t *testing.T) {
 		})
 	}
 }
+
+const baseCategoriesURL = "/api/categories/"
+
+func TestCategoriesHandler(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+
+	app := tu.RouterSetup(ctx)
+	adminToken := tu.LoginSetup(app, "admin_user", "securePassword")
+
+	tests := []struct {
+		name   string
+		method string
+		url    string
+		code   int
+		token  string
+		body   io.Reader
+	}{
+		{
+			"categories.create",
+			http.MethodPost,
+			baseCategoriesURL + "user/",
+			http.StatusCreated,
+			adminToken,
+			bytes.NewBuffer([]byte(`{"tag": "some new tag"}`)),
+		},
+		{
+			"categories.list",
+			http.MethodGet,
+			baseCategoriesURL,
+			http.StatusOK,
+			"",
+			nil,
+		},
+		{
+			"categories.delete",
+			http.MethodDelete,
+			baseCategoriesURL + "user/1",
+			http.StatusNoContent,
+			adminToken,
+			nil,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(st *testing.T) {
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest(test.method, test.url, test.body)
+			if test.token != "" {
+				req.Header.Set("Authorization", test.token)
+			}
+			app.ServeHTTP(w, req)
+			if w.Code != test.code {
+				st.Errorf(`expected status="%d", but got "%d"`, test.code, w.Code)
+			}
+		})
+		time.Sleep(500 * time.Microsecond)
+	}
+}
