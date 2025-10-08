@@ -4,6 +4,7 @@ import (
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
 	md "generic-shop-sample/middlewares"
+	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -79,6 +80,7 @@ func (ph *productsHandler) update(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	var json queries.UpdateProductRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
+		slog.Debug(err.Error())
 		BadRequest(c, "")
 		return
 	}
@@ -101,7 +103,7 @@ func (ph *productsHandler) delete(c *gin.Context) {
 
 func (ph *productsHandler) setAvailable(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if claims.PermissionType != queries.Admin {
+	if claims.PermissionType > queries.Vendor {
 		Forbidden(c, "")
 		return
 	}
