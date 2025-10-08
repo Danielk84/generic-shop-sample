@@ -3,6 +3,8 @@ package internal
 import (
 	"fmt"
 	"os"
+	"os/user"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -49,11 +51,11 @@ func NewConfig() *Config {
 			Pagination:             getNumberFromStr(args["PAGINATION"]),
 			MaxMultipartMemory:     int64(getNumberFromStr(args["MAX_MULTIPART_MEMORY"])),
 			AllowedImgMimetype:     getStrSliceFromStr(args["ALLOWED_IMAGE_MIMETYPE"]),
-			UploadPath:             strings.TrimSuffix(args["UPLOAD_PATH"], "/"),
+			UploadPath:             expendPath(args["UPLOAD_PATH"]),
 			MaxProductImagesAmount: getNumberFromStr(args["MAX_PRODUCT_IMAGES_AMOUNT"]),
 			AuthExpiration:         time.Duration(getNumberFromStr(args["AUTH_EXPIRATION"])),
-			RequestLoggerFilepath:  args["REQUEST_LOGGER_FILEPATH"],
-			AppLoggerFilepath:      args["APP_LOGGER_FILEPATH"],
+			RequestLoggerFilepath:  expendPath(args["REQUEST_LOGGER_FILEPATH"]),
+			AppLoggerFilepath:      expendPath(args["APP_LOGGER_FILEPATH"]),
 		}
 	})
 	return DefaultConfig
@@ -76,4 +78,15 @@ func getNumberFromStr(arg string) int {
 		panic(fmt.Errorf(`invalid arg number "%s", %s\n`, arg, err))
 	}
 	return num
+}
+
+func expendPath(fp string) string {
+	if strings.HasPrefix(fp, "~/") {
+		user, err := user.Current()
+		if err != nil {
+			panic(fmt.Errorf(`failed to get current user path from "%s"`, fp))
+		}
+		return filepath.Join(user.HomeDir, fp[2:])
+	}
+	return fp
 }

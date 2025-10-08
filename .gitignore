@@ -1,3 +1,6 @@
 .env
 generic-shop-sample
 cmd/manager
+gin.log
+app.log
+upload/
