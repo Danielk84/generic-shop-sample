@@ -52,7 +52,7 @@ func (ah *authHandler) login(c *gin.Context) {
 	}
 	config := internal.NewConfig()
 	authExpiration := time.Now().Add(config.AuthExpiration * time.Minute)
-	maxAge := time.Until(authExpiration).Seconds()
+	maxAge := time.Until(authExpiration)
 	cacheKey := fmt.Sprintf("login:%d", user.ID)
 	if val, err := ah.cache.Get(c.Request.Context(), cacheKey).Result(); err == nil {
 		loginResponse(c, val, int(maxAge))
@@ -78,7 +78,7 @@ func (ah *authHandler) login(c *gin.Context) {
 		return
 	}
 	bearerToken := "Bearer " + tokenString
-	if err := ah.cache.Set(c.Request.Context(), cacheKey, bearerToken, time.Duration(maxAge)).Err(); err != nil {
+	if err := ah.cache.Set(c.Request.Context(), cacheKey, bearerToken, maxAge).Err(); err != nil {
 		slog.Warn("failed to set tokenString", "error", err)
 	}
 	loginResponse(c, bearerToken, int(maxAge))
