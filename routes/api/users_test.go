@@ -4,18 +4,23 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
 	tu "generic-shop-sample/internal/testutils"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"runtime"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
 
-var baseUserURL = "/api/users/"
+const baseUserURL = "/api/users/"
 
 func TestUsersHandler(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
@@ -141,5 +146,75 @@ func TestUsersHandler(t *testing.T) {
 				test.after(st, w)
 			}
 		})
+	}
+}
+
+const baseUserProfileURL = `/api/user-profile/`
+
+func TestUserProfileHandler(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+
+	app := tu.RouterSetup(ctx)
+	tokenString := tu.LoginSetup(app, "vendor_user", "securePassword")
+
+	// testing userProfileHandler.upsert
+	w := httptest.NewRecorder()
+	body := bytes.NewBuffer([]byte(`{"birthday": "2005-08-26", "bio": "some info..."}`))
+	req, _ := http.NewRequest(http.MethodPost, baseUserProfileURL, body)
+	req.Header.Set("Cookie", fmt.Sprintf("__Host-auth-token=%s", strings.TrimPrefix(tokenString, "Bearer ")))
+	app.ServeHTTP(w, req)
+	if w.Code != http.StatusAccepted {
+		t.Errorf(`expected status="%d", but got "%d"`, http.StatusAccepted, w.Code)
+	}
+
+	// testing userProfileHandler.uploadProfileImg
+	_, p, _, _ := runtime.Caller(0)
+	basePath := filepath.Join(filepath.Dir(p), "..", "..", "internal", "testutils", "testfile", "temp.jpeg")
+	w = httptest.NewRecorder()
+	req, err := tu.FileUploadRequest(baseUserProfileURL+"upload", tokenString, "file", basePath)
+	if err != nil {
+		t.Errorf(`failed to create multipart request, %s`, err)
+		return
+	}
+	app.ServeHTTP(w, req)
+	if w.Code != http.StatusAccepted {
+		t.Errorf(`expected status="%d", but got "%d"`, http.StatusAccepted, w.Code)
+	}
+
+	us := queries.NewUserStore(db.NewSession())
+	user, err := us.Get(ctx, "vendor_user")
+	if err != nil {
+		t.Errorf("failed to get user, %s", err)
+	}
+
+	ups := queries.NewUserProfileStore(db.NewSession())
+	imgPath, err := ups.GetImgPath(ctx, user.ID)
+	if err != nil || imgPath == "" {
+		t.Errorf(`failed to save img in database, imgPath="%s", %s`, imgPath, err)
+	}
+	if _, err := os.Stat(imgPath); err != nil {
+		t.Errorf(`failed to remove file "%s", %s`, imgPath, err)
+	}
+	// testing userProfileHandler.deleteImgFile
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest(http.MethodDelete, baseUserProfileURL, nil)
+	req.Header.Set("Authorization", tokenString)
+	app.ServeHTTP(w, req)
+	if w.Code != http.StatusNoContent {
+		t.Errorf(`expected status="%d", but got "%d"`, http.StatusNoContent, w.Code)
+	}
+	if _, err := os.Stat(imgPath); err == nil {
+		t.Errorf("failed to remove img file")
+	}
+
+	// testing userProfileHandler.setPhoneNumber
+	w = httptest.NewRecorder()
+	body = bytes.NewBuffer([]byte(`{"phone_number": "09999999999"}`))
+	req, _ = http.NewRequest(http.MethodPut, baseUserProfileURL+"set-phone-number", body)
+	req.Header.Set("Authorization", tokenString)
+	app.ServeHTTP(w, req)
+	if w.Code != http.StatusAccepted {
+		t.Errorf(`expected status="%d", but got "%d"`, http.StatusAccepted, w.Code)
 	}
 }

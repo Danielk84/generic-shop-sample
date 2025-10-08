@@ -10,6 +10,7 @@ import (
 func APIRouter(ctx context.Context, router *gin.RouterGroup) {
 	api.LoginRouter(ctx, router.Group("/auth"))
 	api.UsersRouter(router.Group("/users"))
+	api.UserProfileRouter(router.Group("/user-profile"))
 	api.ProductsRouter(router.Group("/products"))
 	api.CategoriesRouter(router.Group("/category"))
 	api.PCRouter(router.Group("/pc"))

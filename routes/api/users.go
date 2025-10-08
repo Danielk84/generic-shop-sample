@@ -8,6 +8,7 @@ import (
 	md "generic-shop-sample/middlewares"
 	"log/slog"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -144,6 +145,7 @@ func UserProfileRouter(router *gin.RouterGroup) {
 	router.POST("/", uph.upsert)
 	router.POST("/upload", uph.uploadProfileImg)
 	router.PUT("/set-phone-number", uph.setPhoneNumber)
+	router.DELETE("/", uph.deleteImgPath)
 }
 
 type userProfileHandler struct {
@@ -154,6 +156,7 @@ func (uph *userProfileHandler) upsert(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	var json queries.UserProfileRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
+		slog.Debug(err.Error())
 		BadRequest(c, "")
 		return
 	}
@@ -161,7 +164,7 @@ func (uph *userProfileHandler) upsert(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
-	c.Status(http.StatusAccepted)
+	Accepted(c, "")
 }
 
 func (uph *userProfileHandler) uploadProfileImg(c *gin.Context) {
@@ -177,9 +180,11 @@ func (uph *userProfileHandler) uploadProfileImg(c *gin.Context) {
 	}
 	resultPath, err := UploadFile(file, claims, "user-profile", dst)
 	if err != nil {
+		slog.Debug(err.Error())
 		BadRequest(c, "failed to process file")
 		return
 	}
+	slog.Debug(resultPath)
 	if resultPath != dst {
 		if err := uph.ups.SetImgPath(c.Request.Context(), claims.ID, resultPath); err != nil {
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "failed to save file"})
@@ -189,14 +194,30 @@ func (uph *userProfileHandler) uploadProfileImg(c *gin.Context) {
 	Accepted(c, "")
 }
 
+func (upr *userProfileHandler) deleteImgPath(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	imgPath, err := upr.ups.DeleteImgPath(c.Request.Context(), claims.ID)
+	if err != nil {
+		slog.Debug(err.Error())
+		NotFound(c, "")
+		return
+	}
+	if err := os.Remove(imgPath); err != nil {
+		slog.Info(`failed to remove file "%s", %s`, imgPath, err)
+	}
+	c.Status(http.StatusNoContent)
+}
+
 func (uph *userProfileHandler) setPhoneNumber(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	var json queries.PhoneNumberRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
+		slog.Debug(err.Error())
 		BadRequest(c, "")
 		return
 	}
 	if err := uph.ups.SetPhoneNumber(c.Request.Context(), claims.ID, &json); err != nil {
+		slog.Debug(err.Error())
 		NotFound(c, "")
 		return
 	}
