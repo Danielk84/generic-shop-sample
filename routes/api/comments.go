@@ -5,6 +5,7 @@ import (
 	"generic-shop-sample/db/queries"
 	md "generic-shop-sample/middlewares"
 	"net/http"
+	"net/url"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,7 +15,7 @@ func CommentsRouter(router *gin.RouterGroup) {
 
 	router.GET("/", ch.list)
 
-	sRouter := router.Group("/p")
+	sRouter := router.Group("/user")
 	sRouter.Use(md.AuthMiddleware())
 	sRouter.GET("/", ch.fullList)
 	sRouter.GET("/:id", ch.get)
@@ -24,8 +25,8 @@ func CommentsRouter(router *gin.RouterGroup) {
 }
 
 type RelatedCommentsRequest struct {
-	Parent   string `json:"Parent" binding:"required,uuid"`
-	Referrer string `json:"referrer" binding:"required"`
+	Parent   string `form:"parent" binding:"required,uuid"`
+	Referrer string `form:"referrer" binding:"required"`
 }
 
 type commentsHandler struct {
@@ -69,12 +70,12 @@ func (ch *commentsHandler) get(c *gin.Context) {
 
 func (ch *commentsHandler) list(c *gin.Context) {
 	var json RelatedCommentsRequest
-	if err := c.ShouldBindJSON(&json); err != nil {
+	if err := c.ShouldBindQuery(&json); err != nil {
 		BadRequest(c, "")
 		return
 	}
 
-	items, err := ch.cs.List(c.Request.Context(), json.Parent, json.Referrer, defaultPagination, getOffsetFromPageNum(c.Query("page")))
+	items, err := ch.cs.List(c.Request.Context(), json.Parent, url.QueryEscape(json.Referrer), defaultPagination, getOffsetFromPageNum(c.Query("page")))
 	if err != nil {
 		NotFound(c, "")
 		return
