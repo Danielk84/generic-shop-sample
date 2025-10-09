@@ -22,6 +22,7 @@ func ProductsRouter(router *gin.RouterGroup) {
 	sRouter.Use(md.AuthMiddleware())
 	sRouter.GET("/", ph.fullList)
 	sRouter.GET("/:id", ph.get)
+	sRouter.POST("/", ph.create)
 	sRouter.PUT("/", ph.update)
 	sRouter.PUT("/set-available/:id", ph.setAvailable)
 	sRouter.PUT("/set-active/:id", ph.setActive)
@@ -30,6 +31,20 @@ func ProductsRouter(router *gin.RouterGroup) {
 
 type productsHandler struct {
 	ps queries.ProductStore
+}
+
+func (ph *productsHandler) create(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	var json queries.CreateProductRequest
+	if err := c.ShouldBindJSON(&json); err != nil {
+		BadRequest(c, "")
+		return
+	}
+	if err := ph.ps.Create(c.Request.Context(), claims.ID, &json); err != nil {
+		BadRequest(c, "")
+		return
+	}
+	Created(c, "")
 }
 
 func (ph *productsHandler) list(c *gin.Context) {
@@ -268,10 +283,11 @@ func ProductImagesRouter(router *gin.RouterGroup) {
 		pis: queries.NewProductImagesStore(session),
 	}
 
-	router.GET("/:id", pih.list)
+	router.GET("/:productID", pih.list)
 
 	sRouter := router.Group("/user")
-	sRouter.POST("/", pih.create)
+	sRouter.Use(md.AuthMiddleware())
+	sRouter.POST("/:productID", pih.create)
 	sRouter.DELETE("/:productID/:id", pih.delete)
 }
 
@@ -303,14 +319,18 @@ func (pih *productImagesHandler) create(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	pih.pis.Create(c.Request.Context(), productID, resultPath)
-	Accepted(c, "")
+	if err := pih.pis.Create(c.Request.Context(), productID, resultPath); err != nil {
+		NotFound(c, "")
+		return
+	}
+	Created(c, "")
 }
 
 func (pih *productImagesHandler) list(c *gin.Context) {
-	productID := c.Param("ProductID")
+	productID := c.Param("productID")
 	items, err := pih.pis.List(c.Request.Context(), productID)
 	if err != nil {
+		slog.Debug("hear is", "error", err)
 		NotFound(c, "")
 		return
 	}
@@ -319,9 +339,10 @@ func (pih *productImagesHandler) list(c *gin.Context) {
 
 func (pih *productImagesHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	productID := c.Param("ProductID")
+	productID := c.Param("productID")
 	product, err := pih.ps.Get(c.Request.Context(), productID)
 	if err != nil {
+		slog.Debug("not found product", "error", err)
 		NotFound(c, "")
 		return
 	}
@@ -332,6 +353,7 @@ func (pih *productImagesHandler) delete(c *gin.Context) {
 	id := c.Param("id")
 	imgPath, err := pih.pis.Delete(c.Request.Context(), id)
 	if err != nil {
+		slog.Debug("not found imgPath", "error", err)
 		NotFound(c, "")
 		return
 	}
@@ -340,6 +362,7 @@ func (pih *productImagesHandler) delete(c *gin.Context) {
 			Forbidden(c, "")
 			return
 		}
+		slog.Info("error on removing img", "img_path", imgPath, "error", err)
 	}
 	c.Status(http.StatusNoContent)
 }

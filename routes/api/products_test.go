@@ -9,8 +9,11 @@ import (
 	"generic-shop-sample/db/queries"
 	tu "generic-shop-sample/internal/testutils"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -63,6 +66,15 @@ func TestProductsHandler(t *testing.T) {
 		after  func(st *testing.T, w *httptest.ResponseRecorder)
 	}{
 		{
+			"productsHandler.create",
+			http.MethodPost,
+			baseProductsURL + "user/",
+			bytes.NewBuffer([]byte(`{"name": "new product 123", "price": 123, "description": "balb balb", "details": "{\"yepi\": \"yepi\"}", "is_available": true}`)),
+			vendorToken,
+			http.StatusCreated,
+			nil,
+		},
+		{
 			"productsHandler.list",
 			http.MethodGet,
 			baseProductsURL,
@@ -90,8 +102,8 @@ func TestProductsHandler(t *testing.T) {
 			func(st *testing.T, w *httptest.ResponseRecorder) {
 				var resJson []map[string]string
 				_ = json.NewDecoder(w.Body).Decode(&resJson)
-				if len(products) != len(resJson) {
-					st.Errorf(`expected len="%d", but got "%d"`, len(products), len(resJson))
+				if len(products)+1 != len(resJson) {
+					st.Errorf(`expected len="%d", but got "%d"`, len(products)+1, len(resJson))
 				}
 			},
 		},
@@ -275,5 +287,60 @@ func TestPCHandler(t *testing.T) {
 	app.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Errorf(`expected status="%d", but got "%d"`, http.StatusOK, w.Code)
+	}
+}
+
+const baseProductImagesURL = "/api/product-images/"
+
+func TestProductImagesRouter(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+
+	app := tu.RouterSetup(ctx)
+	session := db.NewSession()
+	us := queries.NewUserStore(session)
+	vendor, _ := us.Get(ctx, "vendor_user")
+	vendorToken := tu.LoginSetup(app, "vendor_user", "securePassword")
+	ps := queries.NewProductStore(session)
+	products, err := ps.FullList(ctx, vendor.ID, 20, 1)
+	if err != nil {
+		t.Errorf("failed to get vendor's products full list, %s", err)
+	}
+
+	// testing productImagesHandler.create
+	_, p, _, _ := runtime.Caller(0)
+	basePath := filepath.Join(filepath.Dir(p), "..", "..", "internal", "testutils", "testfile", "temp.jpeg")
+	w := httptest.NewRecorder()
+	req, err := tu.FileUploadRequest(baseProductImagesURL+"user/"+products[0].ID, vendorToken, "file", basePath)
+	if err != nil {
+		t.Errorf(`failed to create multipart request, %s`, err)
+		return
+	}
+	app.ServeHTTP(w, req)
+	if w.Code != http.StatusCreated {
+		t.Errorf(`expected status="%d", but got "%d"`, http.StatusCreated, w.Code)
+	}
+
+	// testing productImagesHandler.list
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest(http.MethodGet, baseProductImagesURL+products[0].ID, nil)
+	app.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf(`expected status="%d", but got "%d"`, http.StatusOK, w.Code)
+	}
+
+	var resJson []map[string]string
+	if err := json.NewDecoder(w.Body).Decode(&resJson); err != nil {
+		t.Errorf("failed to get product-images list, %s", err)
+	}
+	slog.Debug("asd", "asd", resJson)
+
+	// testing productImagesHandler.delete
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest(http.MethodDelete, fmt.Sprintf("%suser/%s/%s", baseProductImagesURL, products[0].ID, resJson[0]["id"]), nil)
+	req.Header.Set("Authorization", vendorToken)
+	app.ServeHTTP(w, req)
+	if w.Code != http.StatusNoContent {
+		t.Errorf(`expected status="%d", but got "%d"`, http.StatusNoContent, w.Code)
 	}
 }
