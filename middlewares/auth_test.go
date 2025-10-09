@@ -2,8 +2,10 @@ package middlewares_test
 
 import (
 	"fmt"
+	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal/auth"
+	tu "generic-shop-sample/internal/testutils"
 	md "generic-shop-sample/middlewares"
 	"net/http"
 	"net/http/httptest"
@@ -15,10 +17,22 @@ import (
 )
 
 func TestAuthMiddleware(t *testing.T) {
+	engine := tu.DBManagerSetup(t.Context())
+	defer engine.Close()
+
+	us := queries.NewUserStore(db.NewSession())
+	if err := us.Create(t.Context(), &queries.CreateUserRequest{
+		LoginRequest:          queries.LoginRequest{Username: "auth_user", Password: "securePassword"},
+		UserPermissionRequest: queries.UserPermissionRequest{PermissionType: queries.Admin, IsActive: true},
+	}); err != nil {
+		t.Errorf("failed to create user, %s", err)
+	}
+	user, _ := us.Get(t.Context(), "auth_user")
+
 	baseClaims := auth.AuthClaims{
-		ID:             1,
-		Username:       "user",
-		PermissionType: queries.Admin,
+		ID:             user.ID,
+		Username:       user.Username,
+		PermissionType: user.PermissionType,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(10 * time.Second)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -29,7 +43,7 @@ func TestAuthMiddleware(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to encode token string, %s", err)
 	}
-	router := gin.New()
+	router := gin.Default()
 	router.Use(md.AuthMiddleware())
 	router.GET("/", func(c *gin.Context) {
 		claims := md.GetUserClaims(c)
