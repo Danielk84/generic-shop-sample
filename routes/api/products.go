@@ -59,7 +59,7 @@ func (ph *productsHandler) list(c *gin.Context) {
 func (ph *productsHandler) fullList(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	id := claims.ID
-	if claims.PermissionType == queries.Admin {
+	if HasPermissions(nil, claims.PermissionType, queries.Admin) {
 		id = 0
 	}
 	products, err := ph.ps.FullList(c.Request.Context(), id, defaultPagination, getOffsetFromPageNum(c.Query("page")))
@@ -83,7 +83,7 @@ func (ph *productsHandler) get(c *gin.Context) {
 			Unauthorized(c, "")
 			return
 		}
-		if claims.PermissionType != queries.Admin || claims.ID != product.UserID {
+		if claims.ID != product.UserID && !HasPermissions(nil, claims.PermissionType, queries.Admin) {
 			Forbidden(c, "")
 			return
 		}
@@ -118,8 +118,7 @@ func (ph *productsHandler) delete(c *gin.Context) {
 
 func (ph *productsHandler) setAvailable(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if claims.PermissionType > queries.Vendor {
-		Forbidden(c, "")
+	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
 		return
 	}
 	var json SetFlag
@@ -138,8 +137,7 @@ func (ph *productsHandler) setAvailable(c *gin.Context) {
 
 func (ph *productsHandler) setActive(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if claims.PermissionType != queries.Admin {
-		Forbidden(c, "")
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
 		return
 	}
 	var json SetFlag
@@ -173,8 +171,7 @@ type categoriesHandler struct {
 
 func (ch *categoriesHandler) create(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if claims.PermissionType != queries.Admin {
-		Forbidden(c, "")
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
 		return
 	}
 	var json queries.CategoryTag
@@ -201,8 +198,7 @@ func (ch *categoriesHandler) list(c *gin.Context) {
 
 func (ch *categoriesHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if claims.PermissionType != queries.Admin {
-		Forbidden(c, "")
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
 		return
 	}
 	id, err := strconv.Atoi(c.Param("id"))
@@ -235,8 +231,7 @@ type pcHandler struct {
 
 func (pch *pcHandler) setTags(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if claims.PermissionType > queries.Vendor {
-		Forbidden(c, "")
+	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
 		return
 	}
 	var json PC
@@ -252,7 +247,7 @@ func (pch *pcHandler) setTags(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
-	if !(product.UserID == claims.ID || claims.PermissionType == queries.Admin) {
+	if product.UserID != claims.ID && !HasPermissions(nil, claims.PermissionType, queries.Admin) {
 		Forbidden(c, "")
 		return
 	}

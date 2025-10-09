@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/auth"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"time"
 
@@ -96,4 +98,12 @@ func Unauthorized(c *gin.Context, msg string) {
 
 func Forbidden(c *gin.Context, msg string) {
 	JSONResponse(c, http.StatusForbidden, msg, "You don't have permission to access this resource.")
+}
+
+func HasPermissions(c *gin.Context, userPermission queries.PermissionType, permissions ...queries.PermissionType) bool {
+	isContains := slices.Contains(permissions, userPermission)
+	if !isContains && c != nil {
+		Forbidden(c, "")
+	}
+	return isContains
 }

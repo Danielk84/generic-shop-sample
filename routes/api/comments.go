@@ -35,8 +35,7 @@ type commentsHandler struct {
 
 func (ch *commentsHandler) create(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if claims.PermissionType > queries.Customer {
-		Forbidden(c, "")
+	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor, queries.Customer) {
 		return
 	}
 	var json queries.CommentRequest
@@ -61,8 +60,8 @@ func (ch *commentsHandler) get(c *gin.Context) {
 		return
 	}
 
-	if !(comment.Username == claims.Username || claims.PermissionType == queries.Admin) {
-
+	if comment.Username != claims.Username && !HasPermissions(nil, claims.PermissionType, queries.Admin) {
+		Forbidden(c, "")
 		return
 	}
 	c.JSON(http.StatusOK, comment)
@@ -86,7 +85,7 @@ func (ch *commentsHandler) list(c *gin.Context) {
 func (ch *commentsHandler) fullList(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	username := claims.Username
-	if claims.PermissionType == queries.Admin {
+	if HasPermissions(nil, claims.PermissionType, queries.Admin) {
 		username = ""
 	}
 
@@ -108,7 +107,7 @@ func (ch *commentsHandler) delete(c *gin.Context) {
 		return
 	}
 
-	if !(comment.Username == claims.Username || claims.PermissionType == queries.Admin) {
+	if comment.Username != claims.Username && !HasPermissions(nil, claims.PermissionType, queries.Admin) {
 		Forbidden(c, "")
 		return
 	}
@@ -121,8 +120,7 @@ func (ch *commentsHandler) delete(c *gin.Context) {
 
 func (ch *commentsHandler) setActive(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if claims.PermissionType != queries.Admin {
-		Forbidden(c, "")
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
 		return
 	}
 	var json SetFlag

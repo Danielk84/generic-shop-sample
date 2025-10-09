@@ -36,8 +36,7 @@ type usersHandler struct {
 
 func (uh *usersHandler) createUserByAdmin(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if claims.PermissionType != queries.Admin {
-		Forbidden(c, "")
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
 		return
 	}
 	var json queries.CreateUserRequest
@@ -65,8 +64,7 @@ func (uh *usersHandler) createUserByAdmin(c *gin.Context) {
 
 func (uh *usersHandler) list(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if claims.PermissionType != queries.Admin {
-		Forbidden(c, "")
+	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
 		return
 	}
 	users, err := uh.us.List(c.Request.Context(), defaultPagination, getOffsetFromPageNum(c.Query("page")))
@@ -89,8 +87,7 @@ func (uh *usersHandler) get(c *gin.Context) {
 
 func (uh *usersHandler) updateUserPermission(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if claims.PermissionType != queries.Admin {
-		Forbidden(c, "")
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
 		return
 	}
 	id, err := strconv.Atoi(c.Param("id"))
