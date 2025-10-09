@@ -1,0 +1,114 @@
+package api_test
+
+import (
+	"bytes"
+	"context"
+	"generic-shop-sample/db"
+	"generic-shop-sample/db/queries"
+	tu "generic-shop-sample/internal/testutils"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+)
+
+const baseCategoriesURL = "/api/categories/"
+
+func TestCategoriesHandler(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+
+	app := tu.RouterSetup(ctx)
+	adminToken := tu.LoginSetup(app, "admin_user", "securePassword")
+
+	tests := []struct {
+		name   string
+		method string
+		url    string
+		code   int
+		token  string
+		body   io.Reader
+	}{
+		{
+			"categories.create",
+			http.MethodPost,
+			baseCategoriesURL + "user/",
+			http.StatusCreated,
+			adminToken,
+			bytes.NewBuffer([]byte(`{"tag": "some new tag"}`)),
+		},
+		{
+			"categories.list",
+			http.MethodGet,
+			baseCategoriesURL,
+			http.StatusOK,
+			"",
+			nil,
+		},
+		{
+			"categories.delete",
+			http.MethodDelete,
+			baseCategoriesURL + "user/1",
+			http.StatusNoContent,
+			adminToken,
+			nil,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(st *testing.T) {
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest(test.method, test.url, test.body)
+			if test.token != "" {
+				req.Header.Set("Authorization", test.token)
+			}
+			app.ServeHTTP(w, req)
+			if w.Code != test.code {
+				st.Errorf(`expected status="%d", but got "%d"`, test.code, w.Code)
+			}
+		})
+		time.Sleep(500 * time.Microsecond)
+	}
+}
+
+const basePCURL = "/api/pc/"
+
+func TestPCHandler(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+
+	app := tu.RouterSetup(ctx)
+	adminToken := tu.LoginSetup(app, "admin_user", "securePassword")
+
+	session := db.NewSession()
+	ps := queries.NewProductStore(session)
+	products, err := ps.List(ctx, 20, 1)
+	if err != nil {
+		t.Errorf("failed to get products list, %s", err)
+	}
+
+	cs := queries.NewCategoryStore(session)
+	for _, tag := range []string{"a", "b", "c"} {
+		if err := cs.Create(ctx, tag); err != nil {
+			t.Errorf("failed to create tag, %s", tag)
+		}
+	}
+
+	// testing pcHandler.setTag
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodPost, basePCURL+"set-tags/"+products[0].ID, bytes.NewBuffer([]byte(`{"tags": ["a", "b", "c"]}`)))
+	req.Header.Set("Authorization", adminToken)
+	app.ServeHTTP(w, req)
+	if w.Code != http.StatusAccepted {
+		t.Errorf(`expected status="%d", but got "%d"`, http.StatusAccepted, w.Code)
+	}
+
+	// testing pcHandler.list
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest(http.MethodGet, basePCURL+products[0].ID, nil)
+	app.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf(`expected status="%d", but got "%d"`, http.StatusOK, w.Code)
+	}
+}
