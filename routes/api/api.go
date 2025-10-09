@@ -18,18 +18,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+var defaultPagination = internal.NewConfig().Pagination
+
 type SetFlag struct {
 	Accepted bool `json:"accepted"`
 }
 
-var defaultPagination = internal.NewConfig().Pagination
-
-func getOffsetFromPageNum(p string) int {
-	page, err := strconv.Atoi(p)
-	if err != nil || page < 1 {
+func GetPage(c *gin.Context) int {
+	page, err := strconv.Atoi(c.DefaultQuery("page", "0"))
+	if err != nil {
 		return 1
 	}
-	return (page - 1) * defaultPagination
+	return page
 }
 
 func UploadFile(file *multipart.FileHeader, claims *auth.AuthClaims, group, dst string) (string, error) {

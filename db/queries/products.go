@@ -81,15 +81,15 @@ func (pr *ProductRepository) List(ctx context.Context, pagination, page int) ([]
 		ORDER BY pub_date DESC
 		LIMIT $1
 		OFFSET $2`
-	return list[ProductSummaryResponse](ctx, pr.session, q, pagination, (page-1)*pagination)
+	return list[ProductSummaryResponse](ctx, pr.session, q, pagination, getOffsetFromPageNum(pagination, page))
 }
 
 func (pr *ProductRepository) FullList(ctx context.Context, userID int32, pagination, page int) ([]ProductStatusResponse, error) {
 	const baseQuery = `SELECT id, name, price, pub_date, is_available, is_active FROM products`
-	const limitOffset = ` LIMIT @Pagination OFFSET @Offset`
+	const limitOffset = ` LIMIT @Limit OFFSET @Offset`
 	args := pgx.NamedArgs{
-		"Pagination": pagination,
-		"Offset":     (page - 1) * pagination,
+		"Limit":  pagination,
+		"Offset": getOffsetFromPageNum(pagination, page),
 	}
 
 	if userID == 0 {

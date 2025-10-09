@@ -47,7 +47,7 @@ func (ph *productsHandler) create(c *gin.Context) {
 }
 
 func (ph *productsHandler) list(c *gin.Context) {
-	products, err := ph.ps.List(c.Request.Context(), defaultPagination, getOffsetFromPageNum(c.Query("page")))
+	products, err := ph.ps.List(c.Request.Context(), defaultPagination, GetPage(c))
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -61,7 +61,7 @@ func (ph *productsHandler) fullList(c *gin.Context) {
 	if HasPermissions(nil, claims.PermissionType, queries.Admin) {
 		id = 0
 	}
-	products, err := ph.ps.FullList(c.Request.Context(), id, defaultPagination, getOffsetFromPageNum(c.Query("page")))
+	products, err := ph.ps.FullList(c.Request.Context(), id, defaultPagination, GetPage(c))
 	if err != nil {
 		NotFound(c, "")
 		return

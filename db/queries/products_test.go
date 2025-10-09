@@ -10,11 +10,14 @@ import (
 	"time"
 )
 
-func TestBasicProductStore(t *testing.T) {
+func TestProductStore(t *testing.T) {
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
 	session := db.NewSession()
+	if _, err := session.Exec(ctx, "TRUNCATE products RESTART IDENTITY CASCADE"); err != nil {
+		t.Errorf("failed to truncate products, %s", err)
+	}
 	ps := queries.NewProductStore(session)
 
 	product := queries.CreateProductRequest{

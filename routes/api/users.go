@@ -67,7 +67,7 @@ func (uh *usersHandler) list(c *gin.Context) {
 	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
 		return
 	}
-	users, err := uh.us.List(c.Request.Context(), defaultPagination, getOffsetFromPageNum(c.Query("page")))
+	users, err := uh.us.List(c.Request.Context(), defaultPagination, GetPage(c))
 	if err != nil {
 		NotFound(c, "")
 		return

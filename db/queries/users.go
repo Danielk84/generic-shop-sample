@@ -132,7 +132,7 @@ func (ur *UserRepository) List(ctx context.Context, pagination, page int) ([]Use
 	ORDER BY is_active DESC
 	LIMIT $1
 	OFFSET $2`
-	return list[UserResponse](ctx, ur.session, q, pagination, (page-1)*pagination)
+	return list[UserResponse](ctx, ur.session, q, pagination, getOffsetFromPageNum(pagination, page))
 }
 
 func (ur *UserRepository) Get(ctx context.Context, username string) (*UserResponse, error) {

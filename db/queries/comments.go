@@ -88,23 +88,23 @@ func (cr *CommentRepository) List(ctx context.Context, parent string, referrer s
 			AND referrer = @Referrer
 			AND is_active = true
 		ORDER BY pub_date DESC
-		LIMIT @Pagniation
+		LIMIT @Limit
 		OFFSET @Offset`
 	args := pgx.NamedArgs{
-		"Parent":     parent,
-		"Referrer":   referrer,
-		"Pagination": pagination,
-		"Offset":     (page - 1) * pagination,
+		"Parent":   parent,
+		"Referrer": referrer,
+		"Limit":    pagination,
+		"Offset":   getOffsetFromPageNum(pagination, page),
 	}
 	return list[CommentResponse](ctx, cr.session, q, args)
 }
 
 func (cr *CommentRepository) FullList(ctx context.Context, username string, pagination, page int) ([]RelatedCommentResponse, error) {
 	const baseQuery = "SELECT id, username, pub_date, COALESCE(parent::TEXT, '') AS parent, children_amount, referrer, body, is_active FROM comments"
-	const limitOffset = ` LIMIT @Pagination OFFSET @Offset`
+	const limitOffset = ` LIMIT @Limit OFFSET @Offset`
 	args := pgx.NamedArgs{
-		"Pagination": pagination,
-		"Offset":     (page - 1) * pagination,
+		"Limit":  pagination,
+		"Offset": getOffsetFromPageNum(pagination, page),
 	}
 
 	if username == "" {

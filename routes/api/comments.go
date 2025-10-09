@@ -74,7 +74,7 @@ func (ch *commentsHandler) list(c *gin.Context) {
 		return
 	}
 
-	items, err := ch.cs.List(c.Request.Context(), json.Parent, url.QueryEscape(json.Referrer), defaultPagination, getOffsetFromPageNum(c.Query("page")))
+	items, err := ch.cs.List(c.Request.Context(), json.Parent, url.QueryEscape(json.Referrer), defaultPagination, GetPage(c))
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -89,7 +89,7 @@ func (ch *commentsHandler) fullList(c *gin.Context) {
 		username = ""
 	}
 
-	items, err := ch.cs.FullList(c.Request.Context(), username, defaultPagination, getOffsetFromPageNum(c.Query("page")))
+	items, err := ch.cs.FullList(c.Request.Context(), username, defaultPagination, GetPage(c))
 	if err != nil {
 		NotFound(c, "")
 		return

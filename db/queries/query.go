@@ -13,6 +13,13 @@ var (
 	ErrFullCapacity = fmt.Errorf("error full capacity")
 )
 
+func getOffsetFromPageNum(pagination, page int) int {
+	if page < 1 {
+		page = 1
+	}
+	return (page - 1) * pagination
+}
+
 func execOne(ctx context.Context, session db.Session, query string, args ...any) error {
 	cTag, err := session.Exec(ctx, query, args...)
 	if err != nil {
