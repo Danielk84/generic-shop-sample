@@ -9,11 +9,11 @@ import (
 
 func APIRouter(ctx context.Context, router *gin.RouterGroup) {
 	api.LoginRouter(ctx, router.Group("/auth"))
+	api.UserProfileRouter(router.Group("/users/profile"))
 	api.UsersRouter(router.Group("/users"))
-	api.UserProfileRouter(router.Group("/user-profile"))
+	api.ProductImagesRouter(router.Group("/products/images"))
 	api.ProductsRouter(router.Group("/products"))
-	api.ProductImagesRouter(router.Group("/product-images"))
+	api.PCRouter(router.Group("categories/pc"))
 	api.CategoriesRouter(router.Group("/categories"))
-	api.PCRouter(router.Group("/pc"))
 	api.CommentsRouter(router.Group("/comments"))
 }

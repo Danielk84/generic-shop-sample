@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"bytes"
+	"fmt"
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
 	tu "generic-shop-sample/internal/testutils"
@@ -31,7 +32,7 @@ func TestCategoriesHandler(t *testing.T) {
 		{
 			"categories.create",
 			http.MethodPost,
-			baseCategoriesURL + "user/",
+			baseCategoriesURL,
 			http.StatusCreated,
 			adminToken,
 			bytes.NewBuffer([]byte(`{"tag": "some new tag"}`)),
@@ -47,7 +48,7 @@ func TestCategoriesHandler(t *testing.T) {
 		{
 			"categories.delete",
 			http.MethodDelete,
-			baseCategoriesURL + "user/1",
+			fmt.Sprintf("%s1", baseCategoriesURL),
 			http.StatusNoContent,
 			adminToken,
 			nil,
@@ -70,7 +71,7 @@ func TestCategoriesHandler(t *testing.T) {
 	}
 }
 
-const basePCURL = "/api/pc/"
+const basePCURL = "/api/categories/pc/"
 
 func TestPCHandler(t *testing.T) {
 	ctx := t.Context()
@@ -106,7 +107,7 @@ func TestPCHandler(t *testing.T) {
 
 	// testing pcHandler.setTag
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPost, basePCURL+"set-tags/"+products[0].ID, bytes.NewBuffer([]byte(`{"tags": ["a", "b", "c"]}`)))
+	req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("%sset-tags/%s", basePCURL, products[0].ID), bytes.NewBuffer([]byte(`{"tags": ["a", "b", "c"]}`)))
 	req.Header.Set("Authorization", adminToken)
 	app.ServeHTTP(w, req)
 	if w.Code != http.StatusAccepted {
@@ -115,7 +116,7 @@ func TestPCHandler(t *testing.T) {
 
 	// testing pcHandler.list
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest(http.MethodGet, basePCURL+products[0].ID, nil)
+	req, _ = http.NewRequest(http.MethodGet, fmt.Sprintf("%s%s", basePCURL, products[0].ID), nil)
 	app.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Errorf(`expected status="%d", but got "%d"`, http.StatusOK, w.Code)

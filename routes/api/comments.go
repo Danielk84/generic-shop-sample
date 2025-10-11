@@ -15,13 +15,13 @@ func CommentsRouter(router *gin.RouterGroup) {
 
 	router.GET("/", ch.list)
 
-	sRouter := router.Group("/user")
-	sRouter.Use(md.AuthMiddleware())
-	sRouter.GET("/", ch.fullList)
-	sRouter.GET("/:id", ch.get)
-	sRouter.POST("/", ch.create)
-	sRouter.PUT("/set-active/:id", ch.setActive)
-	sRouter.DELETE("/:id", ch.delete)
+	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware()}, []RouteSpec{
+		{http.MethodPost, "/", []gin.HandlerFunc{ch.create}},
+		{http.MethodGet, "/full", []gin.HandlerFunc{ch.fullList}},
+		{http.MethodGet, "/overview/:id", []gin.HandlerFunc{ch.get}},
+		{http.MethodPut, "/set-active/:id", []gin.HandlerFunc{ch.setActive}},
+		{http.MethodDelete, "/:id", []gin.HandlerFunc{ch.delete}},
+	})
 }
 
 type RelatedCommentsRequest struct {
@@ -74,12 +74,12 @@ func (ch *commentsHandler) list(c *gin.Context) {
 		return
 	}
 
-	items, err := ch.cs.List(c.Request.Context(), json.Parent, url.QueryEscape(json.Referrer), defaultPagination, GetPage(c))
+	comments, err := ch.cs.List(c.Request.Context(), json.Parent, url.QueryEscape(json.Referrer), defaultPagination, GetPage(c))
 	if err != nil {
 		NotFound(c, "")
 		return
 	}
-	c.JSON(http.StatusOK, items)
+	c.JSON(http.StatusOK, comments)
 }
 
 func (ch *commentsHandler) fullList(c *gin.Context) {

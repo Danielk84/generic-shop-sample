@@ -15,19 +15,18 @@ func ProductsRouter(router *gin.RouterGroup) {
 	ph := productsHandler{queries.NewProductStore(db.NewSession())}
 
 	router.GET("/", ph.list)
+	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware()}, []RouteSpec{
+		{http.MethodPost, "/", []gin.HandlerFunc{ph.create}},
+		{http.MethodPut, "/", []gin.HandlerFunc{ph.update}},
+		{http.MethodDelete, "/:id", []gin.HandlerFunc{ph.delete}},
+		{http.MethodGet, "/full", []gin.HandlerFunc{ph.fullList}},
+		{http.MethodGet, "/overview/:id", []gin.HandlerFunc{ph.get}},
+		{http.MethodPut, "incr/:id", []gin.HandlerFunc{ph.incrBy}},
+		{http.MethodPut, "/decr/:id", []gin.HandlerFunc{ph.decrBy}},
+		{http.MethodPut, "set-available/:id", []gin.HandlerFunc{ph.setAvailable}},
+		{http.MethodPut, "set-active/:id", []gin.HandlerFunc{ph.setActive}},
+	})
 	router.GET("/:id", ph.get)
-
-	sRouter := router.Group("/user")
-	sRouter.Use(md.AuthMiddleware())
-	sRouter.GET("/", ph.fullList)
-	sRouter.GET("/:id", ph.get)
-	sRouter.POST("/", ph.create)
-	sRouter.PUT("/", ph.update)
-	sRouter.PUT("/incr/:id", ph.incrBy)
-	sRouter.PUT("/decr/:id", ph.decrBy)
-	sRouter.PUT("/set-available/:id", ph.setAvailable)
-	sRouter.PUT("/set-active/:id", ph.setActive)
-	sRouter.DELETE("/:id", ph.delete)
 }
 
 type AvailableQuantity struct {
@@ -200,10 +199,10 @@ func ProductImagesRouter(router *gin.RouterGroup) {
 
 	router.GET("/:productID", pih.list)
 
-	sRouter := router.Group("/user")
-	sRouter.Use(md.AuthMiddleware())
-	sRouter.POST("/:productID", pih.create)
-	sRouter.DELETE("/:productID/:id", pih.delete)
+	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware()}, []RouteSpec{
+		{http.MethodPost, "/:productID", []gin.HandlerFunc{pih.create}},
+		{http.MethodDelete, "/:productID/:id", []gin.HandlerFunc{pih.delete}},
+	})
 }
 
 type productImagesHandler struct {

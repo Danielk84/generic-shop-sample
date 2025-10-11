@@ -64,7 +64,7 @@ func TestCommentsHandler(t *testing.T) {
 		{
 			"commentsHandler.create",
 			http.MethodPost,
-			baseCommentsURL + "user/",
+			baseCommentsURL,
 			bytes.NewBuffer(fmt.Appendf([]byte(""), `{"username": "customer_user", "parent": "%s", "referrer": "%s", "body": "some body"}`, parent.ID, referrer)),
 			customerToken,
 			http.StatusCreated,
@@ -77,7 +77,7 @@ func TestCommentsHandler(t *testing.T) {
 		{
 			"commentsHandler.get",
 			http.MethodGet,
-			baseCommentsURL + fmt.Sprintf("user/%s", parent.ID),
+			fmt.Sprintf("%soverview/%s", baseCommentsURL, parent.ID),
 			nil,
 			customerToken,
 			http.StatusOK,
@@ -86,7 +86,7 @@ func TestCommentsHandler(t *testing.T) {
 		{
 			"commentsHandler.list",
 			http.MethodGet,
-			baseCommentsURL + fmt.Sprintf("?parent=%s&referrer=%s", parent.ID, referrer),
+			fmt.Sprintf("%s?parent=%s&referrer=%s", baseCommentsURL, parent.ID, referrer),
 			nil,
 			"",
 			http.StatusOK,
@@ -95,7 +95,7 @@ func TestCommentsHandler(t *testing.T) {
 		{
 			"commentsHandler.fullList",
 			http.MethodGet,
-			baseCommentsURL + "user/",
+			fmt.Sprintf("%sfull", baseCommentsURL),
 			nil,
 			customerToken,
 			http.StatusOK,
@@ -104,7 +104,7 @@ func TestCommentsHandler(t *testing.T) {
 		{
 			"commentsHandler.setActive",
 			http.MethodPut,
-			baseCommentsURL + fmt.Sprintf("user/set-active/%s", parent.ID),
+			fmt.Sprintf("%sset-active/%s", baseCommentsURL, parent.ID),
 			bytes.NewBuffer([]byte(`{"accepted": true}`)),
 			adminToken,
 			http.StatusAccepted,
@@ -113,7 +113,7 @@ func TestCommentsHandler(t *testing.T) {
 		{
 			"commentsHandler.delete",
 			http.MethodDelete,
-			baseCommentsURL + fmt.Sprintf("user/%s", parent.ID),
+			fmt.Sprintf("%s%s", baseCommentsURL, parent.ID),
 			nil,
 			customerToken,
 			http.StatusNoContent,

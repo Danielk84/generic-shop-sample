@@ -65,7 +65,7 @@ func TestProductsHandler(t *testing.T) {
 		{
 			"productsHandler.create",
 			http.MethodPost,
-			baseProductsURL + "user/",
+			baseProductsURL,
 			bytes.NewBuffer([]byte(`{"name": "new product 123", "price": 123, "description": "balb balb", "details": "{\"yepi\": \"yepi\"}", "is_available": true}`)),
 			vendorToken,
 			http.StatusCreated,
@@ -83,7 +83,7 @@ func TestProductsHandler(t *testing.T) {
 		{
 			"productsHandler.get - public",
 			http.MethodGet,
-			baseProductsURL + fmt.Sprintf("%s", products[0].ID),
+			fmt.Sprintf("%s%s", baseProductsURL, products[0].ID),
 			nil,
 			"",
 			http.StatusOK,
@@ -92,7 +92,7 @@ func TestProductsHandler(t *testing.T) {
 		{
 			"productsHandler.fullList - admin",
 			http.MethodGet,
-			baseProductsURL + "user/",
+			fmt.Sprintf("%sfull", baseProductsURL),
 			nil,
 			adminToken,
 			http.StatusOK,
@@ -107,7 +107,7 @@ func TestProductsHandler(t *testing.T) {
 		{
 			"productsHandler.fullList - vendor",
 			http.MethodGet,
-			baseProductsURL + "user/",
+			fmt.Sprintf("%sfull", baseProductsURL),
 			nil,
 			vendorToken,
 			http.StatusOK,
@@ -116,7 +116,7 @@ func TestProductsHandler(t *testing.T) {
 		{
 			"productsHandler.get - user",
 			http.MethodGet,
-			baseProductsURL + fmt.Sprintf("user/%s", products[1].ID),
+			fmt.Sprintf("%soverview/%s", baseProductsURL, products[1].ID),
 			nil,
 			vendorToken,
 			http.StatusOK,
@@ -125,7 +125,7 @@ func TestProductsHandler(t *testing.T) {
 		{
 			"productsHandler.get - admin",
 			http.MethodGet,
-			baseProductsURL + fmt.Sprintf("user/%s", products[2].ID),
+			fmt.Sprintf("%soverview/%s", baseProductsURL, products[2].ID),
 			nil,
 			adminToken,
 			http.StatusOK,
@@ -134,7 +134,7 @@ func TestProductsHandler(t *testing.T) {
 		{
 			"productsHandler.update",
 			http.MethodPut,
-			baseProductsURL + "user/",
+			baseProductsURL,
 			bytes.NewBuffer(fmt.Appendf([]byte(""), `{"id": "%s", "name": "new name", "price": 123, "description": "new info", "details": "{\"some-feild\": \"some info\"}", "is_available": true}`, products[6].ID)),
 			vendorToken,
 			http.StatusAccepted,
@@ -143,7 +143,7 @@ func TestProductsHandler(t *testing.T) {
 		{
 			"productsHandler.incrBy",
 			http.MethodPut,
-			baseProductsURL + fmt.Sprintf("user/incr/%s", products[3].ID),
+			fmt.Sprintf("%sincr/%s", baseProductsURL, products[3].ID),
 			bytes.NewBuffer([]byte(`{"num": 10}`)),
 			vendorToken,
 			http.StatusAccepted,
@@ -152,7 +152,7 @@ func TestProductsHandler(t *testing.T) {
 		{
 			"productsHandler.decrBy",
 			http.MethodPut,
-			baseProductsURL + fmt.Sprintf("user/decr/%s", products[3].ID),
+			fmt.Sprintf("%sdecr/%s", baseProductsURL, products[3].ID),
 			bytes.NewBuffer([]byte(`{"num": 5}`)),
 			vendorToken,
 			http.StatusAccepted,
@@ -161,7 +161,7 @@ func TestProductsHandler(t *testing.T) {
 		{
 			"productsHandler.setAvailable",
 			http.MethodPut,
-			baseProductsURL + fmt.Sprintf("user/set-available/%s", products[3].ID),
+			fmt.Sprintf("%sset-available/%s", baseProductsURL, products[3].ID),
 			bytes.NewBuffer([]byte(`{"accepted": true}`)),
 			vendorToken,
 			http.StatusAccepted,
@@ -170,7 +170,7 @@ func TestProductsHandler(t *testing.T) {
 		{
 			"productHandler.setActive",
 			http.MethodPut,
-			baseProductsURL + fmt.Sprintf("user/set-active/%s", products[4].ID),
+			fmt.Sprintf("%sset-active/%s", baseProductsURL, products[4].ID),
 			bytes.NewBuffer([]byte(`{"accepted": true}`)),
 			adminToken,
 			http.StatusAccepted,
@@ -179,7 +179,7 @@ func TestProductsHandler(t *testing.T) {
 		{
 			"productsHandler.delete",
 			http.MethodDelete,
-			baseProductsURL + fmt.Sprintf("user/%s", products[5].ID),
+			fmt.Sprintf("%s%s", baseProductsURL, products[5].ID),
 			nil,
 			vendorToken,
 			http.StatusNoContent,
@@ -205,7 +205,7 @@ func TestProductsHandler(t *testing.T) {
 	}
 }
 
-const baseProductImagesURL = "/api/product-images/"
+const baseProductImagesURL = "/api/products/images/"
 
 func TestProductImagesRouter(t *testing.T) {
 	ctx := t.Context()
@@ -225,7 +225,7 @@ func TestProductImagesRouter(t *testing.T) {
 	_, p, _, _ := runtime.Caller(0)
 	basePath := filepath.Join(filepath.Dir(p), "..", "..", "internal", "testutils", "testfile", "temp.jpeg")
 	w := httptest.NewRecorder()
-	req, err := tu.FileUploadRequest(baseProductImagesURL+"user/"+products[0].ID, vendorToken, "file", basePath)
+	req, err := tu.FileUploadRequest(fmt.Sprintf("%s%s", baseProductImagesURL, products[0].ID), vendorToken, "file", basePath)
 	if err != nil {
 		t.Errorf(`failed to create multipart request, %s`, err)
 		return
@@ -237,7 +237,7 @@ func TestProductImagesRouter(t *testing.T) {
 
 	// testing productImagesHandler.list
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest(http.MethodGet, baseProductImagesURL+products[0].ID, nil)
+	req, _ = http.NewRequest(http.MethodGet, fmt.Sprintf("%s%s", baseProductImagesURL, products[0].ID), nil)
 	app.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Errorf(`expected status="%d", but got "%d"`, http.StatusOK, w.Code)
@@ -251,7 +251,7 @@ func TestProductImagesRouter(t *testing.T) {
 
 	// testing productImagesHandler.delete
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest(http.MethodDelete, fmt.Sprintf("%suser/%s/%s", baseProductImagesURL, products[0].ID, resJson[0]["id"]), nil)
+	req, _ = http.NewRequest(http.MethodDelete, fmt.Sprintf("%s%s/%s", baseProductImagesURL, products[0].ID, resJson[0]["id"]), nil)
 	req.Header.Set("Authorization", vendorToken)
 	app.ServeHTTP(w, req)
 	if w.Code != http.StatusNoContent {

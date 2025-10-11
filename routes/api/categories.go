@@ -16,10 +16,10 @@ func CategoriesRouter(router *gin.RouterGroup) {
 
 	router.GET("/", cs.list)
 
-	sRouter := router.Group("user")
-	sRouter.Use(md.AuthMiddleware())
-	sRouter.POST("/", cs.create)
-	sRouter.DELETE("/:id", cs.delete)
+	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware()}, []RouteSpec{
+		{http.MethodPost, "/", []gin.HandlerFunc{cs.create}},
+		{http.MethodDelete, "/:id", []gin.HandlerFunc{cs.delete}},
+	})
 }
 
 type categoriesHandler struct {

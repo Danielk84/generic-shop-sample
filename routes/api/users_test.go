@@ -146,7 +146,7 @@ func TestUsersHandler(t *testing.T) {
 	}
 }
 
-const baseUserProfileURL = `/api/user-profile/`
+const baseUserProfileURL = `/api/users/profile/`
 
 func TestUserProfileHandler(t *testing.T) {
 	ctx := t.Context()

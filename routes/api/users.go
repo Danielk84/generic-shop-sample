@@ -20,13 +20,15 @@ func UsersRouter(router *gin.RouterGroup) {
 		db.NewCache(db.UsersCache),
 	}
 
-	router.Use(md.AuthMiddleware())
-	router.GET("/", uh.list)
 	router.GET("/:username", uh.get)
-	router.POST("/", uh.createUserByAdmin)
-	router.PUT("/:id", uh.updateUserPermission)
-	router.PUT("/set-email", uh.setEmail)
-	router.DELETE("/", uh.delete)
+
+	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware()}, []RouteSpec{
+		{http.MethodGet, "/", []gin.HandlerFunc{uh.list}},
+		{http.MethodPost, "/", []gin.HandlerFunc{uh.createUserByAdmin}},
+		{http.MethodDelete, "/", []gin.HandlerFunc{uh.delete}},
+		{http.MethodPut, "/set-email", []gin.HandlerFunc{uh.setEmail}},
+		{http.MethodPut, "/:id", []gin.HandlerFunc{uh.updateUserPermission}},
+	})
 }
 
 type usersHandler struct {

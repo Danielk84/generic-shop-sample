@@ -20,6 +20,19 @@ import (
 
 var defaultPagination = internal.NewConfig().Pagination
 
+type RouteSpec struct {
+	Method       string
+	RelativePath string
+	Handlers     []gin.HandlerFunc
+}
+
+func RegisterRoutesWith(router *gin.RouterGroup, middlewares []gin.HandlerFunc, ehs []RouteSpec) {
+	for _, eh := range ehs {
+		handlers := append(middlewares, eh.Handlers...)
+		router.Handle(eh.Method, eh.RelativePath, handlers...)
+	}
+}
+
 type SetFlag struct {
 	Accepted bool `json:"accepted"`
 }
