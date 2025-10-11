@@ -6,6 +6,7 @@ CREATE TABLE products (
     details JSONB,
     price BIGINT NOT NULL DEFAULT 0,
     pub_date TIMESTAMP NOT NULL DEFAULT now(),
+    available_quantity INTEGER NOT NULL CHECK (available_quantity >= 0) DEFAULT 0,
     is_available BOOLEAN NOT NULL DEFAULT FALSE,
     is_active BOOLEAN NOT NULL DEFAULT FALSE
 );

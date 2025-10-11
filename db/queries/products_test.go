@@ -45,13 +45,20 @@ func TestProductStore(t *testing.T) {
 		t.Errorf("list mismatch: got %+v, expected name=%q, price=%d", gotSummary, product.Name, product.Price)
 	}
 
+	if err := ps.IncrBy(ctx, gotSummary.ID, 1, 10); err != nil {
+		t.Errorf("failed to incr by, %s", err)
+	}
+	if err := ps.DecrBy(ctx, gotSummary.ID, 1, 5); err != nil {
+		t.Errorf("failed to decr by, %s", err)
+	}
+
 	got, err := ps.Get(ctx, gotSummary.ID)
 	if err != nil {
 		t.Fatalf("failed to get product, %s", err)
 	}
-	if got.Name != product.Name || got.Description != product.Description {
-		t.Errorf("get mismatch: got %+v, expected name=%q, description=%q",
-			got, product.Name, product.Description)
+	if got.Name != product.Name || got.Description != product.Description || got.AvailableQuantity != 5 {
+		t.Errorf(`get mismatch: got "%+v", expected name="%q", description="%q", available_quantity="%d"`,
+			got, product.Name, product.Description, 5)
 	}
 
 	uProduct := queries.UpdateProductRequest{
@@ -149,7 +156,7 @@ func TestFullListProducts(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(st *testing.T) {
-			flist, err := ps.FullList(ctx, test.id, test.pagination, test.page)
+			items, err := ps.FullList(ctx, test.id, test.pagination, test.page)
 			if err != nil {
 				if test.expectedCount == 0 {
 					return
@@ -157,7 +164,7 @@ func TestFullListProducts(t *testing.T) {
 				st.Errorf("unexpected error, %s", err)
 				return
 			}
-			if got := len(flist); got != test.expectedCount {
+			if got := len(items); got != test.expectedCount {
 				t.Errorf(`expected "%d" products, but got "%d"`, test.expectedCount, got)
 			}
 		})

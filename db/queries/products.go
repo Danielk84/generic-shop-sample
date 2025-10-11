@@ -31,8 +31,9 @@ type ProductSummaryResponse struct {
 
 type ProductStatusResponse struct {
 	ProductSummaryResponse
-	IsAvailable bool `json:"is_available"`
-	IsActive    bool `json:"is_active"`
+	AvailableQuantity int32 `json:"available_quantity"`
+	IsAvailable       bool  `json:"is_available"`
+	IsActive          bool  `json:"is_active"`
 }
 
 type OwnedProductResponse struct {
@@ -53,6 +54,8 @@ type ProductStore interface {
 	Get(ctx context.Context, id string) (*OwnedProductResponse, error)
 	Update(ctx context.Context, userID int32, product *UpdateProductRequest) error
 	Delete(ctx context.Context, id string, userID int32) error
+	IncrBy(ctx context.Context, id string, userID, num int32) error
+	DecrBy(ctx context.Context, id string, userID, num int32) error
 	SetAvailable(ctx context.Context, id string, isActive bool) error
 	SetActive(ctx context.Context, id string, isActive bool) error
 }
@@ -78,14 +81,14 @@ func (pr *ProductRepository) Create(ctx context.Context, userID int32, product *
 func (pr *ProductRepository) List(ctx context.Context, pagination, page int) ([]ProductSummaryResponse, error) {
 	const q = `SELECT id, name, price, pub_date FROM products
 		WHERE is_active = true AND is_available = true
-		ORDER BY pub_date DESC
+		ORDER BY pub_date DESC, available_quantity DESC, price
 		LIMIT $1
 		OFFSET $2`
 	return list[ProductSummaryResponse](ctx, pr.session, q, pagination, getOffsetFromPageNum(pagination, page))
 }
 
 func (pr *ProductRepository) FullList(ctx context.Context, userID int32, pagination, page int) ([]ProductStatusResponse, error) {
-	const baseQuery = `SELECT id, name, price, pub_date, is_available, is_active FROM products`
+	const baseQuery = `SELECT id, name, price, pub_date, available_quantity, is_available, is_active FROM products`
 	const limitOffset = ` LIMIT @Limit OFFSET @Offset`
 	args := pgx.NamedArgs{
 		"Limit":  pagination,
@@ -102,7 +105,8 @@ func (pr *ProductRepository) FullList(ctx context.Context, userID int32, paginat
 }
 
 func (pr *ProductRepository) Get(ctx context.Context, id string) (*OwnedProductResponse, error) {
-	const q = `SELECT id, user_id, name, description, COALESCE(details::TEXT, '{}') AS details, price, pub_date, is_available, is_active FROM products
+	const q = `SELECT id, user_id, name, description, COALESCE(details::TEXT, '{}') AS details, price, pub_date, available_quantity, is_available, is_active
+		FROM products
 		WHERE id = $1::UUID
 		LIMIT 1`
 	return get[OwnedProductResponse](ctx, pr.session, q, id)
@@ -127,6 +131,26 @@ func (pr *ProductRepository) Update(ctx context.Context, userID int32, product *
 func (pr *ProductRepository) Delete(ctx context.Context, id string, userID int32) error {
 	const q = `DELETE FROM products WHERE id = $1::UUID and user_id = $2`
 	return execOne(ctx, pr.session, q, id, userID)
+}
+
+func (pr *ProductRepository) IncrBy(ctx context.Context, id string, userID, num int32) error {
+	const q = `UPDATE products SET available_quantity = available_quantity + @Num WHERE id = @ID AND user_id = @UserID`
+	args := pgx.NamedArgs{
+		"Num":    num,
+		"ID":     id,
+		"UserID": userID,
+	}
+	return execOne(ctx, pr.session, q, args)
+}
+
+func (pr *ProductRepository) DecrBy(ctx context.Context, id string, userID, num int32) error {
+	const q = `UPDATE products SET available_quantity = available_quantity - @Num WHERE id = @ID AND user_id = @UserID`
+	args := pgx.NamedArgs{
+		"Num":    num,
+		"ID":     id,
+		"UserID": userID,
+	}
+	return execOne(ctx, pr.session, q, args)
 }
 
 func (pr *ProductRepository) SetAvailable(ctx context.Context, id string, isAvailable bool) error {
