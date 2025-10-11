@@ -23,9 +23,15 @@ func ProductsRouter(router *gin.RouterGroup) {
 	sRouter.GET("/:id", ph.get)
 	sRouter.POST("/", ph.create)
 	sRouter.PUT("/", ph.update)
+	sRouter.PUT("/incr/:id", ph.incrBy)
+	sRouter.PUT("/decr/:id", ph.decrBy)
 	sRouter.PUT("/set-available/:id", ph.setAvailable)
 	sRouter.PUT("/set-active/:id", ph.setActive)
 	sRouter.DELETE("/:id", ph.delete)
+}
+
+type AvailableQuantity struct {
+	Num int32 `json:"num" binding:"required,gt=0"`
 }
 
 type productsHandler struct {
@@ -113,6 +119,38 @@ func (ph *productsHandler) delete(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+func (ph *productsHandler) incrBy(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	var json AvailableQuantity
+	if err := c.ShouldBindJSON(&json); err != nil {
+		BadRequest(c, "")
+		return
+	}
+	id := c.Param("id")
+	if err := ph.ps.IncrBy(c.Request.Context(), id, claims.ID, json.Num); err != nil {
+		NotFound(c, "")
+		return
+	}
+	Accepted(c, "")
+}
+
+func (ph *productsHandler) decrBy(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	var json AvailableQuantity
+	if err := c.ShouldBindJSON(&json); err != nil {
+		BadRequest(c, "")
+		return
+	}
+	id := c.Param("id")
+	if err := ph.ps.DecrBy(c.Request.Context(), id, claims.ID, json.Num); err != nil {
+		slog.Debug("why", "error", err)
+		NotFound(c, "")
+		return
+	}
+	Accepted(c, "")
+
 }
 
 func (ph *productsHandler) setAvailable(c *gin.Context) {
