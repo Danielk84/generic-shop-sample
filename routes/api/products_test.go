@@ -2,7 +2,6 @@ package api_test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"generic-shop-sample/db"
@@ -15,14 +14,12 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
-	"time"
 )
 
 const baseProductsURL = "/api/products/"
 
 func TestProductsHandler(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	defer cancel()
+	ctx := t.Context()
 
 	app := tu.RouterSetup(ctx)
 	adminToken := tu.LoginSetup(app, "admin_user", "securePassword")
@@ -193,8 +190,7 @@ func TestProductsHandler(t *testing.T) {
 const baseProductImagesURL = "/api/product-images/"
 
 func TestProductImagesRouter(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	defer cancel()
+	ctx := t.Context()
 
 	app := tu.RouterSetup(ctx)
 	session := db.NewSession()

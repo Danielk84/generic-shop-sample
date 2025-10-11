@@ -17,11 +17,11 @@ func TestDBEngine(t *testing.T) {
 	defer engine.Close()
 
 	session := db.NewSession()
-	timeoutCtx, timeoutCancel := context.WithTimeout(t.Context(), 5*time.Second)
-	defer timeoutCancel()
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
 
 	var n int32
-	if err := session.QueryRow(timeoutCtx, "select $1::int", 1).Scan(&n); err != nil {
+	if err := session.QueryRow(ctx, "select $1::int", 1).Scan(&n); err != nil {
 		t.Errorf("error on running QueryRow in session: %s", err)
 	}
 	if n != 1 {

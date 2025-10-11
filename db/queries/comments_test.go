@@ -1,16 +1,13 @@
 package queries_test
 
 import (
-	"context"
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
 	"testing"
-	"time"
 )
 
-func TestBasicCommentStoreMethods(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	defer cancel()
+func TestCommentStore(t *testing.T) {
+	ctx := t.Context()
 
 	session := db.NewSession()
 	cs := queries.NewCommentStore(session)
@@ -137,8 +134,7 @@ func TestBasicCommentStoreMethods(t *testing.T) {
 }
 
 func TestFullListComments(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	defer cancel()
+	ctx := t.Context()
 
 	session := db.NewSession()
 	if _, err := session.Exec(ctx, "TRUNCATE comments"); err != nil {

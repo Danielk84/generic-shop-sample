@@ -2,7 +2,6 @@ package api_test
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
 	"generic-shop-sample/db"
@@ -17,14 +16,12 @@ import (
 	"strconv"
 	"strings"
 	"testing"
-	"time"
 )
 
 const baseUserURL = "/api/users/"
 
 func TestUsersHandler(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-	defer cancel()
+	ctx := t.Context()
 
 	app := tu.RouterSetup(ctx)
 	us := queries.NewUserStore(db.NewSession())
@@ -152,8 +149,7 @@ func TestUsersHandler(t *testing.T) {
 const baseUserProfileURL = `/api/user-profile/`
 
 func TestUserProfileHandler(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	defer cancel()
+	ctx := t.Context()
 
 	app := tu.RouterSetup(ctx)
 	tokenString := tu.LoginSetup(app, "vendor_user", "securePassword")

@@ -44,10 +44,10 @@ func CacheSetup(ctx context.Context) db.CacheManager {
 	return cache
 }
 
-func CeckErrList(errs []error) {
+func CeckErrList(name string, errs []error) {
 	if len(errs) > 0 {
 		for _, err := range errs {
-			slog.Error(err.Error())
+			slog.Error("testMain - "+name, "error", err)
 		}
 		os.Exit(1)
 	}

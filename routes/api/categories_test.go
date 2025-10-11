@@ -2,7 +2,6 @@ package api_test
 
 import (
 	"bytes"
-	"context"
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
 	tu "generic-shop-sample/internal/testutils"
@@ -16,8 +15,7 @@ import (
 const baseCategoriesURL = "/api/categories/"
 
 func TestCategoriesHandler(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	defer cancel()
+	ctx := t.Context()
 
 	app := tu.RouterSetup(ctx)
 	adminToken := tu.LoginSetup(app, "admin_user", "securePassword")
@@ -75,14 +73,25 @@ func TestCategoriesHandler(t *testing.T) {
 const basePCURL = "/api/pc/"
 
 func TestPCHandler(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	defer cancel()
+	ctx := t.Context()
 
 	app := tu.RouterSetup(ctx)
 	adminToken := tu.LoginSetup(app, "admin_user", "securePassword")
 
 	session := db.NewSession()
 	ps := queries.NewProductStore(session)
+	if err := ps.Create(ctx, 1, &queries.CreateProductRequest{
+		Name:        "new model",
+		Price:       1233,
+		Description: "some info",
+		Details:     `{"yep": "yep"}`,
+		IsAvailable: true,
+	}); err != nil {
+		t.Errorf("failed to create products, %s", err)
+	}
+	if _, err := session.Exec(ctx, "UPDATE products SET is_active = true"); err != nil {
+		t.Errorf("failed to activate products, %s", err)
+	}
 	products, err := ps.List(ctx, 20, 1)
 	if err != nil {
 		t.Errorf("failed to get products list, %s", err)

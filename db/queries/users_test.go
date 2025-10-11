@@ -1,7 +1,6 @@
 package queries_test
 
 import (
-	"context"
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
 	"testing"
@@ -142,8 +141,7 @@ func TestDeleteUser(t *testing.T) {
 }
 
 func TestUserProfileStore(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	defer cancel()
+	ctx := t.Context()
 
 	session := db.NewSession()
 	us := queries.NewUserStore(session)

@@ -24,15 +24,15 @@ var (
 )
 
 func NewDBEngine(ctx context.Context, addr string) (*DBEngine, error) {
-	connCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	session, err := pgxpool.New(connCtx, addr)
+	session, err := pgxpool.New(ctx, addr)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := session.Ping(connCtx); err != nil {
+	if err := session.Ping(ctx); err != nil {
 		session.Close()
 		return nil, err
 	}

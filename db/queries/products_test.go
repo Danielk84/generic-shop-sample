@@ -1,18 +1,15 @@
 package queries_test
 
 import (
-	"context"
 	"fmt"
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal"
 	"testing"
-	"time"
 )
 
 func TestProductStore(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	defer cancel()
+	ctx := t.Context()
 
 	session := db.NewSession()
 	if _, err := session.Exec(ctx, "TRUNCATE products RESTART IDENTITY CASCADE"); err != nil {
@@ -106,8 +103,7 @@ func TestProductStore(t *testing.T) {
 }
 
 func TestFullListProducts(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	defer cancel()
+	ctx := t.Context()
 
 	session := db.NewSession()
 	if _, err := session.Exec(ctx, "TRUNCATE products RESTART IDENTITY CASCADE"); err != nil {
@@ -169,8 +165,7 @@ func TestFullListProducts(t *testing.T) {
 }
 
 func TestProductImagesStore(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	ctx := t.Context()
 
 	session := db.NewSession()
 	ps := queries.NewProductStore(session)

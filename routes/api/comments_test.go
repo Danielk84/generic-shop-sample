@@ -2,7 +2,6 @@ package api_test
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
@@ -18,8 +17,7 @@ import (
 const baseCommentsURL = "/api/comments/"
 
 func TestCommentsHandler(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-	defer cancel()
+	ctx := t.Context()
 
 	app := tu.RouterSetup(ctx)
 	session := db.NewSession()

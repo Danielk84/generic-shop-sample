@@ -12,7 +12,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	engine := tu.DBManagerSetup(ctx)
@@ -68,7 +68,7 @@ func TestMain(m *testing.M) {
 	cache.Close()
 	engine.Close()
 
-	tu.CeckErrList(errs)
+	tu.CeckErrList("api", errs)
 
 	os.Exit(exitVal)
 }

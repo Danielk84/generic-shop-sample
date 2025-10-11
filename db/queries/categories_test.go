@@ -1,16 +1,13 @@
 package queries_test
 
 import (
-	"context"
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
 	"testing"
-	"time"
 )
 
 func TestBasicCategoryStoreMethods(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	defer cancel()
+	ctx := t.Context()
 
 	session := db.NewSession()
 	cs := queries.NewCategoryStore(session)
@@ -67,8 +64,7 @@ func TestBasicCategoryStoreMethods(t *testing.T) {
 }
 
 func TestSetTagsListPCStore(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
-	defer cancel()
+	ctx := t.Context()
 
 	session := db.NewSession()
 

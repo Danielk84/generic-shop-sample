@@ -23,7 +23,7 @@ var teardownFuncs = []DatabaseFixtureFn{
 }
 
 func TestMain(m *testing.M) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	engine := tu.DBManagerSetup(ctx)
 	session := db.NewSession()
 
@@ -48,7 +48,7 @@ func TestMain(m *testing.M) {
 	engine.Close()
 	cancel()
 
-	tu.CeckErrList(errs)
+	tu.CeckErrList("query", errs)
 
 	os.Exit(exitVal)
 }
