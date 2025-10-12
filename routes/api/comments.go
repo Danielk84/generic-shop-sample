@@ -26,7 +26,7 @@ func CommentsRouter(router *gin.RouterGroup) {
 
 type RelatedCommentsRequest struct {
 	Parent   string `form:"parent" binding:"required,uuid"`
-	Referrer string `form:"referrer" binding:"required"`
+	Referrer string `form:"referrer" binding:"required,uuid"`
 }
 
 type commentsHandler struct {
@@ -44,7 +44,7 @@ func (ch *commentsHandler) create(c *gin.Context) {
 		return
 	}
 
-	if err := ch.cs.Create(c.Request.Context(), &json); err != nil {
+	if err := ch.cs.Create(c.Request.Context(), claims.Username, &json); err != nil {
 		BadRequest(c, "")
 		return
 	}

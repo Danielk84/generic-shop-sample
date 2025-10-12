@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestBasicCategoryStoreMethods(t *testing.T) {
+func TestCategoryStore(t *testing.T) {
 	ctx := t.Context()
 
 	session := db.NewSession()
@@ -63,7 +63,7 @@ func TestBasicCategoryStoreMethods(t *testing.T) {
 	}
 }
 
-func TestSetTagsListPCStore(t *testing.T) {
+func TestPCStore(t *testing.T) {
 	ctx := t.Context()
 
 	session := db.NewSession()

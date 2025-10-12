@@ -9,9 +9,8 @@ import (
 )
 
 type CommentRequest struct {
-	Username string `json:"username" binding:"required,username"`
-	Parent   string `json:"parent" binding:"required,uuid"`
-	Referrer string `json:"referrer" binding:"required"`
+	Parent   string `json:"parent" binding:"omitempty,uuid"`
+	Referrer string `json:"referrer" binding:"required,uuid"`
 	Body     string `json:"body"`
 }
 
@@ -35,7 +34,7 @@ type CommentRepository struct {
 }
 
 type CommentStore interface {
-	Create(ctx context.Context, comment *CommentRequest) error
+	Create(ctx context.Context, username string, comment *CommentRequest) error
 	Get(ctx context.Context, id string) (*RelatedCommentResponse, error)
 	List(ctx context.Context, parent string, referrer string, pagination, page int) ([]CommentResponse, error)
 	FullList(ctx context.Context, username string, pagination, page int) ([]RelatedCommentResponse, error)
@@ -47,13 +46,13 @@ func NewCommentStore(session db.Session) CommentStore {
 	return &CommentRepository{session}
 }
 
-func (cr *CommentRepository) Create(ctx context.Context, comment *CommentRequest) error {
+func (cr *CommentRepository) Create(ctx context.Context, username string, comment *CommentRequest) error {
 	const createCommentQuery = `INSERT INTO comments(username, parent, children_amount, referrer, body)
 		VALUES (@Username, NULLIF(@Parent, '')::UUID, 0, @Referrer, @Body)`
 	const upadteChildrenCount = `UPDATE comments SET children_amount = children_amount + 1 WHERE id = $1::UUID`
 
 	args := pgx.NamedArgs{
-		"Username": comment.Username,
+		"Username": username,
 		"Parent":   comment.Parent,
 		"Referrer": comment.Referrer,
 		"Body":     comment.Body,
@@ -77,13 +76,13 @@ func (cr *CommentRepository) Create(ctx context.Context, comment *CommentRequest
 }
 
 func (cr *CommentRepository) Get(ctx context.Context, id string) (*RelatedCommentResponse, error) {
-	const q = `SELECT id, username, pub_date, COALESCE(parent::TEXT, '') AS parent, children_amount, referrer, body, is_active FROM comments
+	const q = `SELECT id, COALESCE(username, 'deleted') AS username, pub_date, COALESCE(parent::TEXT, '') AS parent, children_amount, referrer, body, is_active FROM comments
 		WHERE id = $1::UUID`
 	return get[RelatedCommentResponse](ctx, cr.session, q, id)
 }
 
 func (cr *CommentRepository) List(ctx context.Context, parent string, referrer string, pagination, page int) ([]CommentResponse, error) {
-	const q = `SELECT id, username, pub_date, children_amount, body FROM comments
+	const q = `SELECT id, COALESCE(username, 'deleted') AS username, pub_date, children_amount, body FROM comments
 		WHERE COALESCE(parent::TEXT, '') = @Parent
 			AND referrer = @Referrer
 			AND is_active = true
@@ -100,7 +99,7 @@ func (cr *CommentRepository) List(ctx context.Context, parent string, referrer s
 }
 
 func (cr *CommentRepository) FullList(ctx context.Context, username string, pagination, page int) ([]RelatedCommentResponse, error) {
-	const baseQuery = "SELECT id, username, pub_date, COALESCE(parent::TEXT, '') AS parent, children_amount, referrer, body, is_active FROM comments"
+	const baseQuery = "SELECT id, COALESCE(username, 'deleted') AS username, pub_date, COALESCE(parent::TEXT, '') AS parent, children_amount, referrer, body, is_active FROM comments"
 	const limitOffset = ` LIMIT @Limit OFFSET @Offset`
 	args := pgx.NamedArgs{
 		"Limit":  pagination,
@@ -112,7 +111,7 @@ func (cr *CommentRepository) FullList(ctx context.Context, username string, pagi
 		return list[RelatedCommentResponse](ctx, cr.session, q, args)
 	}
 	args["Username"] = username
-	q := baseQuery + " WHERE username = @Username ORDER BY pub_date DESC" + limitOffset
+	q := baseQuery + " WHERE username = NULLIF(@Username, 'deleted') ORDER BY pub_date DESC" + limitOffset
 	return list[RelatedCommentResponse](ctx, cr.session, q, args)
 }
 

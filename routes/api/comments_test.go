@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"testing"
 	"time"
 )
@@ -21,7 +20,7 @@ func TestCommentsHandler(t *testing.T) {
 
 	app := tu.RouterSetup(ctx)
 	session := db.NewSession()
-	if _, err := session.Exec(ctx, "TRUNCATE comments RESTART IDENTITY"); err != nil {
+	if _, err := session.Exec(ctx, "TRUNCATE comments, products RESTART IDENTITY CASCADE"); err != nil {
 		t.Errorf("failed to truncate comments, %s", err)
 	}
 
@@ -33,10 +32,25 @@ func TestCommentsHandler(t *testing.T) {
 	customerToken := tu.LoginSetup(app, "customer_user", "securePassword")
 	adminToken := tu.LoginSetup(app, "admin_user", "securePassword")
 
+	ps := queries.NewProductStore(session)
+	if err := ps.Create(ctx, 1, &queries.CreateProductRequest{
+		Name:        "new product for comments",
+		Price:       1001,
+		Description: "lalala",
+		Details:     "{}",
+		IsAvailable: true,
+	}); err != nil {
+		t.Errorf("failed to create product, %s", err)
+	}
+	products, err := ps.FullList(ctx, 0, 20, 1)
+	if err != nil {
+		t.Errorf("failed to get products full list, %s", err)
+	}
+	product := products[0]
+
 	cs := queries.NewCommentStore(session)
-	referrer := url.QueryEscape("/")
-	if err = cs.Create(ctx, &queries.CommentRequest{
-		Username: customer.Username,
+	referrer := product.ID
+	if err = cs.Create(ctx, customer.Username, &queries.CommentRequest{
 		Parent:   "",
 		Referrer: referrer,
 		Body:     "yeppi",
@@ -65,7 +79,16 @@ func TestCommentsHandler(t *testing.T) {
 			"commentsHandler.create",
 			http.MethodPost,
 			baseCommentsURL,
-			bytes.NewBuffer(fmt.Appendf([]byte(""), `{"username": "customer_user", "parent": "%s", "referrer": "%s", "body": "some body"}`, parent.ID, referrer)),
+			bytes.NewBuffer(fmt.Appendf([]byte(""), `{"referrer": "%s", "body": "some body"}`, referrer)),
+			customerToken,
+			http.StatusCreated,
+			nil,
+		},
+		{
+			"commentsHandler.create - subCommant",
+			http.MethodPost,
+			baseCommentsURL,
+			bytes.NewBuffer(fmt.Appendf([]byte(""), `{"parent": "%s", "referrer": "%s", "body": "some body"}`, parent.ID, referrer)),
 			customerToken,
 			http.StatusCreated,
 			func(st *testing.T, w *httptest.ResponseRecorder) {
