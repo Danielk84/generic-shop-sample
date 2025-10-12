@@ -10,9 +10,10 @@ import (
 
 func setCustomValidators() {
 	cv := map[string]validator.Func{
-		"username": usernameValidator,
-		"password": passwordValidator,
-		"date":     dateValidator,
+		"username":          usernameValidator,
+		"password":          passwordValidator,
+		"date":              dateValidator,
+		"iran_phone_number": iranPhoneNumberValidator,
 	}
 
 	v, ok := binding.Validator.Engine().(*validator.Validate)
@@ -24,18 +25,18 @@ func setCustomValidators() {
 	}
 }
 
-var usernameValidatorRegex = regexp.MustCompile("(?s)(^([a-z]|[0-9]|[_-]){4,128}$)")
+var usernameValidatorRegexp = regexp.MustCompile(`(^([a-z]|[0-9]|[_-]){4,128}$)`)
 
 func usernameValidator(fl validator.FieldLevel) bool {
-	return usernameValidatorRegex.MatchString(fl.Field().String())
+	return usernameValidatorRegexp.MatchString(fl.Field().String())
 }
 
-var basicPasswordRegex = regexp.MustCompile("(?s)(^[a-zA-Z][!-~]{7,63}$)")
-var isUpperExistRegex = regexp.MustCompile("[A-Z]")
+var basicPasswordRegexp = regexp.MustCompile(`(^[a-zA-Z][!-~]{7,63}$)`)
+var isUpperExistRegexp = regexp.MustCompile(`[A-Z]`)
 
 func passwordValidator(fl validator.FieldLevel) bool {
 	value := fl.Field().String()
-	regexPatterns := []*regexp.Regexp{basicPasswordRegex, isUpperExistRegex}
+	regexPatterns := []*regexp.Regexp{basicPasswordRegexp, isUpperExistRegexp}
 	for _, rp := range regexPatterns {
 		if !rp.MatchString(value) {
 			return false
@@ -49,4 +50,10 @@ func dateValidator(fl validator.FieldLevel) bool {
 		return false
 	}
 	return true
+}
+
+var basicIranPhoneNumberRegexp = regexp.MustCompile(`(^(0098|98|\+98|0)9[0-9]{9}$)`)
+
+func iranPhoneNumberValidator(fl validator.FieldLevel) bool {
+	return basicIranPhoneNumberRegexp.MatchString(fl.Field().String())
 }
