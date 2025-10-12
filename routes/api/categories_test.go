@@ -101,7 +101,7 @@ func TestPCHandler(t *testing.T) {
 	cs := queries.NewCategoryStore(session)
 	for _, tag := range []string{"a", "b", "c"} {
 		if err := cs.Create(ctx, tag); err != nil {
-			t.Errorf("failed to create tag, %s", tag)
+			t.Errorf(`failed to create tag, %s, %s`, tag, err)
 		}
 	}
 
