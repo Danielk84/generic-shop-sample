@@ -71,9 +71,9 @@ func TestUsersHandler(t *testing.T) {
 		{
 			"usersHandler.get",
 			http.MethodGet,
-			baseUserURL + "admin_user",
+			fmt.Sprintf("%sadmin_user", baseUserURL),
 			nil,
-			adminToken,
+			"",
 			http.StatusOK,
 			func(st *testing.T, w *httptest.ResponseRecorder) {
 				var resJson map[string]string
@@ -113,7 +113,7 @@ func TestUsersHandler(t *testing.T) {
 		{
 			"usersHandler.setEmail",
 			http.MethodPut,
-			baseUserURL + "set-email",
+			fmt.Sprintf("%sset-email", baseUserURL),
 			bytes.NewBuffer([]byte(`{"email": "customer@bib.com"}`)),
 			customerToken,
 			http.StatusAccepted,
@@ -122,10 +122,19 @@ func TestUsersHandler(t *testing.T) {
 		{
 			"usersHandler.setEmail - check uniqueness",
 			http.MethodPut,
-			baseUserURL + "set-email",
+			fmt.Sprintf("%sset-email", baseUserURL),
 			bytes.NewBuffer([]byte(`{"email": "customer@bib.com"}`)),
 			adminToken,
 			http.StatusBadRequest,
+			nil,
+		},
+		{
+			"usersHandler.setPhoneNumber",
+			http.MethodPut,
+			fmt.Sprintf("%sset-phone-number", baseUserURL),
+			bytes.NewBuffer([]byte(`{"phone_number": "09999999999"}`)),
+			adminToken,
+			http.StatusAccepted,
 			nil,
 		},
 	}
@@ -168,7 +177,7 @@ func TestUserProfileHandler(t *testing.T) {
 	_, p, _, _ := runtime.Caller(0)
 	basePath := filepath.Join(filepath.Dir(p), "..", "..", "internal", "testutils", "testfile", "temp.jpeg")
 	w = httptest.NewRecorder()
-	req, err := tu.FileUploadRequest(baseUserProfileURL+"upload", tokenString, "file", basePath)
+	req, err := tu.FileUploadRequest(fmt.Sprintf("%supload", baseUserProfileURL), tokenString, "file", basePath)
 	if err != nil {
 		t.Errorf(`failed to create multipart request, %s`, err)
 		return
@@ -192,6 +201,7 @@ func TestUserProfileHandler(t *testing.T) {
 	if _, err := os.Stat(imgPath); err != nil {
 		t.Errorf(`failed to remove file "%s", %s`, imgPath, err)
 	}
+
 	// testing userProfileHandler.deleteImgFile
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest(http.MethodDelete, baseUserProfileURL, nil)
@@ -202,15 +212,5 @@ func TestUserProfileHandler(t *testing.T) {
 	}
 	if _, err := os.Stat(imgPath); err == nil {
 		t.Errorf("failed to remove img file")
-	}
-
-	// testing userProfileHandler.setPhoneNumber
-	w = httptest.NewRecorder()
-	body = bytes.NewBuffer([]byte(`{"phone_number": "09999999999"}`))
-	req, _ = http.NewRequest(http.MethodPut, baseUserProfileURL+"set-phone-number", body)
-	req.Header.Set("Authorization", tokenString)
-	app.ServeHTTP(w, req)
-	if w.Code != http.StatusAccepted {
-		t.Errorf(`expected status="%d", but got "%d"`, http.StatusAccepted, w.Code)
 	}
 }

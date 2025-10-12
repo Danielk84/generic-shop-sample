@@ -21,7 +21,7 @@ func ProductsRouter(router *gin.RouterGroup) {
 		{http.MethodDelete, "/:id", []gin.HandlerFunc{ph.delete}},
 		{http.MethodGet, "/full", []gin.HandlerFunc{ph.fullList}},
 		{http.MethodGet, "/overview/:id", []gin.HandlerFunc{ph.get}},
-		{http.MethodPut, "incr/:id", []gin.HandlerFunc{ph.incrBy}},
+		{http.MethodPut, "/incr/:id", []gin.HandlerFunc{ph.incrBy}},
 		{http.MethodPut, "/decr/:id", []gin.HandlerFunc{ph.decrBy}},
 		{http.MethodPut, "set-available/:id", []gin.HandlerFunc{ph.setAvailable}},
 		{http.MethodPut, "set-active/:id", []gin.HandlerFunc{ph.setActive}},

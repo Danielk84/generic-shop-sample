@@ -48,7 +48,7 @@ func TestCreateGetDetailsUser(t *testing.T) {
 	}
 }
 
-func TestSetEmail(t *testing.T) {
+func TestSetEmailAndSetPhoneNumber(t *testing.T) {
 	const getIDFromUsernameQuery = `SELECT id FROM users WHERE username = $1`
 	session := db.NewSession()
 	us := queries.NewUserStore(session)
@@ -69,6 +69,19 @@ func TestSetEmail(t *testing.T) {
 
 	if newEmail != email.Email {
 		t.Errorf(`expected email="%s", but got "%s"`, email.Email, newEmail)
+	}
+
+	if err := us.VerifyEmail(t.Context(), id, true); err != nil {
+		t.Errorf(`failed to verify email, %s`, err)
+	}
+
+	phoneNumber := "123393"
+	if err := us.SetPhoneNumber(t.Context(), id, &queries.PhoneNumberRequest{phoneNumber}); err != nil {
+		t.Errorf("failed to set phone number, %s", err)
+	}
+
+	if err := us.VerifyPhoneNumber(t.Context(), id, true); err != nil {
+		t.Errorf(`failed to verify phone number, %s`, err)
 	}
 }
 
@@ -132,7 +145,7 @@ func TestDeleteUser(t *testing.T) {
 		t.Errorf(`failed to get user "%s", %s`, user.Username, err)
 	}
 
-	if err := us.Delete(t.Context(), gUser.ID); err != nil {
+	if err := us.Delete(t.Context(), gUser.ID, user.Username); err != nil {
 		t.Errorf(`failed to delete user "%s, %s`, user.Username, err)
 	}
 	if us.IsUsernameExists(t.Context(), user.Username) {
@@ -163,10 +176,6 @@ func TestUserProfileStore(t *testing.T) {
 	if err := ups.SetImgPath(ctx, userDetails.ID, imgPath); err != nil {
 		t.Errorf("failed to set img path, %s", err)
 	}
-	phoneNumber := "123393"
-	if err := ups.SetPhoneNumber(ctx, userDetails.ID, &queries.PhoneNumberRequest{phoneNumber}); err != nil {
-		t.Errorf("failed to set phone number, %s", err)
-	}
 
 	if gotImgPatherr, err := ups.GetImgPath(ctx, userDetails.ID); err != nil || gotImgPatherr != imgPath {
 		t.Errorf(`expected imgPath="%s", but got "%s", %s`, imgPath, gotImgPatherr, err)
@@ -175,7 +184,7 @@ func TestUserProfileStore(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to get user Details after updating user profile fields, %s", err)
 	}
-	if userDetails.Birthday != upr.Birthday || userDetails.Bio != upr.Bio || userDetails.PhoneNumber != phoneNumber {
+	if userDetails.Birthday != upr.Birthday || userDetails.Bio != upr.Bio {
 		t.Errorf(`unexpected output birthday="%s", bio="%s", phoneNumber="%s"`, userDetails.Birthday, userDetails.Bio, userDetails.PhoneNumber)
 	}
 }

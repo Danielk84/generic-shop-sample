@@ -27,6 +27,7 @@ func UsersRouter(router *gin.RouterGroup) {
 		{http.MethodPost, "/", []gin.HandlerFunc{uh.createUserByAdmin}},
 		{http.MethodDelete, "/", []gin.HandlerFunc{uh.delete}},
 		{http.MethodPut, "/set-email", []gin.HandlerFunc{uh.setEmail}},
+		{http.MethodPut, "/set-phone-number", []gin.HandlerFunc{uh.setPhoneNumber}},
 		{http.MethodPut, "/:id", []gin.HandlerFunc{uh.updateUserPermission}},
 	})
 }
@@ -66,11 +67,12 @@ func (uh *usersHandler) createUserByAdmin(c *gin.Context) {
 
 func (uh *usersHandler) list(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
 		return
 	}
 	users, err := uh.us.List(c.Request.Context(), defaultPagination, GetPage(c))
 	if err != nil {
+		slog.Debug(err.Error())
 		NotFound(c, "")
 		return
 	}
@@ -80,7 +82,7 @@ func (uh *usersHandler) list(c *gin.Context) {
 func (uh *usersHandler) get(c *gin.Context) {
 	username := c.Param("username")
 	user, err := uh.us.GetDetails(c.Request.Context(), username)
-	if err != nil {
+	if err != nil || !HasPermissions(nil, user.PermissionType, queries.Admin, queries.Customer) {
 		NotFound(c, "")
 		return
 	}
@@ -114,7 +116,7 @@ func (uh *usersHandler) updateUserPermission(c *gin.Context) {
 
 func (uh *usersHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if err := uh.us.Delete(c.Request.Context(), claims.ID); err != nil {
+	if err := uh.us.Delete(c.Request.Context(), claims.ID, claims.Username); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -137,13 +139,28 @@ func (uh *usersHandler) setEmail(c *gin.Context) {
 	Accepted(c, "")
 }
 
+func (uh *usersHandler) setPhoneNumber(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	var json queries.PhoneNumberRequest
+	if err := c.ShouldBindJSON(&json); err != nil {
+		slog.Debug(err.Error())
+		BadRequest(c, "")
+		return
+	}
+	if err := uh.us.SetPhoneNumber(c.Request.Context(), claims.ID, &json); err != nil {
+		slog.Debug(err.Error())
+		NotFound(c, "")
+		return
+	}
+	c.Status(http.StatusAccepted)
+}
+
 func UserProfileRouter(router *gin.RouterGroup) {
 	uph := userProfileHandler{queries.NewUserProfileStore(db.NewSession())}
 
 	router.Use(md.AuthMiddleware())
 	router.POST("/", uph.upsert)
 	router.POST("/upload", uph.uploadProfileImg)
-	router.PUT("/set-phone-number", uph.setPhoneNumber)
 	router.DELETE("/", uph.deleteImgPath)
 }
 
@@ -205,20 +222,4 @@ func (upr *userProfileHandler) deleteImgPath(c *gin.Context) {
 		slog.Info(`failed to remove file "%s", %s`, imgPath, err)
 	}
 	c.Status(http.StatusNoContent)
-}
-
-func (uph *userProfileHandler) setPhoneNumber(c *gin.Context) {
-	claims := md.GetUserClaims(c)
-	var json queries.PhoneNumberRequest
-	if err := c.ShouldBindJSON(&json); err != nil {
-		slog.Debug(err.Error())
-		BadRequest(c, "")
-		return
-	}
-	if err := uph.ups.SetPhoneNumber(c.Request.Context(), claims.ID, &json); err != nil {
-		slog.Debug(err.Error())
-		NotFound(c, "")
-		return
-	}
-	c.Status(http.StatusAccepted)
 }

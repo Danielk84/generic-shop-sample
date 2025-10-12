@@ -27,6 +27,10 @@ type EmailAddrRequest struct {
 	Email string `json:"email" binding:"required,email,min=10,max=256"`
 }
 
+type PhoneNumberRequest struct {
+	PhoneNumber string `json:"phone_number" binding:"required,iran_phone_number"`
+}
+
 type LoginRequest struct {
 	Username string `json:"username" binding:"required,username"`
 	Password string `json:"password" binding:"required,password"`
@@ -53,13 +57,15 @@ type UserResponse struct {
 type UserDetailsResponse struct {
 	// users table
 	UserResponse
-	Email string `json:"email"`
+	Email          string `json:"email"`
+	IsVEmail       bool   `json:"is_v_email"`
+	PhoneNumber    string `json:"phone_number"`
+	IsVPhoneNumber bool   `json:"is_v_phone_number"`
 
 	// user_profile table
-	ImgPath     string `json:"img_path"`
-	Birthday    string `json:"birthday"`
-	PhoneNumber string `json:"phone_number"`
-	Bio         string `json:"bio"`
+	ImgPath  string `json:"img_path"`
+	Birthday string `json:"birthday"`
+	Bio      string `json:"bio"`
 }
 
 type UserRepository struct {
@@ -74,8 +80,11 @@ type UserStore interface {
 	Get(ctx context.Context, username string) (*UserResponse, error)
 	GetDetails(ctx context.Context, username string) (*UserDetailsResponse, error)
 	UpdatePermission(ctx context.Context, id int32, user *UserPermissionRequest) error
-	Delete(ctx context.Context, id int32) error
+	Delete(ctx context.Context, id int32, username string) error
 	SetEmail(ctx context.Context, id int32, email *EmailAddrRequest) error
+	VerifyEmail(ctx context.Context, id int32, isVerified bool) error
+	SetPhoneNumber(ctx context.Context, id int32, phoneNumber *PhoneNumberRequest) error
+	VerifyPhoneNumber(ctx context.Context, id int32, isVerified bool) error
 }
 
 func NewUserStore(session db.Session) UserStore {
@@ -95,7 +104,7 @@ func (ur *UserRepository) IsUsernameExists(ctx context.Context, username string)
 }
 
 func (ur *UserRepository) IsValidUser(ctx context.Context, user *ValidUserRquest) bool {
-	const q = "SELECT EXISTS(SELECT 1 FROM users WHERE id = @ID AND username = @Username AND permission_type = @PermissionType)"
+	const q = `SELECT EXISTS(SELECT 1 FROM users WHERE id = @ID AND username = @Username AND permission_type = @PermissionType AND is_active = true)`
 	args := pgx.NamedArgs{
 		"ID":             user.ID,
 		"Username":       user.Username,
@@ -128,8 +137,8 @@ func (ur *UserRepository) Create(ctx context.Context, user *CreateUserRequest) e
 }
 
 func (ur *UserRepository) List(ctx context.Context, pagination, page int) ([]UserResponse, error) {
-	const q = `SELECT id, username, '' as password, permission_type, is_active FROM users
-	ORDER BY is_active DESC
+	const q = `SELECT id, COALESCE(username, '') AS username, '' as password, permission_type, is_active FROM users
+	ORDER BY is_active DESC, username NULLS LAST
 	LIMIT $1
 	OFFSET $2`
 	return list[UserResponse](ctx, ur.session, q, pagination, getOffsetFromPageNum(pagination, page))
@@ -143,12 +152,15 @@ func (ur *UserRepository) Get(ctx context.Context, username string) (*UserRespon
 }
 
 func (ur *UserRepository) GetDetails(ctx context.Context, username string) (*UserDetailsResponse, error) {
-	const q = `SELECT u.id, u.username, COALESCE(u.email, '') as email, '' as password, u.permission_type, u.is_active,
-		COALESCE(up.img_path, '') as img_path, COALESCE(up.birthday::TEXT, '') as birthday,
-		COALESCE(up.phone_number, '') as phone_number, COALESCE(up.bio, '') as bio
-	FROM users AS u LEFT JOIN user_profile AS up ON u.id = up.user_id
-	WHERE username = $1
-	LIMIT 1`
+	if username == "" || username == "deleted" {
+		return nil, pgx.ErrNoRows
+	}
+	const q = `SELECT u.id, u.username, COALESCE(u.email, '') as email, u.is_v_email, '' as password,
+			u.permission_type, u.is_active, COALESCE(u.phone_number, '') as phone_number, u.is_v_phone_number,
+			COALESCE(up.img_path, '') as img_path, COALESCE(up.birthday::TEXT, '') as birthday, COALESCE(up.bio, '') as bio
+		FROM users AS u LEFT JOIN user_profile AS up ON u.id = up.user_id
+			WHERE username = $1
+			LIMIT 1`
 	return get[UserDetailsResponse](ctx, ur.session, q, username)
 }
 
@@ -164,23 +176,47 @@ func (ur *UserRepository) UpdatePermission(ctx context.Context, id int32, user *
 	return execOne(ctx, ur.session, q, args)
 }
 
-func (ur *UserRepository) Delete(ctx context.Context, id int32) error {
-	const q = `DELETE FROM users WHERE id = $1`
-	return execOne(ctx, ur.session, q, id)
+func (ur *UserRepository) Delete(ctx context.Context, id int32, username string) error {
+	const q = `WITH remove_products AS (
+			DELETE FROM products WHERE user_id = $1
+		), remove_user_profile AS (
+			DELETE FROM user_profile WHERE user_id = $1
+		), delete_related_comments_username AS (
+			UPDATE comments SET username = NULL WHERE username = $2
+		)
+		UPDATE users SET username = NULL, password = NULL, is_active = FALSE WHERE id = $1`
+	return execOne(ctx, ur.session, q, id, username)
 }
 
 func (ur *UserRepository) SetEmail(ctx context.Context, id int32, email *EmailAddrRequest) error {
-	const q = `UPDATE ONLY users SET email = $1 WHERE id = $2`
+	const q = `WITH remove_not_used_email AS (
+			UPDATE users SET email = NULL, is_v_email = FALSE WHERE email = $1 AND username IS NULL
+		)
+		UPDATE users SET email = $1 WHERE id = $2`
 	return execOne(ctx, ur.session, q, email.Email, id)
+}
+
+func (ur *UserRepository) VerifyEmail(ctx context.Context, id int32, isVerified bool) error {
+	const q = `UPDATE users SET is_v_email = $1 WHERE id = $2`
+	return execOne(ctx, ur.session, q, isVerified, id)
+}
+
+func (upr *UserRepository) SetPhoneNumber(ctx context.Context, userID int32, phoneNumber *PhoneNumberRequest) error {
+	const q = `WITH remove_not_used_phone_number AS (
+			UPDATE users SET phone_number = NULL, is_v_phone_number = FALSE WHERE phone_number = $1 AND username IS NULL
+		)
+		UPDATE users SET phone_number = $1 WHERE id = $2`
+	return execOne(ctx, upr.session, q, phoneNumber.PhoneNumber, userID)
+}
+
+func (upr *UserRepository) VerifyPhoneNumber(ctx context.Context, userID int32, isVerified bool) error {
+	const q = `UPDATE users SET is_v_phone_number = $1 WHERE id = $2`
+	return execOne(ctx, upr.session, q, isVerified, userID)
 }
 
 type UserProfileRequest struct {
 	Birthday string `json:"birthday" binding:"required,date"`
 	Bio      string `json:"bio" binding:"required"`
-}
-
-type PhoneNumberRequest struct {
-	PhoneNumber string `json:"phone_number"`
 }
 
 type UserProfileRepository struct {
@@ -192,7 +228,6 @@ type UserProfileStore interface {
 	GetImgPath(ctx context.Context, userID int32) (string, error)
 	SetImgPath(ctx context.Context, userID int32, imgPath string) error
 	DeleteImgPath(ctx context.Context, userID int32) (string, error)
-	SetPhoneNumber(ctx context.Context, userID int32, phoneNumber *PhoneNumberRequest) error
 }
 
 func NewUserProfileStore(session db.Session) UserProfileStore {
@@ -212,7 +247,7 @@ func (upr *UserProfileRepository) Upsert(ctx context.Context, userID int32, user
 }
 
 func (upr *UserProfileRepository) GetImgPath(ctx context.Context, userID int32) (string, error) {
-	const q = `SELECT COALESCE(img_path, '') FROM user_profile WHERE user_id = $1`
+	const q = `SELECT COALESCE(img_path, '') AS img_path FROM user_profile WHERE user_id = $1`
 	var imgPath string
 	err := upr.session.QueryRow(ctx, q, userID).Scan(&imgPath)
 	return imgPath, err
@@ -230,9 +265,4 @@ func (upr *UserProfileRepository) DeleteImgPath(ctx context.Context, UserID int3
 	imgPath := ""
 	err := upr.session.QueryRow(ctx, q, UserID).Scan(&imgPath)
 	return imgPath, err
-}
-
-func (upr *UserProfileRepository) SetPhoneNumber(ctx context.Context, userID int32, phoneNumber *PhoneNumberRequest) error {
-	const q = `UPDATE user_profile SET phone_number = $1 WHERE user_id = $2`
-	return execOne(ctx, upr.session, q, phoneNumber.PhoneNumber, userID)
 }
