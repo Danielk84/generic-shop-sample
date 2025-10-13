@@ -18,11 +18,13 @@ CREATE TABLE orders (
 );
 
 CREATE TABLE order_items (
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
     product_id UUID NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
     items_total INTEGER NOT NULL CHECK (items_total > 0) DEFAULT 1,
     price BIGINT NOT NULL DEFAULT 0,
-    PRIMARY KEY (order_id, product_id)
+    is_packed BOOLEAN NOT NULL DEFAULT FALSE,
+    PRIMARY KEY (user_id, order_id, product_id)
 );
 
 CREATE OR REPLACE FUNCTION update_order_after_add_order_items() RETURNS TRIGGER
