@@ -46,7 +46,7 @@ func NewOrderStore(session db.Session) OrderStore {
 }
 
 func (or *OrderRepository) Create(ctx context.Context, userID int32) (string, error) {
-	const q = `INSERT INTO orders(user_id) VALUES ($1) RETURNING id`
+	const q = `INSERT INTO orders(user_id) VALUES ($1) RETURNING order_id`
 	id := ""
 	err := or.session.QueryRow(ctx, q, userID).Scan(&id)
 	return id, err
