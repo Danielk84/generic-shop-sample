@@ -1,7 +1,7 @@
 CREATE TABLE orders (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    started_at TIMESTAMP NOT NULL DEFAULT (NOW() + INTERVAL '24 hours'),
 
     items_total INTEGER NOT NULL CHECK (items_total >= 0) DEFAULT 0,
     total_bill BIGINT NOT NULL CHECK (total_bill > 0) DEFAULT 0,
@@ -37,7 +37,7 @@ AS $$
 
         UPDATE products SET available_quantity = available_quantity - 1 WHERE id = NEW.product_id;
 
-        UPDATE orders SET updated_at = NOW(), items_total = items_total + 1, total_bill = total_bill + product_price
+        UPDATE orders SET items_total = items_total + 1, total_bill = total_bill + product_price
             WHERE id = NEW.order_id;
 
         RETURN NEW;
