@@ -16,5 +16,6 @@ func APIRouter(ctx context.Context, router *gin.RouterGroup) {
 	api.PCRouter(router.Group("categories/pc"))
 	api.CategoriesRouter(router.Group("/categories"))
 	api.CommentsRouter(router.Group("/comments"))
+	api.OrderItemsRouter(router.Group("/orders/items"))
 	api.OrderRouter(router.Group("/orders"))
 }

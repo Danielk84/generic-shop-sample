@@ -37,12 +37,12 @@ func (uh *orderHandler) create(c *gin.Context) {
 		return
 	}
 
-	order_id, err := uh.os.Create(c.Request.Context(), claims.ID)
+	output, err := uh.os.Create(c.Request.Context(), claims.ID)
 	if err != nil {
 		BadRequest(c, "")
 		return
 	}
-	c.JSON(http.StatusAccepted, gin.H{"order_id": order_id})
+	c.JSON(http.StatusCreated, gin.H{"order_id": output})
 }
 
 func (uh *orderHandler) customerList(c *gin.Context) {
@@ -53,12 +53,12 @@ func (uh *orderHandler) customerList(c *gin.Context) {
 	}
 
 	page := GetPage(c)
-	orders, err := uh.os.CustomerList(c.Request.Context(), claims.ID, uh.pagination, page)
+	output, err := uh.os.CustomerList(c.Request.Context(), claims.ID, uh.pagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return
 	}
-	c.JSON(http.StatusOK, orders)
+	c.JSON(http.StatusOK, output)
 }
 
 func (uh *orderHandler) vendorList(c *gin.Context) {
@@ -68,12 +68,12 @@ func (uh *orderHandler) vendorList(c *gin.Context) {
 	}
 
 	page := GetPage(c)
-	orders, err := uh.os.VendorList(c.Request.Context(), claims.ID, uh.pagination, page)
+	output, err := uh.os.VendorList(c.Request.Context(), claims.ID, uh.pagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return
 	}
-	c.JSON(http.StatusOK, orders)
+	c.JSON(http.StatusOK, output)
 }
 
 func (uh *orderHandler) get(c *gin.Context) {
@@ -84,12 +84,12 @@ func (uh *orderHandler) get(c *gin.Context) {
 	}
 
 	id := c.Param("id")
-	order, err := uh.os.Get(c.Request.Context(), id, claims.ID)
+	output, err := uh.os.Get(c.Request.Context(), id, claims.ID)
 	if err != nil {
 		NotFound(c, "")
 		return
 	}
-	c.JSON(http.StatusOK, order)
+	c.JSON(http.StatusOK, output)
 }
 
 func (uh *orderHandler) verifyUserInfo(c *gin.Context) {
@@ -99,13 +99,164 @@ func (uh *orderHandler) verifyUserInfo(c *gin.Context) {
 		return
 	}
 
-	var json SetFlag
-	if err := c.ShouldBindJSON(&json); err != nil {
+	var input SetFlag
+	if err := c.ShouldBindJSON(&input); err != nil {
 		BadRequest(c, "")
 		return
 	}
 	id := c.Param("id")
-	if err := uh.os.VerifyUserInfo(c.Request.Context(), id, claims.ID, true); err != nil {
+	if err := uh.os.VerifyUserInfo(c.Request.Context(), id, claims.ID, input.Accepted); err != nil {
+		NotFound(c, "")
+		return
+	}
+	Accepted(c, "")
+}
+
+func OrderItemsRouter(router *gin.RouterGroup) {
+	config := internal.NewConfig()
+	oih := orderItemsHandler{queries.NewOrderItemsStore(db.NewSession()), config.Pagination}
+
+	router.Use(md.AuthMiddleware())
+	router.POST("/", oih.create)
+	router.DELETE("/", oih.delete)
+	router.GET("/customer/:id", oih.customerList)
+	router.GET("/vendor/:id", oih.vendorList)
+	router.GET("/full/:id", oih.fullList)
+	router.PUT("/set-items-total/:total", oih.setItemsTotal)
+	router.PUT("/set-packed", oih.setPacked)
+}
+
+type ItemsTotal struct {
+	Total int32 `url:"total" binding:"required"`
+}
+
+type orderItemsHandler struct {
+	ois        queries.OrderItemsStore
+	pagination int
+}
+
+func (oih *orderItemsHandler) create(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if HasPermissions(nil, claims.PermissionType, queries.BlockUser) {
+		Forbidden(c, "")
+		return
+	}
+
+	var input queries.OrderItemRequest
+	if err := c.ShouldBindJSON(&input); err != nil {
+		BadRequest(c, "")
+		return
+	}
+	if err := oih.ois.Create(c.Request.Context(), claims.ID, &input); err != nil {
+		BadRequest(c, "")
+		return
+	}
+	Created(c, "")
+}
+
+func (oih *orderItemsHandler) customerList(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if HasPermissions(nil, claims.PermissionType, queries.BlockUser) {
+		BadRequest(c, "")
+		return
+	}
+
+	id := c.Param("id")
+	page := GetPage(c)
+	output, err := oih.ois.CustomerList(c.Request.Context(), id, claims.ID, oih.pagination, page)
+	if err != nil {
+		NotFound(c, "")
+	}
+	c.JSON(http.StatusOK, output)
+}
+
+func (oih *orderItemsHandler) vendorList(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
+		return
+	}
+
+	id := c.Param("id")
+	page := GetPage(c)
+	output, err := oih.ois.VendorList(c.Request.Context(), id, claims.ID, oih.pagination, page)
+	if err != nil {
+		NotFound(c, "")
+		return
+	}
+	c.JSON(http.StatusOK, output)
+}
+
+func (oih *orderItemsHandler) fullList(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
+		return
+	}
+
+	id := c.Param("id")
+	page := GetPage(c)
+	output, err := oih.ois.FullList(c.Request.Context(), id, oih.pagination, page)
+	if err != nil {
+		NotFound(c, "")
+		return
+	}
+	c.JSON(http.StatusOK, output)
+}
+
+func (oih *orderItemsHandler) delete(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if HasPermissions(nil, claims.PermissionType, queries.BlockUser) {
+		Forbidden(c, "")
+		return
+	}
+
+	var input queries.BaseOrderItemRequest
+	if err := c.ShouldBindJSON(&input); err != nil {
+		BadRequest(c, "")
+		return
+	}
+	if err := oih.ois.Delete(c.Request.Context(), claims.ID, &input); err != nil {
+		NotFound(c, "")
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (oih *orderItemsHandler) setItemsTotal(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if HasPermissions(nil, claims.PermissionType, queries.BlockUser) {
+		Forbidden(c, "")
+		return
+	}
+
+	var url ItemsTotal
+	if err := c.ShouldBindUri(&url); err != nil {
+		BadRequest(c, "")
+		return
+	}
+	var input queries.BaseOrderItemRequest
+	if err := c.ShouldBindJSON(&input); err != nil {
+		BadRequest(c, "")
+		return
+	}
+	if err := oih.ois.SetItemsTotal(c.Request.Context(), claims.ID, url.Total, &input); err != nil {
+		NotFound(c, "")
+		return
+	}
+	Accepted(c, "")
+}
+
+func (oih *orderItemsHandler) setPacked(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
+		return
+	}
+
+	var input queries.OrderItemPackStatusRequest
+	if err := c.ShouldBindJSON(&input); err != nil {
+		BadRequest(c, "")
+		return
+	}
+	if err := oih.ois.SetPacked(c.Request.Context(), claims.ID, &input); err != nil {
 		NotFound(c, "")
 		return
 	}
