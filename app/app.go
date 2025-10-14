@@ -3,7 +3,9 @@ package app
 import (
 	"context"
 	"fmt"
+	"generic-shop-sample/db"
 	"generic-shop-sample/internal"
+	"generic-shop-sample/internal/background"
 	md "generic-shop-sample/middlewares"
 	"generic-shop-sample/routes"
 	"log/slog"
@@ -59,6 +61,8 @@ func (a *App) Run() {
 			slog.Error("failed to listen and server", "error", err)
 		}
 	}()
+
+	background.StartTasks(a.ctx, db.NewSession())
 
 	<-a.ctx.Done()
 
