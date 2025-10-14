@@ -14,6 +14,7 @@ type OrderUserInfoRequest struct {
 
 type OrderSummaryResponse struct {
 	ID         string `json:"id"`
+	UserID     string `json:"user_id"`
 	StartedAt  string `json:"update_at"`
 	IsPaid     bool   `json:"is_paid"`
 	IsDeliverd bool   `json:"is_deliverd"`
@@ -35,6 +36,7 @@ type OrderStore interface {
 	Create(ctx context.Context, userID int32) (string, error)
 	CustomerList(ctx context.Context, userID int32, pagination, page int) ([]OrderSummaryResponse, error)
 	VendorList(ctx context.Context, vendorID int32, pagination, page int) ([]OrderSummaryResponse, error)
+	FullList(ctx context.Context, pagination, page int) ([]OrderSummaryResponse, error)
 	Get(ctx context.Context, id string, userID int32) (*OrderResponse, error)
 	SetUserInfo(ctx context.Context, id string, userID int32, info *OrderUserInfoRequest) error
 	VerifyUserInfo(ctx context.Context, id string, userID int32, isVerified bool) error
@@ -53,7 +55,7 @@ func (or *OrderRepository) Create(ctx context.Context, userID int32) (string, er
 }
 
 func (or *OrderRepository) CustomerList(ctx context.Context, userID int32, pagination, page int) ([]OrderSummaryResponse, error) {
-	const q = `SELECT id, started_at, is_paid, is_delivered FROM orders
+	const q = `SELECT id, user_id, started_at, is_paid, is_delivered FROM orders
 		WHERE user_id = @UserID
 		ORDER BY started_at DESC
 		LIMIT @Limit
@@ -67,7 +69,7 @@ func (or *OrderRepository) CustomerList(ctx context.Context, userID int32, pagin
 }
 
 func (or *OrderRepository) VendorList(ctx context.Context, vendorID int32, pagination, page int) ([]OrderSummaryResponse, error) {
-	const q = `SELECT id, started_id, is_paid, is_delivered FROM orders
+	const q = `SELECT id, user_id, started_id, is_paid, is_delivered FROM orders
 		WHERE id in (
 			SELECT DISTINCT o.order_id FROM order_items AS o JOIN products AS p ON o.product_id = p.id AND p.user_id = @VendoreID
 		) AND (is_paid = TRUE OR payment_summary IS NOT NULL)
@@ -80,6 +82,14 @@ func (or *OrderRepository) VendorList(ctx context.Context, vendorID int32, pagin
 		"Offset":   getOffsetFromPageNum(pagination, page),
 	}
 	return list[OrderSummaryResponse](ctx, or.session, q, args)
+}
+
+func (or *OrderRepository) FullList(ctx context.Context, pagination, page int) ([]OrderSummaryResponse, error) {
+	const q = `SELECT id, user_id, started_at, is_paid, is_delivered FROM orders
+		ORDER BY started_at DESC
+		LIMIT $1
+		OFFSET $2`
+	return list[OrderSummaryResponse](ctx, or.session, q, pagination, getOffsetFromPageNum(pagination, page))
 }
 
 func (or *OrderRepository) Get(ctx context.Context, id string, userID int32) (*OrderResponse, error) {
@@ -116,18 +126,18 @@ func (or *OrderRepository) DeleteExpiredOrders(ctx context.Context) error {
 	return err
 }
 
-type BaseOrderItemsRequest struct {
+type BaseOrderItemRequest struct {
 	OrderID   string `json:"order_id" binding:"required,uuid"`
 	ProductID string `json:"product_id" binding:"required,uuid"`
 }
 
 type OrderItemRequest struct {
-	BaseOrderItemsRequest
+	BaseOrderItemRequest
 	Price int64 `json:"price" binding:"required"`
 }
 
 type OrderItemPackStatusRequest struct {
-	BaseOrderItemsRequest
+	BaseOrderItemRequest
 	IsPacked bool `json:"is_packed" binding:"boolean"`
 }
 
@@ -145,11 +155,12 @@ type OrderItemsRepository struct {
 }
 
 type OrderItemsStore interface {
-	Create(ctx context.Context, userID, item *OrderItemRequest) error
-	CustomerList(ctx context.Context, orderID string, userID int32) ([]OwnedOrderItemResponse, error)
-	VendorList(ctx context.Context, orderID string, userID int32) ([]OwnedOrderItemResponse, error)
-	Delete(ctx context.Context, orderID string, userID int32) error
-	SetItemsTotal(ctx context.Context, orderID string, userID int32, itemsTotal int32) error
+	Create(ctx context.Context, userID int32, item *OrderItemRequest) error
+	CustomerList(ctx context.Context, orderID string, userID int32, pagination, page int) ([]OwnedOrderItemResponse, error)
+	VendorList(ctx context.Context, orderID string, userID int32, pagination, page int) ([]OwnedOrderItemResponse, error)
+	FullList(ctx context.Context, orderID string, pagination, page int) ([]OwnedOrderItemResponse, error)
+	Delete(ctx context.Context, userID int32, orderItem *BaseOrderItemRequest) error
+	SetItemsTotal(ctx context.Context, userID int32, itemsTotal int32, orderItem *BaseOrderItemRequest) error
 	SetPacked(ctx context.Context, vendorID int32, item *OrderItemPackStatusRequest) error
 }
 
@@ -157,7 +168,7 @@ func NewOrderItemsStore(session db.Session) OrderItemsStore {
 	return &OrderItemsRepository{session}
 }
 
-func (or *OrderItemsRepository) Create(ctx context.Context, userID, item *OrderItemRequest) error {
+func (oir *OrderItemsRepository) Create(ctx context.Context, userID int32, item *OrderItemRequest) error {
 	const q = `WITH is_owned_order AS (
 		SELECT id FROM orders WHERE id = @OrderID::UUID AND user_id = @UserID LIMIT 1
 	)
@@ -169,42 +180,77 @@ func (or *OrderItemsRepository) Create(ctx context.Context, userID, item *OrderI
 		"ProductID": item.ProductID,
 		"Price":     item.Price,
 	}
-	return execOne(ctx, or.session, q, args)
+	return execOne(ctx, oir.session, q, args)
 }
 
-func (or *OrderItemsRepository) CustomerList(ctx context.Context, orderID string, userID int32) ([]OwnedOrderItemResponse, error) {
+func (oir *OrderItemsRepository) CustomerList(ctx context.Context, orderID string, userID int32, pagination, page int) ([]OwnedOrderItemResponse, error) {
 	const q = `SELECT o.order_id, o.product_id, o.items_total, o.price, o.is_packed, p.name
 		FROM order_items AS o
 			JOIN products AS p ON o.product_id = p.id
-		WHERE o.order_id = $1::UUID AND user_id = $2`
-	return list[OwnedOrderItemResponse](ctx, or.session, q, orderID, userID)
+		WHERE o.order_id = @OrderID::UUID AND user_id = @UserID
+		LIMIT @Limit
+		OFFSET @Offset`
+	args := pgx.NamedArgs{
+		"OrderBy": orderID,
+		"UserID":  userID,
+		"Limit":   pagination,
+		"Offset":  getOffsetFromPageNum(pagination, page),
+	}
+	return list[OwnedOrderItemResponse](ctx, oir.session, q, args)
 }
 
-func (or *OrderItemsRepository) VendorList(ctx context.Context, orderID string, vendorID int32) ([]OwnedOrderItemResponse, error) {
+func (oir *OrderItemsRepository) VendorList(ctx context.Context, orderID string, vendorID int32, pagination, page int) ([]OwnedOrderItemResponse, error) {
 	const q = `SELECT o.order_id, o.product_id, o.items_total, o.price, o.is_packed, p.name 
 		FROM order_items AS o
-			JOIN products AS p ON o.product_id = p.id AND p.user_id = $2
-		WHERE o.order_id = $1`
-	return list[OwnedOrderItemResponse](ctx, or.session, q, orderID, vendorID)
-}
-
-func (or *OrderItemsRepository) Delete(ctx context.Context, orderID string, userID int32) error {
-	const q = `DELETE FROM order_items WHERE order_id = $1::UUID AND user_id = $2`
-	return execOne(ctx, or.session, q, orderID, userID)
-}
-
-func (or *OrderItemsRepository) SetItemsTotal(ctx context.Context, orderID string, userID int32, itemsTotal int32) error {
-	const q = `UPDATE order_items SET items_total = @ItemsTotal
-		WHERE order_id = @OrderID AND user_id = @UserID`
+			JOIN products AS p ON o.product_id = p.id AND p.user_id = @VendorID
+		WHERE o.order_id = OrderID::UUID
+		LIMIT @Limit
+		OFFSET @Offset`
 	args := pgx.NamedArgs{
-		"OrderID":    orderID,
+		"OrderID":  orderID,
+		"VendorID": vendorID,
+		"Limit":    pagination,
+		"Offset":   getOffsetFromPageNum(pagination, page),
+	}
+	return list[OwnedOrderItemResponse](ctx, oir.session, q, args)
+}
+
+func (oir *OrderItemsRepository) FullList(ctx context.Context, orderID string, pagination, page int) ([]OwnedOrderItemResponse, error) {
+	const q = `SELECT order_id, product_id, item_total, price, is_packed FROM order_items
+		WHERE order_id = @OrderID::UUID
+		LIMIT @Limit
+		OFFSET @Offset`
+	args := pgx.NamedArgs{
+		"OrderID": orderID,
+		"Limit":   pagination,
+		"Offset":  getOffsetFromPageNum(pagination, page),
+	}
+	return list[OwnedOrderItemResponse](ctx, oir.session, q, args)
+}
+
+func (oir *OrderItemsRepository) Delete(ctx context.Context, userID int32, orderItem *BaseOrderItemRequest) error {
+	const q = `DELETE FROM order_items WHERE order_id = @OrderID::UUID AND product_id = @ProductID::UUID AND user_id = @UserID`
+	args := pgx.NamedArgs{
+		"OrderID":   orderItem.OrderID,
+		"ProductID": orderItem.ProductID,
+		"UserID":    userID,
+	}
+	return execOne(ctx, oir.session, q, args)
+}
+
+func (oir *OrderItemsRepository) SetItemsTotal(ctx context.Context, userID int32, itemsTotal int32, orderItem *BaseOrderItemRequest) error {
+	const q = `UPDATE order_items SET items_total = @ItemsTotal
+		WHERE order_id = @OrderID AND product_id = @ProductID::UUID AND user_id = @UserID`
+	args := pgx.NamedArgs{
+		"OrderID":    orderItem.OrderID,
+		"ProductID":  orderItem.ProductID,
 		"UserID":     userID,
 		"itemsTotal": itemsTotal,
 	}
-	return execOne(ctx, or.session, q, args)
+	return execOne(ctx, oir.session, q, args)
 }
 
-func (or *OrderItemsRepository) SetPacked(ctx context.Context, vendorID int32, item *OrderItemPackStatusRequest) error {
+func (oir *OrderItemsRepository) SetPacked(ctx context.Context, vendorID int32, item *OrderItemPackStatusRequest) error {
 	const q = `UPDATE order_items SET is_packed = @IsPacked
 		WHERE order_id = @OrderID AND product_id in (
 			SELECT id FROM products WHERE id = @ProductID AND user_id = @VendorID  
@@ -215,5 +261,5 @@ func (or *OrderItemsRepository) SetPacked(ctx context.Context, vendorID int32, i
 		"IsPacked":  item.IsPacked,
 		"VendorID":  vendorID,
 	}
-	return execOne(ctx, or.session, q, args)
+	return execOne(ctx, oir.session, q, args)
 }
