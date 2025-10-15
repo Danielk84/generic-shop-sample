@@ -13,6 +13,7 @@ const (
 	PublicCache int = iota
 	UsersCache
 	ProductsCache
+	PaymentCache
 )
 
 type CacheClient = *redis.Client
@@ -43,7 +44,7 @@ func NewCacheEngine(ctx context.Context, addr string, dbs []int) (*CacheEngine, 
 
 	option, err := redis.ParseURL(addr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse redis URL, %s\n", err)
+		return nil, fmt.Errorf("failed to parse redis URL, %s", err)
 	}
 
 	clients := make(map[int]CacheClient)
@@ -54,7 +55,7 @@ func NewCacheEngine(ctx context.Context, addr string, dbs []int) (*CacheEngine, 
 
 		_, err := rdb.Ping(ctx).Result()
 		if err != nil {
-			return nil, fmt.Errorf(`failed to ping redis db="%d", %s\n`, db, err)
+			return nil, fmt.Errorf(`failed to ping redis db="%d", %s`, db, err)
 		}
 		clients[db] = rdb
 	}

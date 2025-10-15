@@ -1,0 +1,188 @@
+package api
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"generic-shop-sample/db"
+	"generic-shop-sample/db/queries"
+	"generic-shop-sample/internal"
+	"generic-shop-sample/internal/payment"
+	md "generic-shop-sample/middlewares"
+	"log/slog"
+	"net/http"
+	"slices"
+	"time"
+
+	"github.com/gin-gonic/gin"
+)
+
+func PaymentRouter(ctx context.Context, router *gin.RouterGroup) {
+	config := internal.NewConfig()
+
+	addr := payment.ZPSandboxAddr
+	if config.Mode == gin.ReleaseMode {
+		addr = payment.ZPGatewayAddr
+	}
+
+	session := db.NewSession()
+	ph := paymentHandler{
+		cache:       db.NewCache(db.PaymentCache),
+		us:          queries.NewUserStore(session),
+		os:          queries.NewOrderStore(session),
+		zpGateway:   payment.NewZarinPalGateway(addr, &http.Client{Timeout: 10 * time.Second}),
+		merchandID:  config.ZPMerchantID,
+		callbackURL: config.PaymentCallbackURL,
+	}
+
+	rl := md.NewRateLimiter(ctx, 10, 30*time.Minute, 60*time.Second)
+	router.Use(md.AuthMiddleware(), rl.RateLimiterMiddleware())
+	router.GET("/callback", ph.callback)
+	router.POST("/:id", ph.init)
+}
+
+type UserPayment struct {
+	UserID  int32  `json:"user_id"`
+	OrderID string `json:"order_id"`
+	Amount  int64  `json:"Amount"`
+}
+
+type paymentHandler struct {
+	cache       db.CacheClient
+	us          queries.UserStore
+	os          queries.OrderStore
+	zpGateway   payment.ZPGateway
+	merchandID  string
+	callbackURL string
+}
+
+func (ph *paymentHandler) init(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if HasPermissions(nil, claims.PermissionType, queries.BlockUser) {
+		Forbidden(c, "")
+		return
+	}
+
+	id := c.Param("id")
+	order, err := ph.os.Get(c.Request.Context(), id, claims.ID)
+	if err != nil {
+		NotFound(c, "Order not found")
+		return
+	}
+	if !order.IsConfirmed {
+		Forbidden(c, "Unconfirmed order")
+		return
+	}
+	user, err := ph.us.GetDetails(c.Request.Context(), claims.Username)
+	if err != nil {
+		slog.Error("unexpected error in UserStore.GetDetails in payment init",
+			"user_id", claims.ID,
+			"error", err)
+		NotFound(c, "")
+		return
+	}
+
+	init, err := ph.zpGateway.InitReq(c.Request.Context(), &payment.ZPRequest{
+		MerchantID:  ph.merchandID,
+		Amount:      order.TotalBill,
+		Currency:    "IRT",
+		Description: fmt.Sprintf("%s-%s", user.Username, order.StartedAt),
+		CallbackURL: ph.callbackURL,
+		Metadata: payment.ZPReqMetadata{
+			Mobile:  user.PhoneNumber,
+			Email:   user.Email,
+			OrderID: order.ID,
+		},
+	})
+	if err != nil {
+		slog.Error("failed to init payment gateway", "error", err)
+		Forbidden(c, "")
+		return
+	}
+	if len(init.Errs) > 0 || init.Data.Code != 100 {
+		slog.Error("unexpected error happend", "init_output", init)
+		BadRequest(c, "")
+		return
+	}
+
+	output, err := json.Marshal(UserPayment{UserID: user.ID, OrderID: order.ID, Amount: order.TotalBill})
+	if err != nil {
+		slog.Error("unexpected error in UserPayment encoding", "error", err)
+		Unprocessable(c, "")
+		return
+	}
+	if err := ph.cache.SetEx(c.Request.Context(), init.Data.Authority, output, 30*time.Minute); err != nil {
+		slog.Error("failed to cache paymeny authority",
+			"user_id", user.ID,
+			"error", err)
+		Unprocessable(c, "Failed to init gateway")
+		return
+	}
+
+	gatewayURL := fmt.Sprintf("%s/pg/StartPay/%s", ph.zpGateway.Addr, init.Data.Authority)
+	c.Redirect(http.StatusPermanentRedirect, gatewayURL)
+}
+
+func (ph *paymentHandler) callback(c *gin.Context) {
+	var input payment.ZPGatewayStatus
+	if err := c.ShouldBindQuery(&input); err != nil {
+		BadRequest(c, "")
+		return
+	}
+	if !ph.zpGateway.CheckStatus(input.Status) {
+		Forbidden(c, "")
+		return
+	}
+
+	ctx := c.Request.Context()
+	reverse := &payment.ZPReverseRequest{MerchantID: ph.merchandID, Authority: input.Authority}
+	data, err := ph.cache.JSONGet(ctx, input.Authority).Result()
+	if err != nil {
+		ph.reverseWithLog(ctx, "failed to get payment authority related data", err, reverse)
+		BadRequest(c, "Invliad authority")
+		return
+	}
+	var up UserPayment
+	if err := json.Unmarshal([]byte(data), &up); err != nil {
+		ph.reverseWithLog(ctx, "failed to decode api.paymeny.UserPayment", err, reverse)
+		Unprocessable(c, "")
+		return
+	}
+	verfiedPayment, err := ph.zpGateway.VerifyReq(ctx, &payment.ZPVerifyRequest{
+		MerchantID: ph.merchandID,
+		Amount:     up.Amount,
+		Authority:  input.Authority,
+	})
+	if err != nil {
+		ph.reverseWithLog(ctx, "failed to verify payment", err, reverse)
+		Unauthorized(c, "")
+		return
+	}
+
+	status := &queries.PaymentStatus{}
+	output, err := json.Marshal(verfiedPayment)
+	if err != nil {
+		slog.Warn("failed to encode internal.payment.ZPVerifyRequest", "error", err)
+		status.PaymentSummary = fmt.Sprintf("%v", &verfiedPayment)
+	}
+	status.PaymentSummary = string(output)
+
+	if slices.Contains([]int{100, 101}, verfiedPayment.Data.Code) {
+		status.IsPaid = true
+	}
+	if err := ph.os.SetPaymentStatus(c.Request.Context(), up.OrderID, up.UserID, status); err != nil {
+		ph.reverseWithLog(ctx, "failed to set payment summary", err, reverse)
+		NotFound(c, "Order not found")
+		return
+	}
+	Accepted(c, "")
+}
+
+func (ph *paymentHandler) reverseWithLog(ctx context.Context, reason string, err error, payload *payment.ZPReverseRequest) {
+	result, rerr := ph.zpGateway.ReverseReq(ctx, payload)
+	slog.Error(fmt.Sprintf(`transaction reversed: %s`, reason),
+		"error", err,
+		"reverse_res", result,
+		"reverse_error", rerr,
+	)
+}

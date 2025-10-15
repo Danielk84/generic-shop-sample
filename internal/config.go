@@ -26,6 +26,8 @@ type Config struct {
 	AuthExpiration          time.Duration
 	RequestLoggerFilepath   string
 	AppLoggerFilepath       string
+	ZPMerchantID            string
+	PaymentCallbackURL      string
 }
 
 var (
@@ -56,6 +58,8 @@ func NewConfig() *Config {
 			AuthExpiration:         time.Duration(getNumberFromStr(args["AUTH_EXPIRATION"])),
 			RequestLoggerFilepath:  expendPath(args["REQUEST_LOGGER_FILEPATH"]),
 			AppLoggerFilepath:      expendPath(args["APP_LOGGER_FILEPATH"]),
+			ZPMerchantID:           args["ZP_MERCHANT_ID"],
+			PaymentCallbackURL:     args["PAYMENT_CALLBACK_URL"],
 		}
 	})
 	return DefaultConfig

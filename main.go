@@ -22,7 +22,7 @@ func main() {
 	}
 	defer engine.Close()
 
-	cacheDBs := []int{db.PublicCache, db.UsersCache, db.ProductsCache}
+	cacheDBs := []int{db.PublicCache, db.UsersCache, db.ProductsCache, db.PaymentCache}
 	cache, err := db.NewCacheManager(ctx, config.CacheURL, cacheDBs)
 	if err != nil {
 		log.Panicln(err)
