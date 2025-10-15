@@ -86,7 +86,7 @@ func JSONResponse(c *gin.Context, code int, msg, DefaultMsg string) {
 	if msg == "" {
 		msg = DefaultMsg
 	}
-	c.JSON(code, msg)
+	c.JSON(code, gin.H{"msg": msg})
 }
 
 func Created(c *gin.Context, msg string) {
@@ -102,7 +102,7 @@ func NotFound(c *gin.Context, msg string) {
 }
 
 func BadRequest(c *gin.Context, msg string) {
-	JSONResponse(c, http.StatusBadRequest, msg, "invalid request")
+	JSONResponse(c, http.StatusBadRequest, msg, "Invalid request")
 }
 
 func Unauthorized(c *gin.Context, msg string) {
@@ -111,6 +111,10 @@ func Unauthorized(c *gin.Context, msg string) {
 
 func Forbidden(c *gin.Context, msg string) {
 	JSONResponse(c, http.StatusForbidden, msg, "You don't have permission to access this resource.")
+}
+
+func Unprocessable(c *gin.Context, msg string) {
+	JSONResponse(c, http.StatusUnprocessableEntity, msg, "Failed to process entity")
 }
 
 func HasPermissions(c *gin.Context, userPermission queries.PermissionType, permissions ...queries.PermissionType) bool {
