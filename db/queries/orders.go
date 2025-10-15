@@ -22,10 +22,16 @@ type OrderSummaryResponse struct {
 
 type OrderResponse struct {
 	OrderSummaryResponse
-	ItemsTotal string `json:"items_total"`
-	TotalBill  int64  `json:"total_bill"`
-	Address    string `json:"address"`
-	ZipCode    string `json:"zip_code"`
+	ItemsTotal  string `json:"items_total"`
+	TotalBill   int64  `json:"total_bill"`
+	Address     string `json:"address"`
+	ZipCode     string `json:"zip_code"`
+	IsConfirmed bool   `json:"is_confirmed"`
+}
+
+type PaymentStatus struct {
+	PaymentSummary string `json:"payment_summary"`
+	IsPaid         bool   `json:"is_paid"`
 }
 
 type OrderRepository struct {
@@ -40,6 +46,7 @@ type OrderStore interface {
 	Get(ctx context.Context, id string, userID int32) (*OrderResponse, error)
 	SetUserInfo(ctx context.Context, id string, userID int32, info *OrderUserInfoRequest) error
 	VerifyUserInfo(ctx context.Context, id string, userID int32, isVerified bool) error
+	SetPaymentStatus(ctx context.Context, id string, userID int32, status *PaymentStatus) error
 	DeleteExpiredOrders(ctx context.Context) error
 }
 
@@ -93,7 +100,7 @@ func (or *OrderRepository) FullList(ctx context.Context, pagination, page int) (
 }
 
 func (or *OrderRepository) Get(ctx context.Context, id string, userID int32) (*OrderResponse, error) {
-	const q = `SELECT id, started_at, items_total, total_bill, is_paid, address, zip_code, is_delivered FROM orders
+	const q = `SELECT id, started_at, items_total, total_bill, is_paid, address, zip_code, is_confirmed, is_delivered FROM orders
 		WHERE id = $1::UUID AND user_id = $2 AND is_confirmed = TRUE`
 	return get[OrderResponse](ctx, or.session, q, id, userID)
 }
@@ -116,6 +123,18 @@ func (or *OrderRepository) VerifyUserInfo(ctx context.Context, id string, userID
 		"IsVerified": isVerified,
 		"ID":         id,
 		"UserID":     userID,
+	}
+	return execOne(ctx, or.session, q, args)
+}
+
+func (or *OrderRepository) SetPaymentStatus(ctx context.Context, id string, userID int32, status *PaymentStatus) error {
+	const q = `UPDATE orders SET payment_summary = CONCAT(payment_summary, ' ', @Summary), is_paid = @IsPaid
+		WHERE id = @ID AND user_id = @UserID`
+	args := &pgx.NamedArgs{
+		"Summary": status.PaymentSummary,
+		"IsPaid":  status.IsPaid,
+		"ID":      id,
+		"userID":  userID,
 	}
 	return execOne(ctx, or.session, q, args)
 }
