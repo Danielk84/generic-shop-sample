@@ -30,6 +30,7 @@ func TokenEncoder(claims AuthClaims) (string, error) {
 
 func TokenDecoder(tokenString string) (*AuthClaims, error) {
 	config := internal.NewConfig()
+
 	token, err := jwt.ParseWithClaims(
 		tokenString,
 		&AuthClaims{},

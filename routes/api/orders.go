@@ -3,7 +3,6 @@ package api
 import (
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
-	"generic-shop-sample/internal"
 	md "generic-shop-sample/middlewares"
 	"net/http"
 
@@ -11,10 +10,8 @@ import (
 )
 
 func OrderRouter(router *gin.RouterGroup) {
-	config := internal.NewConfig()
 	oh := orderHandler{
-		os:         queries.NewOrderStore(db.NewSession()),
-		pagination: config.Pagination,
+		os: queries.NewOrderStore(db.NewSession()),
 	}
 
 	router.Use(md.AuthMiddleware())
@@ -26,8 +23,7 @@ func OrderRouter(router *gin.RouterGroup) {
 }
 
 type orderHandler struct {
-	os         queries.OrderStore
-	pagination int
+	os queries.OrderStore
 }
 
 func (uh *orderHandler) create(c *gin.Context) {
@@ -53,7 +49,7 @@ func (uh *orderHandler) customerList(c *gin.Context) {
 	}
 
 	page := GetPage(c)
-	output, err := uh.os.CustomerList(c.Request.Context(), claims.ID, uh.pagination, page)
+	output, err := uh.os.CustomerList(c.Request.Context(), claims.ID, defaultPagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -68,7 +64,7 @@ func (uh *orderHandler) vendorList(c *gin.Context) {
 	}
 
 	page := GetPage(c)
-	output, err := uh.os.VendorList(c.Request.Context(), claims.ID, uh.pagination, page)
+	output, err := uh.os.VendorList(c.Request.Context(), claims.ID, defaultPagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -113,8 +109,7 @@ func (uh *orderHandler) verifyUserInfo(c *gin.Context) {
 }
 
 func OrderItemsRouter(router *gin.RouterGroup) {
-	config := internal.NewConfig()
-	oih := orderItemsHandler{queries.NewOrderItemsStore(db.NewSession()), config.Pagination}
+	oih := orderItemsHandler{queries.NewOrderItemsStore(db.NewSession())}
 
 	router.Use(md.AuthMiddleware())
 	router.POST("/", oih.create)
@@ -131,8 +126,7 @@ type ItemsTotal struct {
 }
 
 type orderItemsHandler struct {
-	ois        queries.OrderItemsStore
-	pagination int
+	ois queries.OrderItemsStore
 }
 
 func (oih *orderItemsHandler) create(c *gin.Context) {
@@ -163,7 +157,7 @@ func (oih *orderItemsHandler) customerList(c *gin.Context) {
 
 	id := c.Param("id")
 	page := GetPage(c)
-	output, err := oih.ois.CustomerList(c.Request.Context(), id, claims.ID, oih.pagination, page)
+	output, err := oih.ois.CustomerList(c.Request.Context(), id, claims.ID, defaultPagination, page)
 	if err != nil {
 		NotFound(c, "")
 	}
@@ -178,7 +172,7 @@ func (oih *orderItemsHandler) vendorList(c *gin.Context) {
 
 	id := c.Param("id")
 	page := GetPage(c)
-	output, err := oih.ois.VendorList(c.Request.Context(), id, claims.ID, oih.pagination, page)
+	output, err := oih.ois.VendorList(c.Request.Context(), id, claims.ID, defaultPagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -194,7 +188,7 @@ func (oih *orderItemsHandler) fullList(c *gin.Context) {
 
 	id := c.Param("id")
 	page := GetPage(c)
-	output, err := oih.ois.FullList(c.Request.Context(), id, oih.pagination, page)
+	output, err := oih.ois.FullList(c.Request.Context(), id, defaultPagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return

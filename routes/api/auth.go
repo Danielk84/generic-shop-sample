@@ -17,9 +17,11 @@ import (
 )
 
 func LoginRouter(ctx context.Context, router *gin.RouterGroup) {
+	config := internal.NewConfig()
 	ah := authHandler{
 		queries.NewUserStore(db.NewSession()),
 		db.NewCache(db.UsersCache),
+		config.AuthExpiration,
 	}
 
 	rl := md.NewRateLimiter(ctx, 10, 30*time.Minute, 60*time.Second)
@@ -28,8 +30,9 @@ func LoginRouter(ctx context.Context, router *gin.RouterGroup) {
 }
 
 type authHandler struct {
-	us    queries.UserStore
-	cache db.CacheClient
+	us             queries.UserStore
+	cache          db.CacheClient
+	authExpiration time.Duration
 }
 
 func (ah *authHandler) login(c *gin.Context) {
@@ -50,8 +53,7 @@ func (ah *authHandler) login(c *gin.Context) {
 		Unauthorized(c, "")
 		return
 	}
-	config := internal.NewConfig()
-	authExpiration := time.Now().Add(config.AuthExpiration * time.Minute)
+	authExpiration := time.Now().Add(ah.authExpiration * time.Minute)
 	maxAge := time.Until(authExpiration)
 	cacheKey := fmt.Sprintf("login:%d", user.ID)
 	if val, err := ah.cache.Get(c.Request.Context(), cacheKey).Result(); err == nil {
