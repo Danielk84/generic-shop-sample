@@ -158,7 +158,7 @@ func (pch *pcHandler) list(c *gin.Context) {
 	cacheKey := fmt.Sprintf("%s:%s", pch.baseCacheKey, id)
 	var output []string
 	if err := pch.cache.HGetAll(ctx, cacheKey).Scan(&output); err != nil {
-		LogCacheErr("HGetAll", pch.baseCacheKey, err)
+		LogCacheErr("HGetAll", cacheKey, err)
 
 		output, err = pch.pcStore.List(ctx, id)
 		if err != nil {
@@ -166,7 +166,7 @@ func (pch *pcHandler) list(c *gin.Context) {
 			return
 		}
 		if err := SetHCacheEx(ctx, pch.cache, cacheKey, 12*time.Hour, output); err != nil {
-			LogCacheErr("SetHCacheEx", pch.baseCacheKey, err)
+			LogCacheErr("SetHCacheEx", cacheKey, err)
 		}
 	}
 	c.JSON(http.StatusOK, output)

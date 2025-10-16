@@ -1,17 +1,24 @@
 package api
 
 import (
+	"fmt"
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
 	md "generic-shop-sample/middlewares"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 func CommentsRouter(router *gin.RouterGroup) {
-	ch := commentsHandler{queries.NewCommentStore(db.NewSession())}
+	ch := commentsHandler{
+		store:           queries.NewCommentStore(db.NewSession()),
+		cache:           db.NewCache(db.PublicCache),
+		baseCacheKey:    "comments",
+		cacheExpiration: 1 * time.Hour,
+	}
 
 	router.GET("/", ch.list)
 
@@ -30,21 +37,25 @@ type RelatedCommentsRequest struct {
 }
 
 type commentsHandler struct {
-	cs queries.CommentStore
+	store           queries.CommentStore
+	cache           db.CacheClient
+	baseCacheKey    string
+	cacheExpiration time.Duration
 }
 
 func (ch *commentsHandler) create(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor, queries.Customer) {
-		return
-	}
-	var json queries.CommentRequest
-	if err := c.ShouldBindJSON(&json); err != nil {
-		BadRequest(c, "")
+	if HasPermissions(nil, claims.PermissionType, queries.BlockUser) {
+		Forbidden(c, "")
 		return
 	}
 
-	if err := ch.cs.Create(c.Request.Context(), claims.Username, &json); err != nil {
+	var input queries.CommentRequest
+	if err := c.ShouldBindJSON(&input); err != nil {
+		BadRequest(c, "")
+		return
+	}
+	if err := ch.store.Create(c.Request.Context(), claims.Username, &input); err != nil {
 		BadRequest(c, "")
 		return
 	}
@@ -54,32 +65,42 @@ func (ch *commentsHandler) create(c *gin.Context) {
 func (ch *commentsHandler) get(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	id := c.Param("id")
-	comment, err := ch.cs.Get(c.Request.Context(), id)
+	output, err := ch.store.Get(c.Request.Context(), id)
 	if err != nil {
 		NotFound(c, "")
 		return
 	}
 
-	if comment.Username != claims.Username && !HasPermissions(nil, claims.PermissionType, queries.Admin) {
+	if output.Username != claims.Username && !HasPermissions(nil, claims.PermissionType, queries.Admin) {
 		Forbidden(c, "")
 		return
 	}
-	c.JSON(http.StatusOK, comment)
+	c.JSON(http.StatusOK, output)
 }
 
 func (ch *commentsHandler) list(c *gin.Context) {
-	var json RelatedCommentsRequest
-	if err := c.ShouldBindQuery(&json); err != nil {
+	var input RelatedCommentsRequest
+	if err := c.ShouldBindQuery(&input); err != nil {
 		BadRequest(c, "")
 		return
 	}
 
-	comments, err := ch.cs.List(c.Request.Context(), json.Parent, url.QueryEscape(json.Referrer), defaultPagination, GetPage(c))
-	if err != nil {
-		NotFound(c, "")
-		return
+	ctx := c.Request.Context()
+	cacheKey := fmt.Sprintf("%s:list:%s:%s", ch.baseCacheKey, input.Parent, input.Referrer)
+	var output []queries.CommentResponse
+	if err := ch.cache.HGetAll(ctx, cacheKey).Scan(&output); err != nil {
+		LogCacheErr("HGetAll", cacheKey, err)
+
+		output, err = ch.store.List(ctx, input.Parent, url.QueryEscape(input.Referrer), defaultPagination, GetPage(c))
+		if err != nil {
+			NotFound(c, "")
+			return
+		}
+		if err := SetHCacheEx(ctx, ch.cache, cacheKey, ch.cacheExpiration, output); err != nil {
+			LogCacheErr("SetHCacheEx", cacheKey, err)
+		}
 	}
-	c.JSON(http.StatusOK, comments)
+	c.JSON(http.StatusOK, output)
 }
 
 func (ch *commentsHandler) fullList(c *gin.Context) {
@@ -89,29 +110,36 @@ func (ch *commentsHandler) fullList(c *gin.Context) {
 		username = ""
 	}
 
-	items, err := ch.cs.FullList(c.Request.Context(), username, defaultPagination, GetPage(c))
-	if err != nil {
-		NotFound(c, "")
-		return
+	ctx := c.Request.Context()
+	cacheKey := fmt.Sprintf("%s:full:%s", ch.baseCacheKey, username)
+	var output []queries.RelatedCommentResponse
+	if err := ch.cache.HGetAll(ctx, cacheKey).Scan(&output); err != nil {
+		LogCacheErr("HGetAll", cacheKey, err)
+		output, err = ch.store.FullList(ctx, username, defaultPagination, GetPage(c))
+		if err != nil {
+			NotFound(c, "")
+			return
+		}
 	}
-	c.JSON(http.StatusOK, items)
+	c.JSON(http.StatusOK, output)
 }
 
 func (ch *commentsHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	id := c.Param("id")
 
-	comment, err := ch.cs.Get(c.Request.Context(), id)
+	ctx := c.Request.Context()
+	output, err := ch.store.Get(ctx, id)
 	if err != nil {
 		NotFound(c, "")
 		return
 	}
 
-	if comment.Username != claims.Username && !HasPermissions(nil, claims.PermissionType, queries.Admin) {
+	if output.Username != claims.Username && !HasPermissions(nil, claims.PermissionType, queries.Admin) {
 		Forbidden(c, "")
 		return
 	}
-	if err := ch.cs.Delete(c.Request.Context(), id); err != nil {
+	if err := ch.store.Delete(ctx, output.ID); err != nil {
 		BadRequest(c, "")
 		return
 	}
@@ -123,14 +151,14 @@ func (ch *commentsHandler) setActive(c *gin.Context) {
 	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
 		return
 	}
-	var json SetFlag
-	if err := c.ShouldBindJSON(&json); err != nil {
+	var input SetFlag
+	if err := c.ShouldBindJSON(&input); err != nil {
 		BadRequest(c, "")
 		return
 	}
 	id := c.Param("id")
 
-	if err := ch.cs.SetActive(c.Request.Context(), id, json.Accepted); err != nil {
+	if err := ch.store.SetActive(c.Request.Context(), id, input.Accepted); err != nil {
 		NotFound(c, "")
 		return
 	}
