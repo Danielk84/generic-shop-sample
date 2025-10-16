@@ -18,8 +18,8 @@ import (
 
 func UsersRouter(router *gin.RouterGroup) {
 	uh := usersHandler{
-		queries.NewUserStore(db.NewSession()),
-		db.NewCache(db.UsersCache),
+		store: queries.NewUserStore(db.NewSession()),
+		cache: db.NewCache(db.UsersCache),
 	}
 
 	router.GET("/:username", uh.get)
@@ -40,7 +40,7 @@ type VerfierKey struct {
 }
 
 type usersHandler struct {
-	us    queries.UserStore
+	store queries.UserStore
 	cache db.CacheClient
 }
 
@@ -49,23 +49,25 @@ func (uh *usersHandler) createUserByAdmin(c *gin.Context) {
 	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
 		return
 	}
-	var json queries.CreateUserRequest
-	if err := c.ShouldBindJSON(&json); err != nil {
+
+	var input queries.CreateUserRequest
+	if err := c.ShouldBindJSON(&input); err != nil {
 		BadRequest(c, "invalid user data")
 		return
 	}
 
-	if uh.us.IsUsernameExists(c.Request.Context(), json.Username) {
+	ctx := c.Request.Context()
+	if uh.store.IsUsernameExists(ctx, input.Username) {
 		c.JSON(http.StatusConflict, gin.H{"msg": "username already exists"})
 		return
 	}
 	var err error
-	json.Password, err = auth.PasswordHash(json.Password)
+	input.Password, err = auth.PasswordHash(input.Password)
 	if err != nil {
 		BadRequest(c, "invalid password string")
 		return
 	}
-	if err = uh.us.Create(c.Request.Context(), &json); err != nil {
+	if err = uh.store.Create(ctx, &input); err != nil {
 		BadRequest(c, "")
 		return
 	}
@@ -77,23 +79,23 @@ func (uh *usersHandler) list(c *gin.Context) {
 	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
 		return
 	}
-	users, err := uh.us.List(c.Request.Context(), defaultPagination, GetPage(c))
+
+	output, err := uh.store.List(c.Request.Context(), defaultPagination, GetPage(c))
 	if err != nil {
-		slog.Debug(err.Error())
 		NotFound(c, "")
 		return
 	}
-	c.JSON(http.StatusOK, users)
+	c.JSON(http.StatusOK, output)
 }
 
 func (uh *usersHandler) get(c *gin.Context) {
 	username := c.Param("username")
-	user, err := uh.us.GetDetails(c.Request.Context(), username)
-	if err != nil || !HasPermissions(nil, user.PermissionType, queries.Admin, queries.Customer) {
+	output, err := uh.store.GetDetails(c.Request.Context(), username)
+	if err != nil || !HasPermissions(nil, output.PermissionType, queries.Admin, queries.Customer) {
 		NotFound(c, "")
 		return
 	}
-	c.JSON(http.StatusOK, user)
+	c.JSON(http.StatusOK, output)
 }
 
 func (uh *usersHandler) updateUserPermission(c *gin.Context) {
@@ -106,24 +108,27 @@ func (uh *usersHandler) updateUserPermission(c *gin.Context) {
 		BadRequest(c, "invalid id")
 		return
 	}
-	var json queries.UserPermissionRequest
-	if err := c.ShouldBindJSON(&json); err != nil {
+	var input queries.UserPermissionRequest
+	if err := c.ShouldBindJSON(&input); err != nil {
 		slog.Debug(err.Error())
 		BadRequest(c, "invalid permission_id or is_active")
 		return
 	}
 
-	if err := uh.us.UpdatePermission(c.Request.Context(), int32(id), &json); err != nil {
+	if err := uh.store.UpdatePermission(c.Request.Context(), int32(id), &input); err != nil {
 		NotFound(c, "")
 		return
 	}
-	_ = uh.cache.Del(c.Request.Context(), fmt.Sprintf("login:%d", claims.ID))
+	cacheKey := fmt.Sprintf("login:%d", claims.ID)
+	if _, err := uh.cache.Del(c.Request.Context(), cacheKey).Result(); err != nil {
+		LogCacheErr("Del", cacheKey, err)
+	}
 	Accepted(c, "")
 }
 
 func (uh *usersHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if err := uh.us.Delete(c.Request.Context(), claims.ID, claims.Username); err != nil {
+	if err := uh.store.Delete(c.Request.Context(), claims.ID, claims.Username); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -140,13 +145,15 @@ func (uh *usersHandler) setEmail(c *gin.Context) {
 	}
 	claims := md.GetUserClaims(c)
 	ctx := c.Request.Context()
-	if err := uh.us.SetEmail(ctx, claims.ID, &input); err != nil {
+	if err := uh.store.SetEmail(ctx, claims.ID, &input); err != nil {
 		BadRequest(c, "email already exists")
 		return
 	}
 
 	randKey := RandVerifyNum()
-	if _, err := uh.cache.SetEx(ctx, fmt.Sprintf("verify:email:%s", claims.Username), randKey, 2*time.Minute).Result(); err != nil {
+	cacheKey := fmt.Sprintf("verify:email:%s", claims.Username)
+	if _, err := uh.cache.SetEx(ctx, cacheKey, randKey, 2*time.Minute).Result(); err != nil {
+		LogCacheErr("SetEx", cacheKey, err)
 		Unprocessable(c, "Failed to set verifier key")
 		return
 	}
@@ -155,7 +162,7 @@ func (uh *usersHandler) setEmail(c *gin.Context) {
 			To:  input.Email,
 			Msg: []byte(strconv.Itoa(randKey)),
 		}); err != nil {
-			slog.Error("failed to send mail", "error", err)
+			LogCacheErr("SendMail", "send mail", err)
 		}
 	}()
 	Accepted(c, "")
@@ -179,7 +186,7 @@ func (uh *usersHandler) verifyEmail(c *gin.Context) {
 		Forbidden(c, "")
 		return
 	}
-	if err := uh.us.VerifyEmail(ctx, claims.ID, true); err != nil {
+	if err := uh.store.VerifyEmail(ctx, claims.ID, true); err != nil {
 		slog.Error("unxpected error to UserStore.VerifyEmail", "error", err)
 		NotFound(c, "")
 		return
@@ -191,12 +198,10 @@ func (uh *usersHandler) setPhoneNumber(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	var json queries.PhoneNumberRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
-		slog.Debug(err.Error())
 		BadRequest(c, "")
 		return
 	}
-	if err := uh.us.SetPhoneNumber(c.Request.Context(), claims.ID, &json); err != nil {
-		slog.Debug(err.Error())
+	if err := uh.store.SetPhoneNumber(c.Request.Context(), claims.ID, &json); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -213,18 +218,17 @@ func UserProfileRouter(router *gin.RouterGroup) {
 }
 
 type userProfileHandler struct {
-	ups queries.UserProfileStore
+	store queries.UserProfileStore
 }
 
 func (uph *userProfileHandler) upsert(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	var json queries.UserProfileRequest
 	if err := c.ShouldBindJSON(&json); err != nil {
-		slog.Debug(err.Error())
 		BadRequest(c, "")
 		return
 	}
-	if err := uph.ups.Upsert(c.Request.Context(), claims.ID, &json); err != nil {
+	if err := uph.store.Upsert(c.Request.Context(), claims.ID, &json); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -239,18 +243,19 @@ func (uph *userProfileHandler) uploadProfileImg(c *gin.Context) {
 		return
 	}
 	dst := ""
-	if fpath, err := uph.ups.GetImgPath(c.Request.Context(), claims.ID); err == nil {
+	ctx := c.Request.Context()
+	if fpath, err := uph.store.GetImgPath(ctx, claims.ID); err == nil {
 		dst = fpath
 	}
 	resultPath, err := UploadFile(file, claims, "user-profile", dst)
 	if err != nil {
-		slog.Debug(err.Error())
+		slog.Error("failed to upload file", "error", err)
 		BadRequest(c, "failed to process file")
 		return
 	}
-	slog.Debug(resultPath)
 	if resultPath != dst {
-		if err := uph.ups.SetImgPath(c.Request.Context(), claims.ID, resultPath); err != nil {
+		if err := uph.store.SetImgPath(ctx, claims.ID, resultPath); err != nil {
+			slog.Error("failed to set img path", "error", err)
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "failed to save file"})
 			return
 		}
@@ -260,9 +265,8 @@ func (uph *userProfileHandler) uploadProfileImg(c *gin.Context) {
 
 func (upr *userProfileHandler) deleteImgPath(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	imgPath, err := upr.ups.DeleteImgPath(c.Request.Context(), claims.ID)
+	imgPath, err := upr.store.DeleteImgPath(c.Request.Context(), claims.ID)
 	if err != nil {
-		slog.Debug(err.Error())
 		NotFound(c, "")
 		return
 	}
