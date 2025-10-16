@@ -34,17 +34,22 @@ type AvailableQuantity struct {
 }
 
 type productsHandler struct {
-	ps queries.ProductStore
+	store queries.ProductStore
 }
 
 func (ph *productsHandler) create(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	var json queries.CreateProductRequest
-	if err := c.ShouldBindJSON(&json); err != nil {
+	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
+		return
+	}
+
+	var input queries.CreateProductRequest
+	if err := c.ShouldBindJSON(&input); err != nil {
 		BadRequest(c, "")
 		return
 	}
-	if err := ph.ps.Create(c.Request.Context(), claims.ID, &json); err != nil {
+
+	if err := ph.store.Create(c.Request.Context(), claims.ID, &input); err != nil {
 		BadRequest(c, "")
 		return
 	}
@@ -52,58 +57,61 @@ func (ph *productsHandler) create(c *gin.Context) {
 }
 
 func (ph *productsHandler) list(c *gin.Context) {
-	products, err := ph.ps.List(c.Request.Context(), defaultPagination, GetPage(c))
+	output, err := ph.store.List(c.Request.Context(), defaultPagination, GetPage(c))
 	if err != nil {
 		NotFound(c, "")
 		return
 	}
-	c.JSON(http.StatusOK, products)
+	c.JSON(http.StatusOK, output)
 }
 
 func (ph *productsHandler) fullList(c *gin.Context) {
 	claims := md.GetUserClaims(c)
+	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
+		return
+	}
+
 	id := claims.ID
 	if HasPermissions(nil, claims.PermissionType, queries.Admin) {
 		id = 0
 	}
-	products, err := ph.ps.FullList(c.Request.Context(), id, defaultPagination, GetPage(c))
+	output, err := ph.store.FullList(c.Request.Context(), id, defaultPagination, GetPage(c))
 	if err != nil {
 		NotFound(c, "")
 		return
 	}
-	c.JSON(http.StatusOK, products)
+	c.JSON(http.StatusOK, output)
 }
 
 func (ph *productsHandler) get(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	id := c.Param("id")
-	product, err := ph.ps.Get(c.Request.Context(), id)
+	output, err := ph.store.Get(c.Request.Context(), id)
 	if err != nil {
 		NotFound(c, "")
 		return
 	}
-	if !product.IsActive {
+	if !output.IsActive {
 		if claims == nil {
 			Unauthorized(c, "")
 			return
 		}
-		if claims.ID != product.UserID && !HasPermissions(nil, claims.PermissionType, queries.Admin) {
+		if claims.ID != output.UserID && !HasPermissions(nil, claims.PermissionType, queries.Admin) {
 			Forbidden(c, "")
 			return
 		}
 	}
-	c.JSON(http.StatusOK, product)
+	c.JSON(http.StatusOK, output)
 }
 
 func (ph *productsHandler) update(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	var json queries.UpdateProductRequest
-	if err := c.ShouldBindJSON(&json); err != nil {
-		slog.Debug(err.Error())
+	var input queries.UpdateProductRequest
+	if err := c.ShouldBindJSON(&input); err != nil {
 		BadRequest(c, "")
 		return
 	}
-	if err := ph.ps.Update(c.Request.Context(), claims.ID, &json); err != nil {
+	if err := ph.store.Update(c.Request.Context(), claims.ID, &input); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -112,8 +120,12 @@ func (ph *productsHandler) update(c *gin.Context) {
 
 func (ph *productsHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
+	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
+		return
+	}
+
 	id := c.Param("id")
-	if err := ph.ps.Delete(c.Request.Context(), id, claims.ID); err != nil {
+	if err := ph.store.Delete(c.Request.Context(), id, claims.ID); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -122,13 +134,17 @@ func (ph *productsHandler) delete(c *gin.Context) {
 
 func (ph *productsHandler) incrBy(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	var json AvailableQuantity
-	if err := c.ShouldBindJSON(&json); err != nil {
+	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
+		return
+	}
+
+	var input AvailableQuantity
+	if err := c.ShouldBindJSON(&input); err != nil {
 		BadRequest(c, "")
 		return
 	}
 	id := c.Param("id")
-	if err := ph.ps.IncrBy(c.Request.Context(), id, claims.ID, json.Num); err != nil {
+	if err := ph.store.IncrBy(c.Request.Context(), id, claims.ID, input.Num); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -137,19 +153,17 @@ func (ph *productsHandler) incrBy(c *gin.Context) {
 
 func (ph *productsHandler) decrBy(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	var json AvailableQuantity
-	if err := c.ShouldBindJSON(&json); err != nil {
+	var input AvailableQuantity
+	if err := c.ShouldBindJSON(&input); err != nil {
 		BadRequest(c, "")
 		return
 	}
 	id := c.Param("id")
-	if err := ph.ps.DecrBy(c.Request.Context(), id, claims.ID, json.Num); err != nil {
-		slog.Debug("why", "error", err)
+	if err := ph.store.DecrBy(c.Request.Context(), id, claims.ID, input.Num); err != nil {
 		NotFound(c, "")
 		return
 	}
 	Accepted(c, "")
-
 }
 
 func (ph *productsHandler) setAvailable(c *gin.Context) {
@@ -157,14 +171,15 @@ func (ph *productsHandler) setAvailable(c *gin.Context) {
 	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
 		return
 	}
-	var json SetFlag
-	if err := c.ShouldBindJSON(&json); err != nil {
+
+	var input SetFlag
+	if err := c.ShouldBindJSON(&input); err != nil {
 		BadRequest(c, "")
 		return
 	}
 
 	id := c.Param("id")
-	if err := ph.ps.SetAvailable(c.Request.Context(), id, json.Accepted); err != nil {
+	if err := ph.store.SetAvailable(c.Request.Context(), id, input.Accepted); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -176,14 +191,15 @@ func (ph *productsHandler) setActive(c *gin.Context) {
 	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
 		return
 	}
-	var json SetFlag
-	if err := c.ShouldBindJSON(&json); err != nil {
+
+	var input SetFlag
+	if err := c.ShouldBindJSON(&input); err != nil {
 		BadRequest(c, "")
 		return
 	}
 
 	id := c.Param("id")
-	if err := ph.ps.SetActive(c.Request.Context(), id, json.Accepted); err != nil {
+	if err := ph.store.SetActive(c.Request.Context(), id, input.Accepted); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -193,8 +209,8 @@ func (ph *productsHandler) setActive(c *gin.Context) {
 func ProductImagesRouter(router *gin.RouterGroup) {
 	session := db.NewSession()
 	pih := productImagesHandler{
-		ps:  queries.NewProductStore(session),
-		pis: queries.NewProductImagesStore(session),
+		productStore: queries.NewProductStore(session),
+		imagesStore:  queries.NewProductImagesStore(session),
 	}
 
 	router.GET("/:productID", pih.list)
@@ -206,19 +222,23 @@ func ProductImagesRouter(router *gin.RouterGroup) {
 }
 
 type productImagesHandler struct {
-	ps  queries.ProductStore
-	pis queries.ProductImagesStore
+	productStore queries.ProductStore
+	imagesStore  queries.ProductImagesStore
 }
 
 func (pih *productImagesHandler) create(c *gin.Context) {
 	claims := md.GetUserClaims(c)
+	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
+		return
+	}
+
 	productID := c.Param("productID")
-	product, err := pih.ps.Get(c.Request.Context(), productID)
+	output, err := pih.productStore.Get(c.Request.Context(), productID)
 	if err != nil {
 		NotFound(c, "")
 		return
 	}
-	if product.UserID != claims.ID {
+	if output.UserID != claims.ID {
 		Forbidden(c, "")
 		return
 	}
@@ -233,7 +253,7 @@ func (pih *productImagesHandler) create(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	if err := pih.pis.Create(c.Request.Context(), productID, resultPath); err != nil {
+	if err := pih.imagesStore.Create(c.Request.Context(), productID, resultPath); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -242,32 +262,33 @@ func (pih *productImagesHandler) create(c *gin.Context) {
 
 func (pih *productImagesHandler) list(c *gin.Context) {
 	productID := c.Param("productID")
-	items, err := pih.pis.List(c.Request.Context(), productID)
+	output, err := pih.imagesStore.List(c.Request.Context(), productID)
 	if err != nil {
-		slog.Debug("hear is", "error", err)
 		NotFound(c, "")
 		return
 	}
-	c.JSON(http.StatusOK, items)
+	c.JSON(http.StatusOK, output)
 }
 
 func (pih *productImagesHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
+	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
+		return
+	}
+
 	productID := c.Param("productID")
-	product, err := pih.ps.Get(c.Request.Context(), productID)
+	output, err := pih.productStore.Get(c.Request.Context(), productID)
 	if err != nil {
-		slog.Debug("not found product", "error", err)
 		NotFound(c, "")
 		return
 	}
-	if product.UserID != claims.ID {
+	if output.UserID != claims.ID {
 		Forbidden(c, "")
 		return
 	}
 	id := c.Param("id")
-	imgPath, err := pih.pis.Delete(c.Request.Context(), id)
+	imgPath, err := pih.imagesStore.Delete(c.Request.Context(), id)
 	if err != nil {
-		slog.Debug("not found imgPath", "error", err)
 		NotFound(c, "")
 		return
 	}
