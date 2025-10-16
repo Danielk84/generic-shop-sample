@@ -1,11 +1,14 @@
 package api
 
 import (
+	"context"
 	"fmt"
+	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/auth"
 	"io"
+	"log/slog"
 	"math/rand"
 	"mime/multipart"
 	"net/http"
@@ -17,6 +20,7 @@ import (
 
 	"github.com/gabriel-vasile/mimetype"
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 )
 
 var defaultPagination = internal.NewConfig().Pagination
@@ -130,4 +134,26 @@ func RandVerifyNum() int {
 	min := 100000
 	max := 999999
 	return rand.Intn(max-min) + min
+}
+
+func SetHCacheEx(ctx context.Context, cache db.CacheClient, key string, expiration time.Duration, values ...any) error {
+	_, err := cache.TxPipelined(ctx, func(p redis.Pipeliner) error {
+		if _, err := p.HSet(ctx, key, values...).Result(); err != nil {
+			return err
+		}
+		_, err := p.Expire(ctx, key, expiration).Result()
+		return err
+	})
+	return err
+}
+
+func LogCacheErr(method, section string, err error) {
+	if err == redis.Nil {
+		return
+	}
+	slog.Error("failed to process cache",
+		"method", method,
+		"secion", section,
+		"err", err,
+	)
 }
