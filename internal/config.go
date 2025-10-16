@@ -28,6 +28,10 @@ type Config struct {
 	AppLoggerFilepath       string
 	ZPMerchantID            string
 	PaymentCallbackURL      string
+	FromEmail               string
+	SMTPHost                string
+	SMTPPort                int
+	SMTPPassword            string
 }
 
 var (
@@ -60,6 +64,10 @@ func NewConfig() *Config {
 			AppLoggerFilepath:      expendPath(args["APP_LOGGER_FILEPATH"]),
 			ZPMerchantID:           args["ZP_MERCHANT_ID"],
 			PaymentCallbackURL:     args["PAYMENT_CALLBACK_URL"],
+			FromEmail:              args["FROM_EMAIL"],
+			SMTPHost:               args["SMTP_HOST"],
+			SMTPPort:               getNumberFromStr(args["SMTP_PORT"]),
+			SMTPPassword:           args["SMTP_PASSWORD"],
 		}
 	})
 	return DefaultConfig
