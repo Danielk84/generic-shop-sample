@@ -22,13 +22,13 @@ type CorsConfig struct {
 // CorsMiddleware adds CORS headers to responses for browser clients.
 func CorsMiddleware(cc *CorsConfig) gin.HandlerFunc {
 	if len(cc.Methods) == 0 || len(cc.Origins) == 0 {
-		panic("Methods and Origins must be set in CorsMiddleware")
+		panic("methods and origins must be set in CorsMiddleware")
 	}
 
 	origins := make(map[string]bool)
 	for _, org := range cc.Origins {
 		if _, err := url.ParseRequestURI(org); err != nil {
-			panic(fmt.Errorf(`Invalid URI origin "%s": %s\n`, org, err))
+			panic(fmt.Errorf(`invalid URI origin "%s": %s\n`, org, err))
 		}
 		origins[org] = true
 	}
