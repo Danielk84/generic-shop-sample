@@ -8,7 +8,6 @@ import (
 	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/auth"
 	md "generic-shop-sample/middlewares"
-	"log/slog"
 	"net/http"
 	"time"
 
@@ -36,58 +35,53 @@ type authHandler struct {
 }
 
 func (ah *authHandler) login(c *gin.Context) {
-	var json queries.LoginRequest
-	if err := c.ShouldBindJSON(&json); err != nil {
-		slog.Debug("failed to validate json", "error", err)
+	var input queries.LoginRequest
+	if err := c.ShouldBindJSON(&input); err != nil {
 		BadRequest(c, "invalid username or password")
 		return
 	}
 
-	user, err := ah.us.Get(c.Request.Context(), json.Username)
+	ctx := c.Request.Context()
+	user, err := ah.us.Get(ctx, input.Username)
 	if err != nil {
-		slog.Debug("failed to found user", "error", err)
 		NotFound(c, "")
 		return
 	}
-	if !auth.ComparePassword(user.Password, json.Password) {
+	if !auth.ComparePassword(user.Password, input.Password) {
 		Unauthorized(c, "")
 		return
 	}
 	authExpiration := time.Now().Add(ah.authExpiration * time.Minute)
 	maxAge := time.Until(authExpiration)
 	cacheKey := fmt.Sprintf("login:%d", user.ID)
-	if val, err := ah.cache.Get(c.Request.Context(), cacheKey).Result(); err == nil {
-		loginResponse(c, val, int(maxAge))
-		return
-	} else {
-		slog.Debug("failed to get jwt token",
-			"cacheKey", cacheKey,
-			"error", err)
+	var output string
+	if err := ah.cache.Get(c.Request.Context(), cacheKey).Scan(&output); err != nil {
+		LogCacheErr("Get", cacheKey, err)
+
+		claims := auth.AuthClaims{
+			ID:             user.ID,
+			Username:       user.Username,
+			PermissionType: user.PermissionType,
+			RegisteredClaims: jwt.RegisteredClaims{
+				ExpiresAt: jwt.NewNumericDate(authExpiration),
+				IssuedAt:  jwt.NewNumericDate(time.Now()),
+				NotBefore: jwt.NewNumericDate(time.Now()),
+			},
+		}
+		output, err = auth.TokenEncoder(claims)
+		if err != nil {
+			BadRequest(c, "")
+			return
+		}
+		if err = ah.cache.Set(ctx, cacheKey, output, maxAge).Err(); err != nil {
+			LogCacheErr("Set", cacheKey, err)
+		}
 	}
-	claims := auth.AuthClaims{
-		ID:             user.ID,
-		Username:       user.Username,
-		PermissionType: user.PermissionType,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(authExpiration),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now()),
-		},
-	}
-	tokenString, err := auth.TokenEncoder(claims)
-	if err != nil {
-		BadRequest(c, "")
-		return
-	}
-	bearerToken := "Bearer " + tokenString
-	if err := ah.cache.Set(c.Request.Context(), cacheKey, bearerToken, maxAge).Err(); err != nil {
-		slog.Warn("failed to set tokenString", "error", err)
-	}
-	loginResponse(c, bearerToken, int(maxAge))
+	loginResponse(c, output, int(maxAge))
 }
 
 func loginResponse(c *gin.Context, tokenString string, maxAge int) {
 	c.SetSameSite(http.SameSiteStrictMode)
 	c.SetCookie("__Host-auth-token", tokenString, maxAge, "/", "", true, true)
-	c.JSON(http.StatusOK, gin.H{"token": tokenString})
+	c.JSON(http.StatusOK, gin.H{"token": "Bearer " + tokenString})
 }

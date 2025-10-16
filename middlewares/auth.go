@@ -35,11 +35,12 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 		us := queries.NewUserStore(db.NewSession())
-		if !us.IsValidUser(c.Request.Context(), &queries.ValidUserRquest{ID: claims.ID, Username: claims.Username, PermissionType: claims.PermissionType}) {
+		ctx := c.Request.Context()
+		if !us.IsValidUser(ctx, &queries.ValidUserRquest{ID: claims.ID, Username: claims.Username, PermissionType: claims.PermissionType}) {
 			c.AbortWithStatus(http.StatusNotFound)
 			return
 		}
-		ctx := context.WithValue(c.Request.Context(), userKey, claims)
+		ctx = context.WithValue(ctx, userKey, claims)
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}
