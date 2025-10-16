@@ -1,18 +1,23 @@
 package api
 
 import (
+	"fmt"
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
 	md "generic-shop-sample/middlewares"
-	"log/slog"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 func CategoriesRouter(router *gin.RouterGroup) {
-	cs := categoriesHandler{queries.NewCategoryStore(db.NewSession())}
+	cs := categoriesHandler{
+		store:        queries.NewCategoryStore(db.NewSession()),
+		cache:        db.NewCache(db.ProductsCache),
+		baseCacheKey: "categories",
+	}
 
 	router.GET("/", cs.list)
 
@@ -23,7 +28,9 @@ func CategoriesRouter(router *gin.RouterGroup) {
 }
 
 type categoriesHandler struct {
-	cs queries.CategoryStore
+	store        queries.CategoryStore
+	cache        db.CacheClient
+	baseCacheKey string
 }
 
 func (ch *categoriesHandler) create(c *gin.Context) {
@@ -31,26 +38,39 @@ func (ch *categoriesHandler) create(c *gin.Context) {
 	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
 		return
 	}
-	var json queries.CategoryTag
-	if err := c.ShouldBindJSON(&json); err != nil {
-		BadRequest(c, "")
+	var input queries.CategoryTag
+	if err := c.ShouldBindJSON(&input); err != nil {
+		BadRequest(c, "Invalid tag")
 		return
 	}
 
-	if err := ch.cs.Create(c.Request.Context(), json.Tag); err != nil {
-		BadRequest(c, "")
+	ctx := c.Request.Context()
+	if err := ch.store.Create(ctx, input.Tag); err != nil {
+		NotFound(c, "")
 		return
+	}
+	if _, err := ch.cache.Del(ctx, ch.baseCacheKey).Result(); err != nil {
+		LogCacheErr("Del", ch.baseCacheKey, err)
 	}
 	Created(c, "")
 }
 
 func (ch *categoriesHandler) list(c *gin.Context) {
-	categories, err := ch.cs.List(c.Request.Context())
-	if err != nil {
-		NotFound(c, "")
-		return
+	ctx := c.Request.Context()
+	var output []queries.Category
+	if err := ch.cache.HGetAll(ctx, ch.baseCacheKey).Scan(&output); err != nil {
+		LogCacheErr("HGetAll", ch.baseCacheKey, err)
+
+		output, err = ch.store.List(ctx)
+		if err != nil {
+			NotFound(c, "")
+			return
+		}
+		if err = SetHCacheEx(ctx, ch.cache, ch.baseCacheKey, 24*time.Hour, output); err != nil {
+			LogCacheErr("SetHCacheEx", ch.baseCacheKey, err)
+		}
 	}
-	c.JSON(http.StatusOK, categories)
+	c.JSON(http.StatusOK, output)
 }
 
 func (ch *categoriesHandler) delete(c *gin.Context) {
@@ -64,15 +84,25 @@ func (ch *categoriesHandler) delete(c *gin.Context) {
 		return
 	}
 
-	if err := ch.cs.Delete(c.Request.Context(), int32(id)); err != nil {
+	ctx := c.Request.Context()
+	if err := ch.store.Delete(ctx, int32(id)); err != nil {
 		NotFound(c, "")
 		return
+	}
+	if _, err := ch.cache.Del(ctx, ch.baseCacheKey).Result(); err != nil {
+		LogCacheErr("Del", ch.baseCacheKey, err)
 	}
 	c.Status(http.StatusNoContent)
 }
 
 func PCRouter(router *gin.RouterGroup) {
-	pch := pcHandler{queries.NewPCStore(db.NewSession())}
+	session := db.NewSession()
+	pch := pcHandler{
+		pcStore:      queries.NewPCStore(session),
+		productStore: queries.NewProductStore(session),
+		cache:        db.NewCache(db.ProductsCache),
+		baseCacheKey: "pc",
+	}
 
 	router.GET("/:id", pch.list)
 	router.POST("/set-tags/:id", md.AuthMiddleware(), pch.setTags)
@@ -83,7 +113,10 @@ type PC struct {
 }
 
 type pcHandler struct {
-	pcs queries.PCStore
+	pcStore      queries.PCStore
+	productStore queries.ProductStore
+	cache        db.CacheClient
+	baseCacheKey string
 }
 
 func (pch *pcHandler) setTags(c *gin.Context) {
@@ -91,17 +124,17 @@ func (pch *pcHandler) setTags(c *gin.Context) {
 	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
 		return
 	}
-	var json PC
-	if err := c.ShouldBindJSON(&json); err != nil {
-		BadRequest(c, "")
+	var input PC
+	if err := c.ShouldBindJSON(&input); err != nil {
+		BadRequest(c, "Invalid tags")
 		return
 	}
-	id := c.Param("id")
 
-	ps := queries.NewProductStore(db.NewSession())
-	product, err := ps.Get(c.Request.Context(), id)
+	id := c.Param("id")
+	ctx := c.Request.Context()
+	product, err := pch.productStore.Get(ctx, id)
 	if err != nil {
-		NotFound(c, "")
+		NotFound(c, "Related product not found")
 		return
 	}
 	if product.UserID != claims.ID && !HasPermissions(nil, claims.PermissionType, queries.Admin) {
@@ -109,21 +142,32 @@ func (pch *pcHandler) setTags(c *gin.Context) {
 		return
 	}
 
-	pcs := queries.NewPCStore(db.NewSession())
-	if err := pcs.SetTags(c.Request.Context(), product.ID, json.Tags); err != nil {
-		slog.Debug(err.Error())
+	if err := pch.pcStore.SetTags(ctx, product.ID, input.Tags); err != nil {
 		NotFound(c, "")
 		return
+	}
+	if _, err := pch.cache.Del(ctx, fmt.Sprintf("%s:%s", pch.baseCacheKey, product.ID)).Result(); err != nil {
+		LogCacheErr("Del", pch.baseCacheKey, err)
 	}
 	Accepted(c, "")
 }
 
 func (pch *pcHandler) list(c *gin.Context) {
 	id := c.Param("id")
-	items, err := pch.pcs.List(c.Request.Context(), id)
-	if err != nil {
-		NotFound(c, "")
-		return
+	ctx := c.Request.Context()
+	cacheKey := fmt.Sprintf("%s:%s", pch.baseCacheKey, id)
+	var output []string
+	if err := pch.cache.HGetAll(ctx, cacheKey).Scan(&output); err != nil {
+		LogCacheErr("HGetAll", pch.baseCacheKey, err)
+
+		output, err = pch.pcStore.List(ctx, id)
+		if err != nil {
+			NotFound(c, "")
+			return
+		}
+		if err := SetHCacheEx(ctx, pch.cache, cacheKey, 12*time.Hour, output); err != nil {
+			LogCacheErr("SetHCacheEx", pch.baseCacheKey, err)
+		}
 	}
-	c.JSON(http.StatusOK, items)
+	c.JSON(http.StatusOK, output)
 }
