@@ -5,11 +5,13 @@ import (
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal/auth"
+	"generic-shop-sample/internal/background"
 	md "generic-shop-sample/middlewares"
 	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,8 +30,13 @@ func UsersRouter(router *gin.RouterGroup) {
 		{http.MethodDelete, "/", []gin.HandlerFunc{uh.delete}},
 		{http.MethodPut, "/set-email", []gin.HandlerFunc{uh.setEmail}},
 		{http.MethodPut, "/set-phone-number", []gin.HandlerFunc{uh.setPhoneNumber}},
+		{http.MethodPost, "/verify-email", []gin.HandlerFunc{uh.verifyEmail}},
 		{http.MethodPut, "/:id", []gin.HandlerFunc{uh.updateUserPermission}},
 	})
+}
+
+type VerfierKey struct {
+	Key int `json:"num" binding:"required"`
 }
 
 type usersHandler struct {
@@ -125,15 +132,56 @@ func (uh *usersHandler) delete(c *gin.Context) {
 }
 
 func (uh *usersHandler) setEmail(c *gin.Context) {
-	var json queries.EmailAddrRequest
-	if err := c.ShouldBindJSON(&json); err != nil {
+	var input queries.EmailAddrRequest
+	if err := c.ShouldBindJSON(&input); err != nil {
 		slog.Debug(err.Error())
 		BadRequest(c, "invalid email address")
 		return
 	}
 	claims := md.GetUserClaims(c)
-	if err := uh.us.SetEmail(c.Request.Context(), claims.ID, &json); err != nil {
+	ctx := c.Request.Context()
+	if err := uh.us.SetEmail(ctx, claims.ID, &input); err != nil {
 		BadRequest(c, "email already exists")
+		return
+	}
+
+	randKey := RandVerifyNum()
+	if _, err := uh.cache.SetEx(ctx, fmt.Sprintf("verify:email:%s", claims.Username), randKey, 2*time.Minute).Result(); err != nil {
+		Unprocessable(c, "Failed to set verifier key")
+		return
+	}
+	go func() {
+		if err := background.SendMail(ctx, uh.cache, &background.MailMessage{
+			To:  input.Email,
+			Msg: []byte(strconv.Itoa(randKey)),
+		}); err != nil {
+			slog.Error("failed to send mail", "error", err)
+		}
+	}()
+	Accepted(c, "")
+}
+
+func (uh *usersHandler) verifyEmail(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	var input VerfierKey
+	if err := c.ShouldBindJSON(&input); err != nil {
+		BadRequest(c, "")
+		return
+	}
+
+	ctx := c.Request.Context()
+	key, err := uh.cache.GetDel(ctx, fmt.Sprintf("verify:email:%s", claims.Username)).Result()
+	if err != nil {
+		NotFound(c, "Verfier key not found")
+		return
+	}
+	if key != strconv.Itoa(input.Key) {
+		Forbidden(c, "")
+		return
+	}
+	if err := uh.us.VerifyEmail(ctx, claims.ID, true); err != nil {
+		slog.Error("unxpected error to UserStore.VerifyEmail", "error", err)
+		NotFound(c, "")
 		return
 	}
 	Accepted(c, "")

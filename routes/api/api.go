@@ -6,6 +6,7 @@ import (
 	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/auth"
 	"io"
+	"math/rand"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -123,4 +124,10 @@ func HasPermissions(c *gin.Context, userPermission queries.PermissionType, permi
 		Forbidden(c, "")
 	}
 	return isContains
+}
+
+func RandVerifyNum() int {
+	min := 100000
+	max := 999999
+	return rand.Intn(max-min) + min
 }
