@@ -1,0 +1,41 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: docker/app.Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./.env:/app/.env
+    env_file: .env
+    depends_on:
+      - psql
+      - rdb
+
+  psql:
+    image: postgres:17.6-alpine3.22
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: 1234
+    volumes:
+      - psql-data:/var/lib/postgresql/data
+
+  migrator:
+    image: migrate/migrate:latest
+    command: >
+      -path=/migrations
+      -database=pgx5://postgres:1234@psql:5432/
+      up 10
+    volumes:
+      - ./db/migrations:/migrations
+    depends_on:
+      - psql
+  
+  rdb:
+    image: redis:8.2-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  psql-data:
