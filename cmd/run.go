@@ -10,12 +10,12 @@ import (
 )
 
 var runCmd = &cobra.Command{
-	Use:   "run",
+	Use:   "serve",
 	Short: "run server",
-	Run:   runServer,
+	Run:   serve,
 }
 
-func runServer(cmd *cobra.Command, args []string) {
+func serve(cmd *cobra.Command, args []string) {
 	config := internal.NewConfig()
 	ctx := cmd.Context()
 

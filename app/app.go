@@ -52,7 +52,7 @@ func NewApp(ctx context.Context, config *internal.Config) *App {
 	internal.InitAppLogger(logLevel, config.AppLoggerFilepath)
 
 	setMiddlewares(ctx, router, config)
-	setCustomValidators()
+	internal.SetCustomValidators()
 	setRoutes(ctx, router)
 
 	return &App{

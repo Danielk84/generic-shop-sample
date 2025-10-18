@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
+	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/auth"
-	c "generic-shop-sample/internal/cmd"
 	"log"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/spf13/cobra"
 )
 
@@ -17,7 +18,7 @@ var (
 )
 
 var newAdminCmd = &cobra.Command{
-	Use:   "newAdmin",
+	Use:   "new-admin",
 	Short: "create new admin",
 	Run:   newAdmin,
 }
@@ -31,7 +32,7 @@ func init() {
 
 func newAdmin(cmd *cobra.Command, args []string) {
 	us := queries.NewUserStore(db.NewSession())
-	user := &queries.CreateUserRequest{
+	user := queries.CreateUserRequest{
 		LoginRequest: queries.LoginRequest{
 			Username: username,
 			Password: password,
@@ -42,7 +43,8 @@ func newAdmin(cmd *cobra.Command, args []string) {
 		},
 	}
 	var err error
-	if err = c.Validator.ValidateStruct(user); err != nil {
+	validate := internal.SetCustomValidators().(*validator.Validate)
+	if err = validate.Struct(user); err != nil {
 		if username == "" || password == "" {
 			log.Fatalln("username and password required.")
 			return
@@ -54,7 +56,7 @@ func newAdmin(cmd *cobra.Command, args []string) {
 		log.Fatalf("failed to hash password, %s", err)
 		return
 	}
-	if err = us.Create(cmd.Context(), user); err != nil {
+	if err = us.Create(cmd.Context(), &user); err != nil {
 		log.Fatalf("failed to create admin, %s", err)
 		return
 	}

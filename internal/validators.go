@@ -1,4 +1,4 @@
-package app
+package internal
 
 import (
 	"regexp"
@@ -8,7 +8,7 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-func setCustomValidators() {
+func SetCustomValidators() any {
 	cv := map[string]validator.Func{
 		"username":          usernameValidator,
 		"password":          passwordValidator,
@@ -23,6 +23,7 @@ func setCustomValidators() {
 	for key, value := range cv {
 		v.RegisterValidation(key, value)
 	}
+	return v
 }
 
 var usernameValidatorRegexp = regexp.MustCompile(`(^([a-z]|[0-9]|[_-]){4,128}$)`)
