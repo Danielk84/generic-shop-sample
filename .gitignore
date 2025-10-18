@@ -1,4 +1,6 @@
 .env
+.env.test
+
 generic-shop-sample
 cmd/manager
 gin.log

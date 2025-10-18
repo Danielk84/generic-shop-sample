@@ -88,7 +88,7 @@ func (ch *commentsHandler) list(c *gin.Context) {
 	ctx := c.Request.Context()
 	cacheKey := fmt.Sprintf("%s:list:%s:%s", ch.baseCacheKey, input.Parent, input.Referrer)
 	var output []queries.CommentResponse
-	if err := ch.cache.HGetAll(ctx, cacheKey).Scan(&output); err != nil {
+	if err := GetJSONCache(ctx, ch.cache, cacheKey, &output); err != nil {
 		LogCacheErr("HGetAll", cacheKey, err)
 
 		output, err = ch.store.List(ctx, input.Parent, url.QueryEscape(input.Referrer), defaultPagination, GetPage(c))
@@ -96,7 +96,7 @@ func (ch *commentsHandler) list(c *gin.Context) {
 			NotFound(c, "")
 			return
 		}
-		if err := SetHCacheEx(ctx, ch.cache, cacheKey, ch.cacheExpiration, output); err != nil {
+		if err := SetJSONCacheEx(ctx, ch.cache, cacheKey, ch.cacheExpiration, output); err != nil {
 			LogCacheErr("SetHCacheEx", cacheKey, err)
 		}
 	}

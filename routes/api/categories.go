@@ -58,7 +58,7 @@ func (ch *categoriesHandler) create(c *gin.Context) {
 func (ch *categoriesHandler) list(c *gin.Context) {
 	ctx := c.Request.Context()
 	var output []queries.Category
-	if err := ch.cache.HGetAll(ctx, ch.baseCacheKey).Scan(&output); err != nil {
+	if err := GetJSONCache(ctx, ch.cache, ch.baseCacheKey, &output); err != nil {
 		LogCacheErr("HGetAll", ch.baseCacheKey, err)
 
 		output, err = ch.store.List(ctx)
@@ -66,7 +66,7 @@ func (ch *categoriesHandler) list(c *gin.Context) {
 			NotFound(c, "")
 			return
 		}
-		if err = SetHCacheEx(ctx, ch.cache, ch.baseCacheKey, 24*time.Hour, output); err != nil {
+		if err = SetJSONCacheEx(ctx, ch.cache, ch.baseCacheKey, 24*time.Hour, output); err != nil {
 			LogCacheErr("SetHCacheEx", ch.baseCacheKey, err)
 		}
 	}
@@ -157,7 +157,7 @@ func (pch *pcHandler) list(c *gin.Context) {
 	ctx := c.Request.Context()
 	cacheKey := fmt.Sprintf("%s:%s", pch.baseCacheKey, id)
 	var output []string
-	if err := pch.cache.HGetAll(ctx, cacheKey).Scan(&output); err != nil {
+	if err := GetJSONCache(ctx, pch.cache, cacheKey, &output); err != nil {
 		LogCacheErr("HGetAll", cacheKey, err)
 
 		output, err = pch.pcStore.List(ctx, id)
@@ -165,7 +165,7 @@ func (pch *pcHandler) list(c *gin.Context) {
 			NotFound(c, "")
 			return
 		}
-		if err := SetHCacheEx(ctx, pch.cache, cacheKey, 12*time.Hour, output); err != nil {
+		if err := SetJSONCacheEx(ctx, pch.cache, cacheKey, 12*time.Hour, output); err != nil {
 			LogCacheErr("SetHCacheEx", cacheKey, err)
 		}
 	}

@@ -71,7 +71,7 @@ func (ph *productsHandler) list(c *gin.Context) {
 	page := GetPage(c)
 	cacheKey := fmt.Sprintf("%s:list:%d", ph.baseCacheKey, page)
 	var output []queries.ProductSummaryResponse
-	if err := ph.cache.HGetAll(ctx, cacheKey).Scan(&output); err != nil {
+	if err := GetJSONCache(ctx, ph.cache, cacheKey, &output); err != nil {
 		LogCacheErr("HGetAll", cacheKey, err)
 
 		output, err = ph.store.List(ctx, defaultPagination, page)
@@ -79,7 +79,7 @@ func (ph *productsHandler) list(c *gin.Context) {
 			NotFound(c, "")
 			return
 		}
-		if err := SetHCacheEx(ctx, ph.cache, cacheKey, ph.cacheExpiration, output); err != nil {
+		if err := SetJSONCacheEx(ctx, ph.cache, cacheKey, ph.cacheExpiration, output); err != nil {
 			LogCacheErr("SetCacheEx", cacheKey, err)
 		}
 	}
@@ -100,7 +100,7 @@ func (ph *productsHandler) fullList(c *gin.Context) {
 	page := GetPage(c)
 	cacheKey := fmt.Sprintf("%s:full:%d:%d", ph.baseCacheKey, id, page)
 	var output []queries.ProductStatusResponse
-	if err := ph.cache.HGetAll(ctx, cacheKey).Scan(&output); err != nil {
+	if err := GetJSONCache(ctx, ph.cache, cacheKey, &output); err != nil {
 		LogCacheErr("HGetAll", cacheKey, err)
 
 		output, err = ph.store.FullList(ctx, id, defaultPagination, page)
@@ -108,7 +108,7 @@ func (ph *productsHandler) fullList(c *gin.Context) {
 			NotFound(c, "")
 			return
 		}
-		if err := SetHCacheEx(ctx, ph.cache, cacheKey, ph.cacheExpiration, output); err != nil {
+		if err := SetJSONCacheEx(ctx, ph.cache, cacheKey, ph.cacheExpiration, output); err != nil {
 			LogCacheErr("SetCacheEx", cacheKey, err)
 		}
 	}
@@ -122,7 +122,7 @@ func (ph *productsHandler) get(c *gin.Context) {
 
 	cacheKey := fmt.Sprintf("%s:%s", ph.baseCacheKey, id)
 	var output *queries.OwnedProductResponse
-	if err := ph.cache.HGetAll(ctx, cacheKey).Scan(output); err != nil {
+	if err := GetJSONCache(ctx, ph.cache, cacheKey, output); err != nil {
 		LogCacheErr("HGetALl", ph.baseCacheKey, err)
 
 		output, err = ph.store.Get(ctx, id)
@@ -130,7 +130,7 @@ func (ph *productsHandler) get(c *gin.Context) {
 			NotFound(c, "")
 			return
 		}
-		if err := SetHCacheEx(ctx, ph.cache, cacheKey, ph.cacheExpiration, *output); err != nil {
+		if err := SetJSONCacheEx(ctx, ph.cache, cacheKey, ph.cacheExpiration, *output); err != nil {
 			LogCacheErr("SetHCacheEx", ph.baseCacheKey, err)
 		}
 	}
@@ -332,7 +332,7 @@ func (pih *productImagesHandler) list(c *gin.Context) {
 	ctx := c.Request.Context()
 	cacheKey := fmt.Sprintf("%s:%s", pih.baseCacheKey, productID)
 	var output []queries.ProductImageResponse
-	if err := pih.cache.HGetAll(ctx, cacheKey).Scan(&cacheKey); err != nil {
+	if err := GetJSONCache(ctx, pih.cache, cacheKey, &cacheKey); err != nil {
 		LogCacheErr("HGetAll", pih.baseCacheKey, err)
 
 		output, err = pih.imagesStore.List(ctx, productID)
@@ -340,7 +340,7 @@ func (pih *productImagesHandler) list(c *gin.Context) {
 			NotFound(c, "")
 			return
 		}
-		if err := SetHCacheEx(ctx, pih.cache, cacheKey, pih.cacheExpiration); err != nil {
+		if err := SetJSONCacheEx(ctx, pih.cache, cacheKey, pih.cacheExpiration, output); err != nil {
 			LogCacheErr("SetHCacheEx", cacheKey, err)
 		}
 	}

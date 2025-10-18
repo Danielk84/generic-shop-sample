@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
@@ -136,14 +137,21 @@ func RandVerifyNum() int {
 	return rand.Intn(max-min) + min
 }
 
-func SetHCacheEx(ctx context.Context, cache db.CacheClient, key string, expiration time.Duration, values ...any) error {
-	_, err := cache.TxPipelined(ctx, func(p redis.Pipeliner) error {
-		if _, err := p.HSet(ctx, key, values...).Result(); err != nil {
-			return err
-		}
-		_, err := p.Expire(ctx, key, expiration).Result()
+func SetJSONCacheEx(ctx context.Context, cache db.CacheClient, key string, expiration time.Duration, value any) error {
+	data, err := json.Marshal(value)
+	if err != nil {
 		return err
-	})
+	}
+	_, err = cache.SetEx(ctx, key, data, expiration).Result()
+	return err
+}
+
+func GetJSONCache[T any](ctx context.Context, cache db.CacheClient, key string, value *T) error {
+	data, err := cache.Get(ctx, key).Result()
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal([]byte(data), value)
 	return err
 }
 
