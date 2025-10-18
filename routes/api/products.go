@@ -1,18 +1,25 @@
 package api
 
 import (
+	"fmt"
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
 	md "generic-shop-sample/middlewares"
 	"log/slog"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 func ProductsRouter(router *gin.RouterGroup) {
-	ph := productsHandler{queries.NewProductStore(db.NewSession())}
+	ph := productsHandler{
+		store:           queries.NewProductStore(db.NewSession()),
+		cache:           db.NewCache(db.ProductsCache),
+		baseCacheKey:    "products",
+		cacheExpiration: 1 * time.Hour,
+	}
 
 	router.GET("/", ph.list)
 	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware()}, []RouteSpec{
@@ -34,7 +41,10 @@ type AvailableQuantity struct {
 }
 
 type productsHandler struct {
-	store queries.ProductStore
+	store           queries.ProductStore
+	cache           db.CacheClient
+	baseCacheKey    string
+	cacheExpiration time.Duration
 }
 
 func (ph *productsHandler) create(c *gin.Context) {
@@ -57,10 +67,21 @@ func (ph *productsHandler) create(c *gin.Context) {
 }
 
 func (ph *productsHandler) list(c *gin.Context) {
-	output, err := ph.store.List(c.Request.Context(), defaultPagination, GetPage(c))
-	if err != nil {
-		NotFound(c, "")
-		return
+	ctx := c.Request.Context()
+	page := GetPage(c)
+	cacheKey := fmt.Sprintf("%s:list:%d", ph.baseCacheKey, page)
+	var output []queries.ProductSummaryResponse
+	if err := ph.cache.HGetAll(ctx, cacheKey).Scan(&output); err != nil {
+		LogCacheErr("HGetAll", cacheKey, err)
+
+		output, err = ph.store.List(ctx, defaultPagination, page)
+		if err != nil {
+			NotFound(c, "")
+			return
+		}
+		if err := SetHCacheEx(ctx, ph.cache, cacheKey, ph.cacheExpiration, output); err != nil {
+			LogCacheErr("SetCacheEx", cacheKey, err)
+		}
 	}
 	c.JSON(http.StatusOK, output)
 }
@@ -75,22 +96,45 @@ func (ph *productsHandler) fullList(c *gin.Context) {
 	if HasPermissions(nil, claims.PermissionType, queries.Admin) {
 		id = 0
 	}
-	output, err := ph.store.FullList(c.Request.Context(), id, defaultPagination, GetPage(c))
-	if err != nil {
-		NotFound(c, "")
-		return
+	ctx := c.Request.Context()
+	page := GetPage(c)
+	cacheKey := fmt.Sprintf("%s:full:%d:%d", ph.baseCacheKey, id, page)
+	var output []queries.ProductStatusResponse
+	if err := ph.cache.HGetAll(ctx, cacheKey).Scan(&output); err != nil {
+		LogCacheErr("HGetAll", cacheKey, err)
+
+		output, err = ph.store.FullList(ctx, id, defaultPagination, page)
+		if err != nil {
+			NotFound(c, "")
+			return
+		}
+		if err := SetHCacheEx(ctx, ph.cache, cacheKey, ph.cacheExpiration, output); err != nil {
+			LogCacheErr("SetCacheEx", cacheKey, err)
+		}
 	}
 	c.JSON(http.StatusOK, output)
 }
 
 func (ph *productsHandler) get(c *gin.Context) {
 	claims := md.GetUserClaims(c)
+	ctx := c.Request.Context()
 	id := c.Param("id")
-	output, err := ph.store.Get(c.Request.Context(), id)
-	if err != nil {
-		NotFound(c, "")
-		return
+
+	cacheKey := fmt.Sprintf("%s:%s", ph.baseCacheKey, id)
+	var output *queries.OwnedProductResponse
+	if err := ph.cache.HGetAll(ctx, cacheKey).Scan(output); err != nil {
+		LogCacheErr("HGetALl", ph.baseCacheKey, err)
+
+		output, err = ph.store.Get(ctx, id)
+		if err != nil {
+			NotFound(c, "")
+			return
+		}
+		if err := SetHCacheEx(ctx, ph.cache, cacheKey, ph.cacheExpiration, *output); err != nil {
+			LogCacheErr("SetHCacheEx", ph.baseCacheKey, err)
+		}
 	}
+
 	if !output.IsActive {
 		if claims == nil {
 			Unauthorized(c, "")
@@ -111,10 +155,16 @@ func (ph *productsHandler) update(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	if err := ph.store.Update(c.Request.Context(), claims.ID, &input); err != nil {
+	ctx := c.Request.Context()
+	if err := ph.store.Update(ctx, claims.ID, &input); err != nil {
 		NotFound(c, "")
 		return
 	}
+	cacheKey := fmt.Sprintf("%s:%s", ph.baseCacheKey, input.ID)
+	if _, err := ph.cache.Del(ctx, cacheKey).Result(); err != nil {
+		LogCacheErr("Del", cacheKey, err)
+	}
+
 	Accepted(c, "")
 }
 
@@ -125,10 +175,16 @@ func (ph *productsHandler) delete(c *gin.Context) {
 	}
 
 	id := c.Param("id")
-	if err := ph.store.Delete(c.Request.Context(), id, claims.ID); err != nil {
+	ctx := c.Request.Context()
+	if err := ph.store.Delete(ctx, id, claims.ID); err != nil {
 		NotFound(c, "")
 		return
 	}
+	cacheKey := fmt.Sprintf("%s:%s", ph.baseCacheKey, id)
+	if _, err := ph.cache.Del(ctx, cacheKey).Result(); err != nil {
+		LogCacheErr("Del", cacheKey, err)
+	}
+
 	c.Status(http.StatusNoContent)
 }
 
@@ -209,8 +265,11 @@ func (ph *productsHandler) setActive(c *gin.Context) {
 func ProductImagesRouter(router *gin.RouterGroup) {
 	session := db.NewSession()
 	pih := productImagesHandler{
-		productStore: queries.NewProductStore(session),
-		imagesStore:  queries.NewProductImagesStore(session),
+		productStore:    queries.NewProductStore(session),
+		imagesStore:     queries.NewProductImagesStore(session),
+		cache:           db.NewCache(db.ProductsCache),
+		baseCacheKey:    "images",
+		cacheExpiration: 1 * time.Hour,
 	}
 
 	router.GET("/:productID", pih.list)
@@ -222,8 +281,11 @@ func ProductImagesRouter(router *gin.RouterGroup) {
 }
 
 type productImagesHandler struct {
-	productStore queries.ProductStore
-	imagesStore  queries.ProductImagesStore
+	productStore    queries.ProductStore
+	imagesStore     queries.ProductImagesStore
+	cache           db.CacheClient
+	baseCacheKey    string
+	cacheExpiration time.Duration
 }
 
 func (pih *productImagesHandler) create(c *gin.Context) {
@@ -233,7 +295,8 @@ func (pih *productImagesHandler) create(c *gin.Context) {
 	}
 
 	productID := c.Param("productID")
-	output, err := pih.productStore.Get(c.Request.Context(), productID)
+	ctx := c.Request.Context()
+	output, err := pih.productStore.Get(ctx, productID)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -253,19 +316,33 @@ func (pih *productImagesHandler) create(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	if err := pih.imagesStore.Create(c.Request.Context(), productID, resultPath); err != nil {
+	if err := pih.imagesStore.Create(ctx, productID, resultPath); err != nil {
 		NotFound(c, "")
 		return
+	}
+	cacheKey := fmt.Sprintf("%s:%s", pih.baseCacheKey, productID)
+	if _, err := pih.cache.Del(ctx, cacheKey).Result(); err != nil {
+		LogCacheErr("Del", cacheKey, err)
 	}
 	Created(c, "")
 }
 
 func (pih *productImagesHandler) list(c *gin.Context) {
 	productID := c.Param("productID")
-	output, err := pih.imagesStore.List(c.Request.Context(), productID)
-	if err != nil {
-		NotFound(c, "")
-		return
+	ctx := c.Request.Context()
+	cacheKey := fmt.Sprintf("%s:%s", pih.baseCacheKey, productID)
+	var output []queries.ProductImageResponse
+	if err := pih.cache.HGetAll(ctx, cacheKey).Scan(&cacheKey); err != nil {
+		LogCacheErr("HGetAll", pih.baseCacheKey, err)
+
+		output, err = pih.imagesStore.List(ctx, productID)
+		if err != nil {
+			NotFound(c, "")
+			return
+		}
+		if err := SetHCacheEx(ctx, pih.cache, cacheKey, pih.cacheExpiration); err != nil {
+			LogCacheErr("SetHCacheEx", cacheKey, err)
+		}
 	}
 	c.JSON(http.StatusOK, output)
 }
@@ -277,7 +354,8 @@ func (pih *productImagesHandler) delete(c *gin.Context) {
 	}
 
 	productID := c.Param("productID")
-	output, err := pih.productStore.Get(c.Request.Context(), productID)
+	ctx := c.Request.Context()
+	output, err := pih.productStore.Get(ctx, productID)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -287,7 +365,7 @@ func (pih *productImagesHandler) delete(c *gin.Context) {
 		return
 	}
 	id := c.Param("id")
-	imgPath, err := pih.imagesStore.Delete(c.Request.Context(), id)
+	imgPath, err := pih.imagesStore.Delete(ctx, id)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -299,5 +377,10 @@ func (pih *productImagesHandler) delete(c *gin.Context) {
 		}
 		slog.Info("error on removing img", "img_path", imgPath, "error", err)
 	}
+	cacheKey := fmt.Sprintf("%s:%s", pih.baseCacheKey, productID)
+	if _, err := pih.cache.Del(ctx, cacheKey).Result(); err != nil {
+		LogCacheErr("Del", cacheKey, err)
+	}
+
 	c.Status(http.StatusNoContent)
 }
