@@ -20,17 +20,6 @@ services:
       POSTGRES_PASSWORD: 1234
     volumes:
       - psql-data:/var/lib/postgresql/data
-
-  migrator:
-    image: migrate/migrate:latest
-    command: >
-      -path=/migrations
-      -database=pgx5://postgres:1234@psql:5432/
-      up 10
-    volumes:
-      - ./db/migrations:/migrations
-    depends_on:
-      - psql
   
   rdb:
     image: redis:8.2-alpine

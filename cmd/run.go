@@ -1,0 +1,35 @@
+package cmd
+
+import (
+	"generic-shop-sample/app"
+	"generic-shop-sample/db"
+	"generic-shop-sample/internal"
+	"log"
+
+	"github.com/spf13/cobra"
+)
+
+var runCmd = &cobra.Command{
+	Use:   "run",
+	Short: "run server",
+	Run:   runServer,
+}
+
+func runServer(cmd *cobra.Command, args []string) {
+	config := internal.NewConfig()
+	ctx := cmd.Context()
+
+	cacheDBs := []int{db.PublicCache, db.UsersCache, db.ProductsCache, db.PaymentCache}
+	cache, err := db.NewCacheManager(ctx, config.CacheURL, cacheDBs)
+	if err != nil {
+		log.Panicln(err)
+	}
+	defer cache.Close()
+
+	app := app.NewApp(ctx, config)
+	app.Run()
+}
+
+func init() {
+	rootCmd.AddCommand(runCmd)
+}

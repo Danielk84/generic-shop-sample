@@ -2,10 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"generic-shop-sample/cmd/internal"
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal/auth"
+	c "generic-shop-sample/internal/cmd"
 	"log"
 
 	"github.com/spf13/cobra"
@@ -42,7 +42,7 @@ func newAdmin(cmd *cobra.Command, args []string) {
 		},
 	}
 	var err error
-	if err = internal.Validator.ValidateStruct(user); err != nil {
+	if err = c.Validator.ValidateStruct(user); err != nil {
 		if username == "" || password == "" {
 			log.Fatalln("username and password required.")
 			return

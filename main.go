@@ -2,33 +2,25 @@ package main
 
 import (
 	"context"
-	"generic-shop-sample/app"
 	"generic-shop-sample/db"
-	"generic-shop-sample/internal"
 	"log"
+	"os"
 	"os/signal"
 	"syscall"
+
+	"generic-shop-sample/cmd"
 )
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	config := internal.NewConfig()
-
-	engine, err := db.New(ctx, config.DatabaseURL)
+	engine, err := db.New(ctx, os.Getenv("DATABASE_URL"))
 	if err != nil {
-		log.Panicln(err)
+		log.Panicf("invalid DATABASE_URL env variable, %s\n", err)
+		return
 	}
 	defer engine.Close()
 
-	cacheDBs := []int{db.PublicCache, db.UsersCache, db.ProductsCache, db.PaymentCache}
-	cache, err := db.NewCacheManager(ctx, config.CacheURL, cacheDBs)
-	if err != nil {
-		log.Panicln(err)
-	}
-	defer cache.Close()
-
-	app := app.NewApp(ctx, config)
-	app.Run()
+	cmd.Execute(ctx)
 }
