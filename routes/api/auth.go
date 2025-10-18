@@ -34,6 +34,20 @@ type authHandler struct {
 	authExpiration time.Duration
 }
 
+// @Summary	user login
+//
+// @Tags		auth
+//
+// @Accept		json
+// @Produce	json
+//
+// @Param		credential	body		queries.LoginRequest	true	"Login credentials"
+//
+// @Success	200			{object}	map[string]string
+// @Failure	400			{object}	map[string]string
+// @Failure	401			{object}	map[string]string
+// @Failure	404			{object}	map[string]string
+// @Router		/api/auth/login [post]
 func (ah *authHandler) login(c *gin.Context) {
 	var input queries.LoginRequest
 	if err := c.ShouldBindJSON(&input); err != nil {

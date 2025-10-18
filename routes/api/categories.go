@@ -33,6 +33,17 @@ type categoriesHandler struct {
 	baseCacheKey string
 }
 
+// @Summary		Create a category
+// @Description	Creates a new product category (admin only)
+// @Tags			categories
+// @Accept			json
+// @Produce		json
+// @Param			input	body		queries.CategoryTag	true	"Category tag"
+// @Success		201		{string}	string				"Created"
+// @Failure		400		{string}	string				"Invalid tag"
+// @Failure		403		{string}	string				"Forbidden"
+// @Failure		404		{string}	string				"Not found"
+// @Router			/categories [post]
 func (ch *categoriesHandler) create(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
@@ -55,6 +66,13 @@ func (ch *categoriesHandler) create(c *gin.Context) {
 	Created(c, "")
 }
 
+// @Summary		List categories
+// @Description	Returns a list of all product categories
+// @Tags			categories
+// @Produce		json
+// @Success		200	{array}		queries.Category
+// @Failure		404	{string}	string	"Not found"
+// @Router			/categories [get]
 func (ch *categoriesHandler) list(c *gin.Context) {
 	ctx := c.Request.Context()
 	var output []queries.Category
@@ -73,6 +91,15 @@ func (ch *categoriesHandler) list(c *gin.Context) {
 	c.JSON(http.StatusOK, output)
 }
 
+// @Summary		Delete a category
+// @Description	Deletes a product category by ID (admin only)
+// @Tags			categories
+// @Param			id	path		int		true	"Category ID"
+// @Success		204	{string}	string	"No Content"
+// @Failure		400	{string}	string	"Bad Request"
+// @Failure		403	{string}	string	"Forbidden"
+// @Failure		404	{string}	string	"Not Found"
+// @Router			/categories/{id} [delete]
 func (ch *categoriesHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
@@ -119,6 +146,19 @@ type pcHandler struct {
 	baseCacheKey string
 }
 
+// @Summary		Set tags for a product
+// @Description	Allows Admin or Vendor to set tags for a product
+// @Tags			pc
+// @Accept			json
+// @Produce		json
+// @Param			id		path		string				true	"Product ID"
+// @Param			input	body		PC					true	"Tags input"
+// @Success		202		{object}	map[string]string	"Accepted"
+// @Failure		400		{object}	map[string]string	"Invalid tags"
+// @Failure		403		{object}	map[string]string	"Forbidden"
+// @Failure		404		{object}	map[string]string	"Related product not found"
+// @Security		CookieAuth
+// @Router			/api/categories/pc/{id}/tags [put]
 func (pch *pcHandler) setTags(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
@@ -152,6 +192,14 @@ func (pch *pcHandler) setTags(c *gin.Context) {
 	Accepted(c, "")
 }
 
+// @Summary		List tags of a product
+// @Description	Returns a list of tags for a specific product
+// @Tags			pc
+// @Produce		json
+// @Param			id	path		string				true	"Product ID"
+// @Success		200	{array}		string				"List of tags"
+// @Failure		404	{object}	map[string]string	"Product not found"
+// @Router			/api/categories/pc/{id}/tags [get]
 func (pch *pcHandler) list(c *gin.Context) {
 	id := c.Param("id")
 	ctx := c.Request.Context()

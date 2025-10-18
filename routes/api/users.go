@@ -44,6 +44,17 @@ type usersHandler struct {
 	cache db.CacheClient
 }
 
+// @Summary		Create a new user
+// @Description	Admin-only endpoint to create a user
+// @Tags			users
+// @Accept			json
+// @Produce		json
+// @Param			user	body		queries.CreateUserRequest	true	"New user data"
+// @Success		201		{object}	map[string]string			"Created"
+// @Failure		400		{object}	map[string]string			"Bad Request"
+// @Failure		409		{object}	map[string]string			"Conflict: username exists"
+// @Security		CookieAuth
+// @Router			/users/ [post]c
 func (uh *usersHandler) createUserByAdmin(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
@@ -74,6 +85,14 @@ func (uh *usersHandler) createUserByAdmin(c *gin.Context) {
 	Created(c, "")
 }
 
+// @Summary		List users
+// @Description	List all users (admin only)
+// @Tags			users
+// @Produce		json
+// @Success		200	{array}		queries.UserDetailsResponse
+// @Failure		404	{object}	map[string]string	"Not Found"
+// @Security		CookieAuth
+// @Router			/users/ [get]
 func (uh *usersHandler) list(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
@@ -88,6 +107,14 @@ func (uh *usersHandler) list(c *gin.Context) {
 	c.JSON(http.StatusOK, output)
 }
 
+// @Summary		Get user details
+// @Description	Retrieve a user's information by username (admin/customer accessible)
+// @Tags			users
+// @Produce		json
+// @Param			username	path		string	true	"Username"
+// @Success		200			{object}	queries.UserDetailsResponse
+// @Failure		404			{object}	map[string]string	"Not Found"
+// @Router			/users/{username} [get]
 func (uh *usersHandler) get(c *gin.Context) {
 	username := c.Param("username")
 	output, err := uh.store.GetDetails(c.Request.Context(), username)
@@ -98,6 +125,18 @@ func (uh *usersHandler) get(c *gin.Context) {
 	c.JSON(http.StatusOK, output)
 }
 
+// @Summary		Update user permission
+// @Description	Admin-only endpoint to update user permission and activation status
+// @Tags			users
+// @Accept			json
+// @Produce		json
+// @Param			id			path		int								true	"User ID"
+// @Param			permission	body		queries.UserPermissionRequest	true	"Permission update"
+// @Success		202			{object}	map[string]string				"Accepted"
+// @Failure		400			{object}	map[string]string				"Bad Request"
+// @Failure		404			{object}	map[string]string				"Not Found"
+// @Security		CookieAuth
+// @Router			/users/{id} [put]
 func (uh *usersHandler) updateUserPermission(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
@@ -126,6 +165,14 @@ func (uh *usersHandler) updateUserPermission(c *gin.Context) {
 	Accepted(c, "")
 }
 
+// @Summary		Delete current user
+// @Description	Deletes the authenticated user's account
+// @Tags			users
+// @Produce		json
+// @Success		204	{object}	map[string]string	"No Content"
+// @Failure		404	{object}	map[string]string	"Not Found"
+// @Security		CookieAuth
+// @Router			/users/ [delete]
 func (uh *usersHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if err := uh.store.Delete(c.Request.Context(), claims.ID, claims.Username); err != nil {
@@ -136,6 +183,17 @@ func (uh *usersHandler) delete(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// @Summary		Set user email
+// @Description	Update email and send verification key (auth required)
+// @Tags			users
+// @Accept			json
+// @Produce		json
+// @Param			email	body		queries.EmailAddrRequest	true	"Email address"
+// @Success		202		{object}	map[string]string			"Accepted"
+// @Failure		400		{object}	map[string]string			"Bad Request"
+// @Failure		422		{object}	map[string]string			"Unprocessable"
+// @Security		CookieAuth
+// @Router			/users/set-email [put]
 func (uh *usersHandler) setEmail(c *gin.Context) {
 	var input queries.EmailAddrRequest
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -168,6 +226,17 @@ func (uh *usersHandler) setEmail(c *gin.Context) {
 	Accepted(c, "")
 }
 
+// @Summary		Verify email
+// @Description	Verify email with the numeric verification key
+// @Tags			users
+// @Accept			json
+// @Produce		json
+// @Param			key	body		VerfierKey			true	"Verification Key"
+// @Success		202	{object}	map[string]string	"Accepted"
+// @Failure		403	{object}	map[string]string	"Forbidden"
+// @Failure		404	{object}	map[string]string	"Verifier key not found"
+// @Security		CookieAuth
+// @Router			/users/verify-email [post]
 func (uh *usersHandler) verifyEmail(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	var input VerfierKey
@@ -194,6 +263,17 @@ func (uh *usersHandler) verifyEmail(c *gin.Context) {
 	Accepted(c, "")
 }
 
+// @Summary		Set user phone number
+// @Description	Update authenticated user's phone number
+// @Tags			users
+// @Accept			json
+// @Produce		json
+// @Param			phone	body		queries.PhoneNumberRequest	true	"Phone number"
+// @Success		202		{object}	map[string]string			"Accepted"
+// @Failure		400		{object}	map[string]string			"Bad Request"
+// @Failure		404		{object}	map[string]string			"Not Found"
+// @Security		CookieAuth
+// @Router			/users/set-phone-number [put]
 func (uh *usersHandler) setPhoneNumber(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	var json queries.PhoneNumberRequest
@@ -221,6 +301,17 @@ type userProfileHandler struct {
 	store queries.UserProfileStore
 }
 
+// @Summary		Create or update user profile
+// @Description	Inserts a new profile or updates existing profile for the authenticated user
+// @Tags			user-profile
+// @Accept			json
+// @Produce		json
+// @Param			profile	body		queries.UserProfileRequest	true	"User profile data"
+// @Success		202		{object}	map[string]string			"Accepted"
+// @Failure		400		{object}	map[string]string			"Bad Request"
+// @Failure		404		{object}	map[string]string			"Not Found"
+// @Security		CookieAuth
+// @Router			/user-profile/ [post]
 func (uph *userProfileHandler) upsert(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	var json queries.UserProfileRequest
@@ -235,6 +326,17 @@ func (uph *userProfileHandler) upsert(c *gin.Context) {
 	Accepted(c, "")
 }
 
+// @Summary		Upload user profile image
+// @Description	Uploads a profile image for the authenticated user. Replaces the old image if exists.
+// @Tags			user-profile
+// @Accept			multipart/form-data
+// @Produce		json
+// @Param			file	formData	file				true	"Profile image file"
+// @Success		202		{object}	map[string]string	"Accepted"
+// @Failure		400		{object}	map[string]string	"Bad Request"
+// @Failure		422		{object}	map[string]string	"Unprocessable"
+// @Security		CookieAuth
+// @Router			/user-profile/upload [post]
 func (uph *userProfileHandler) uploadProfileImg(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	file, err := c.FormFile("file")
@@ -263,6 +365,14 @@ func (uph *userProfileHandler) uploadProfileImg(c *gin.Context) {
 	Accepted(c, "")
 }
 
+// @Summary		Delete user profile image
+// @Description	Deletes the profile image for the authenticated user
+// @Tags			user-profile
+// @Produce		json
+// @Success		204	{object}	map[string]string	"No Content"
+// @Failure		404	{object}	map[string]string	"Not Found"
+// @Security		CookieAuth
+// @Router			/user-profile/ [delete]
 func (upr *userProfileHandler) deleteImgPath(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	imgPath, err := upr.store.DeleteImgPath(c.Request.Context(), claims.ID)

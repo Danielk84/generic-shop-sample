@@ -47,6 +47,17 @@ type productsHandler struct {
 	cacheExpiration time.Duration
 }
 
+// @Summary		Create product
+// @Description	Creates a new product (admin/vendor only)
+// @Tags			products
+// @Accept			json
+// @Produce		json
+// @Param			product	body		queries.CreateProductRequest	true	"Product payload"
+// @Success		201		{object}	map[string]string				"Created"
+// @Failure		400		{object}	map[string]string				"Bad Request"
+// @Failure		403		{object}	map[string]string				"Forbidden"
+// @Security		CookieAuth
+// @Router			/products/ [post]
 func (ph *productsHandler) create(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
@@ -66,6 +77,14 @@ func (ph *productsHandler) create(c *gin.Context) {
 	Created(c, "")
 }
 
+// @Summary		List products
+// @Description	Retrieves a paginated list of products
+// @Tags			products
+// @Produce		json
+// @Param			page	query		int	false	"Page number"	default(1)
+// @Success		200		{array}		queries.ProductSummaryResponse
+// @Failure		404		{object}	map[string]string	"Not Found"
+// @Router			/products/ [get]
 func (ph *productsHandler) list(c *gin.Context) {
 	ctx := c.Request.Context()
 	page := GetPage(c)
@@ -86,6 +105,15 @@ func (ph *productsHandler) list(c *gin.Context) {
 	c.JSON(http.StatusOK, output)
 }
 
+// @Summary		Full product list
+// @Description	Retrieves full list of products (admin/vendor only)
+// @Tags			products
+// @Produce		json
+// @Param			page	query		int	false	"Page number"	default(1)
+// @Success		200		{array}		queries.ProductStatusResponse
+// @Failure		403		{object}	map[string]string	"Forbidden"
+// @Router			/products/full [get]
+// @Security		CookieAuth
 func (ph *productsHandler) fullList(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
@@ -115,6 +143,17 @@ func (ph *productsHandler) fullList(c *gin.Context) {
 	c.JSON(http.StatusOK, output)
 }
 
+// @Summary		Get product
+// @Description	Retrieves a product by ID, access restricted for inactive products
+// @Tags			products
+// @Produce		json
+// @Param			id	path		string	true	"Product ID"
+// @Success		200	{object}	queries.OwnedProductResponse
+// @Failure		401	{object}	map[string]string	"Unauthorized"
+// @Failure		403	{object}	map[string]string	"Forbidden"
+// @Failure		404	{object}	map[string]string	"Not Found"
+// @Router			/products/{id} [get]
+// @Security		CookieAuth
 func (ph *productsHandler) get(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	ctx := c.Request.Context()
@@ -148,6 +187,17 @@ func (ph *productsHandler) get(c *gin.Context) {
 	c.JSON(http.StatusOK, output)
 }
 
+// @Summary		Update product
+// @Description	Updates a product (admin/vendor only)
+// @Tags			products
+// @Accept			json
+// @Produce		json
+// @Param			product	body		queries.UpdateProductRequest	true	"Update payload"
+// @Success		202		{object}	map[string]string				"Accepted"
+// @Failure		400		{object}	map[string]string				"Bad Request"
+// @Failure		404		{object}	map[string]string				"Not Found"
+// @Security		CookieAuth
+// @Router			/products/ [put]
 func (ph *productsHandler) update(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	var input queries.UpdateProductRequest
@@ -168,6 +218,16 @@ func (ph *productsHandler) update(c *gin.Context) {
 	Accepted(c, "")
 }
 
+// @Summary		Delete product
+// @Description	Deletes a product (admin/vendor only)
+// @Tags			products
+// @Produce		json
+// @Param			id	path		string				true	"Product ID"
+// @Success		204	{object}	map[string]string	"No Content"
+// @Failure		403	{object}	map[string]string	"Forbidden"
+// @Failure		404	{object}	map[string]string	"Not Found"
+// @Security		CookieAuth
+// @Router			/products/{id} [delete]
 func (ph *productsHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
@@ -188,6 +248,16 @@ func (ph *productsHandler) delete(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// @Summary	Increment product available quantity
+// @Tags		products
+// @Accept		json
+// @Param		id			path		string				true	"Product ID"
+// @Param		quantity	body		AvailableQuantity	true	"Quantity to increment"
+// @Success	202			{object}	map[string]string	"Accepted"
+// @Failure	400			{object}	map[string]string	"Bad Request"
+// @Failure	404			{object}	map[string]string	"Not Found"
+// @Security	CookieAuth
+// @Router		/products/incr/{id} [put]
 func (ph *productsHandler) incrBy(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
@@ -207,6 +277,18 @@ func (ph *productsHandler) incrBy(c *gin.Context) {
 	Accepted(c, "")
 }
 
+// DecrementProduct godoc
+//
+//	@Summary	Decrement product available quantity
+//	@Tags		products
+//	@Accept		json
+//	@Param		id			path		string				true	"Product ID"
+//	@Param		quantity	body		AvailableQuantity	true	"Quantity to decrement"
+//	@Success	202			{object}	map[string]string	"Accepted"
+//	@Failure	400			{object}	map[string]string	"Bad Request"
+//	@Failure	404			{object}	map[string]string	"Not Found"
+//	@Security	CookieAuth
+//	@Router		/products/decr/{id} [put]
 func (ph *productsHandler) decrBy(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	var input AvailableQuantity
@@ -222,6 +304,16 @@ func (ph *productsHandler) decrBy(c *gin.Context) {
 	Accepted(c, "")
 }
 
+// @Summary	Set product available status
+// @Tags		products
+// @Accept		json
+// @Param		id		path		string				true	"Product ID"
+// @Param		flag	body		SetFlag				true	"Available flag"
+// @Success	202		{object}	map[string]string	"Accepted"
+// @Failure	400		{object}	map[string]string	"Bad Request"
+// @Failure	404		{object}	map[string]string	"Not Found"
+// @Security	CookieAuth
+// @Router		/products/set-available/{id} [put]
 func (ph *productsHandler) setAvailable(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
@@ -242,6 +334,18 @@ func (ph *productsHandler) setAvailable(c *gin.Context) {
 	Accepted(c, "")
 }
 
+// SetActiveProduct godoc
+//
+//	@Summary	Set product active status
+//	@Tags		products
+//	@Accept		json
+//	@Param		id		path		string				true	"Product ID"
+//	@Param		flag	body		SetFlag				true	"Active flag"
+//	@Success	202		{object}	map[string]string	"Accepted"
+//	@Failure	400		{object}	map[string]string	"Bad Request"
+//	@Failure	404		{object}	map[string]string	"Not Found"
+//	@Security	CookieAuth
+//	@Router		/products/set-active/{id} [put]
 func (ph *productsHandler) setActive(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
@@ -288,6 +392,19 @@ type productImagesHandler struct {
 	cacheExpiration time.Duration
 }
 
+// @Summary		Upload product image
+// @Description	Uploads an image for a product (admin/vendor only). Accepts multipart/form-data.
+// @Tags			product-images
+// @Accept			multipart/form-data
+// @Produce		json
+// @Param			productID	path		string				true	"Product ID"
+// @Param			file		formData	file				true	"Image file"
+// @Success		201			{object}	map[string]string	"Created"
+// @Failure		400			{object}	map[string]string	"Bad Request"
+// @Failure		403			{object}	map[string]string	"Forbidden"
+// @Failure		404			{object}	map[string]string	"Not Found"
+// @Security		CookieAuth
+// @Router			/products/images/{productID} [post]
 func (pih *productImagesHandler) create(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
@@ -327,6 +444,14 @@ func (pih *productImagesHandler) create(c *gin.Context) {
 	Created(c, "")
 }
 
+// @Summary		List product images
+// @Description	Retrieves all images for a given product
+// @Tags			product-images
+// @Produce		json
+// @Param			productID	path		string	true	"Product ID"
+// @Success		200			{array}		queries.ProductImageResponse
+// @Failure		404			{object}	map[string]string	"Not Found"
+// @Router			/products/images/{productID} [get]
 func (pih *productImagesHandler) list(c *gin.Context) {
 	productID := c.Param("productID")
 	ctx := c.Request.Context()
@@ -347,6 +472,17 @@ func (pih *productImagesHandler) list(c *gin.Context) {
 	c.JSON(http.StatusOK, output)
 }
 
+// @Summary		Delete product image
+// @Description	Deletes a product image (admin/vendor only)
+// @Tags			product-images
+// @Produce		json
+// @Param			productID	path		string				true	"Product ID"
+// @Param			id			path		string				true	"Image ID"
+// @Success		204			{object}	map[string]string	"No Content"
+// @Failure		403			{object}	map[string]string	"Forbidden"
+// @Failure		404			{object}	map[string]string	"Not Found"
+// @Security		CookieAuth
+// @Router			/products/images/{productID}/{id} [delete]
 func (pih *productImagesHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
