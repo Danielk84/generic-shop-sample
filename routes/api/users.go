@@ -1,9 +1,11 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
+	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/auth"
 	"generic-shop-sample/internal/background"
 	md "generic-shop-sample/middlewares"
@@ -108,7 +110,7 @@ func (uh *usersHandler) list(c *gin.Context) {
 }
 
 // @Summary		Get user details
-// @Description	Retrieve a user's information by username (admin/customer accessible)
+// @Description	Retrieve a user's information by username (admin/vendor accessible)
 // @Tags			users
 // @Produce		json
 // @Param			username	path		string	true	"Username"
@@ -118,7 +120,7 @@ func (uh *usersHandler) list(c *gin.Context) {
 func (uh *usersHandler) get(c *gin.Context) {
 	username := c.Param("username")
 	output, err := uh.store.GetDetails(c.Request.Context(), username)
-	if err != nil || !HasPermissions(nil, output.PermissionType, queries.Admin, queries.Customer) {
+	if err != nil || !HasPermissions(nil, output.PermissionType, queries.Admin, queries.Vendor) {
 		NotFound(c, "")
 		return
 	}
@@ -197,7 +199,6 @@ func (uh *usersHandler) delete(c *gin.Context) {
 func (uh *usersHandler) setEmail(c *gin.Context) {
 	var input queries.EmailAddrRequest
 	if err := c.ShouldBindJSON(&input); err != nil {
-		slog.Debug(err.Error())
 		BadRequest(c, "invalid email address")
 		return
 	}
@@ -216,6 +217,9 @@ func (uh *usersHandler) setEmail(c *gin.Context) {
 		return
 	}
 	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
 		if err := background.SendMail(ctx, uh.cache, &background.MailMessage{
 			To:  input.Email,
 			Msg: []byte(strconv.Itoa(randKey)),
@@ -285,11 +289,15 @@ func (uh *usersHandler) setPhoneNumber(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
-	c.Status(http.StatusAccepted)
+	Accepted(c, "")
 }
 
 func UserProfileRouter(router *gin.RouterGroup) {
-	uph := userProfileHandler{queries.NewUserProfileStore(db.NewSession())}
+	config := internal.NewConfig()
+	uph := userProfileHandler{
+		store:      queries.NewUserProfileStore(db.NewSession()),
+		uploadPath: config.UploadPath,
+	}
 
 	router.Use(md.AuthMiddleware())
 	router.POST("/", uph.upsert)
@@ -298,7 +306,8 @@ func UserProfileRouter(router *gin.RouterGroup) {
 }
 
 type userProfileHandler struct {
-	store queries.UserProfileStore
+	store      queries.UserProfileStore
+	uploadPath string
 }
 
 // @Summary		Create or update user profile
@@ -311,7 +320,7 @@ type userProfileHandler struct {
 // @Failure		400		{object}	map[string]string			"Bad Request"
 // @Failure		404		{object}	map[string]string			"Not Found"
 // @Security		CookieAuth
-// @Router			/user-profile/ [post]
+// @Router			/users/profile/ [post]
 func (uph *userProfileHandler) upsert(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	var json queries.UserProfileRequest
@@ -336,7 +345,7 @@ func (uph *userProfileHandler) upsert(c *gin.Context) {
 // @Failure		400		{object}	map[string]string	"Bad Request"
 // @Failure		422		{object}	map[string]string	"Unprocessable"
 // @Security		CookieAuth
-// @Router			/user-profile/upload [post]
+// @Router			/users/profile/upload [post]
 func (uph *userProfileHandler) uploadProfileImg(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	file, err := c.FormFile("file")
@@ -372,7 +381,7 @@ func (uph *userProfileHandler) uploadProfileImg(c *gin.Context) {
 // @Success		204	{object}	map[string]string	"No Content"
 // @Failure		404	{object}	map[string]string	"Not Found"
 // @Security		CookieAuth
-// @Router			/user-profile/ [delete]
+// @Router			/users/profile/ [delete]
 func (upr *userProfileHandler) deleteImgPath(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	imgPath, err := upr.store.DeleteImgPath(c.Request.Context(), claims.ID)
@@ -380,7 +389,7 @@ func (upr *userProfileHandler) deleteImgPath(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
-	if err := os.Remove(imgPath); err != nil {
+	if err := os.Remove(fmt.Sprintf("%s/%s", upr.uploadPath, imgPath)); err != nil {
 		slog.Info(`failed to remove file "%s", %s`, imgPath, err)
 	}
 	c.Status(http.StatusNoContent)

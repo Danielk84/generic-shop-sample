@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
+	"generic-shop-sample/internal"
 	tu "generic-shop-sample/internal/testutils"
 	"io"
 	"net/http"
@@ -198,8 +199,9 @@ func TestUserProfileHandler(t *testing.T) {
 	if err != nil || imgPath == "" {
 		t.Errorf(`failed to save img in database, imgPath="%s", %s`, imgPath, err)
 	}
-	if _, err := os.Stat(imgPath); err != nil {
-		t.Errorf(`failed to remove file "%s", %s`, imgPath, err)
+	config := internal.NewConfig()
+	if _, err := os.Stat(fmt.Sprintf("%s/%s", config.UploadPath, imgPath)); err != nil {
+		t.Errorf(`failed to save file "%s", %s`, imgPath, err)
 	}
 
 	// testing userProfileHandler.deleteImgFile
@@ -210,7 +212,7 @@ func TestUserProfileHandler(t *testing.T) {
 	if w.Code != http.StatusNoContent {
 		t.Errorf(`expected status="%d", but got "%d"`, http.StatusNoContent, w.Code)
 	}
-	if _, err := os.Stat(imgPath); err == nil {
+	if _, err := os.Stat(fmt.Sprintf("%s/%s", config.UploadPath, imgPath)); err == nil {
 		t.Errorf("failed to remove img file")
 	}
 }

@@ -71,12 +71,13 @@ func UploadFile(file *multipart.FileHeader, claims *auth.AuthClaims, group, dst 
 
 	if dst == "" {
 		y, m, d := time.Now().Date()
-		dst = fmt.Sprintf("%s/%s/%d/%d/%d/%s-%d%s", config.UploadPath, group, y, m, d, claims.Username, time.Now().UnixNano(), mtype.Extension())
+		dst = fmt.Sprintf("%s/%d/%d/%d/%s-%d%s", group, y, m, d, claims.Username, time.Now().UnixNano(), mtype.Extension())
 	}
-	if err = os.MkdirAll(filepath.Dir(dst), 0750); err != nil {
+	path := fmt.Sprintf("%s/%s", config.UploadPath, dst)
+	if err = os.MkdirAll(filepath.Dir(path), 0750); err != nil {
 		return "", err
 	}
-	out, err := os.Create(dst)
+	out, err := os.Create(path)
 	if err != nil {
 		return "", err
 	}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"generic-shop-sample/db"
 	"generic-shop-sample/db/queries"
+	"generic-shop-sample/internal"
 	md "generic-shop-sample/middlewares"
 	"log/slog"
 	"net/http"
@@ -153,6 +154,7 @@ func (ph *productsHandler) fullList(c *gin.Context) {
 // @Failure		403	{object}	map[string]string	"Forbidden"
 // @Failure		404	{object}	map[string]string	"Not Found"
 // @Router			/products/{id} [get]
+// @Router			/products/overview/{id} [get]
 // @Security		CookieAuth
 func (ph *productsHandler) get(c *gin.Context) {
 	claims := md.GetUserClaims(c)
@@ -367,6 +369,7 @@ func (ph *productsHandler) setActive(c *gin.Context) {
 }
 
 func ProductImagesRouter(router *gin.RouterGroup) {
+	config := internal.NewConfig()
 	session := db.NewSession()
 	pih := productImagesHandler{
 		productStore:    queries.NewProductStore(session),
@@ -374,6 +377,7 @@ func ProductImagesRouter(router *gin.RouterGroup) {
 		cache:           db.NewCache(db.ProductsCache),
 		baseCacheKey:    "images",
 		cacheExpiration: 1 * time.Hour,
+		uploadPath:      config.UploadPath,
 	}
 
 	router.GET("/:productID", pih.list)
@@ -390,6 +394,7 @@ type productImagesHandler struct {
 	cache           db.CacheClient
 	baseCacheKey    string
 	cacheExpiration time.Duration
+	uploadPath      string
 }
 
 // @Summary		Upload product image
@@ -506,7 +511,7 @@ func (pih *productImagesHandler) delete(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
-	if err := os.Remove(imgPath); err != nil {
+	if err := os.Remove(fmt.Sprintf("%s/%s", pih.uploadPath, imgPath)); err != nil {
 		if err != os.ErrNotExist {
 			Forbidden(c, "")
 			return
