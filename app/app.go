@@ -53,7 +53,7 @@ func NewApp(ctx context.Context, config *internal.Config) *App {
 
 	setMiddlewares(ctx, router, config)
 	internal.SetCustomValidators()
-	setRoutes(ctx, router)
+	setRoutes(ctx, config, router)
 
 	return &App{
 		ctx:    ctx,
@@ -106,8 +106,9 @@ func setMiddlewares(ctx context.Context, router *gin.Engine, config *internal.Co
 	)
 }
 
-func setRoutes(ctx context.Context, router *gin.Engine) {
+func setRoutes(ctx context.Context, config *internal.Config, router *gin.Engine) {
 	routes.APIRouter(ctx, router.Group("/api"))
+	routes.StaticRouter(config, router.Group("/static"))
 	if gin.Mode() == gin.DebugMode {
 		router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
 	}
