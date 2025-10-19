@@ -4,7 +4,7 @@ CREATE TABLE orders (
     started_at TIMESTAMP NOT NULL DEFAULT (NOW() + INTERVAL '24 hours'),
 
     items_total INTEGER NOT NULL CHECK (items_total >= 0) DEFAULT 0,
-    total_bill BIGINT NOT NULL CHECK (total_bill > 0) DEFAULT 0,
+    total_bill BIGINT NOT NULL CHECK (total_bill >= 0) DEFAULT 0,
 
     payment_summary TEXT,
     is_paid BOOLEAN NOT NULL DEFAULT FALSE,

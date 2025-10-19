@@ -24,6 +24,6 @@ func StartTasks(ctx context.Context, session db.Session) {
 		},
 	}
 	for _, t := range tasks {
-		t.start(ctx)
+		go t.start(ctx)
 	}
 }

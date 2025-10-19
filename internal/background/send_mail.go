@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	mailChannel = "mailMessage"
+	mailChannel = "mailmessage"
 )
 
 type MailMessage struct {
@@ -28,12 +28,15 @@ type emailBroker struct {
 }
 
 func (eb *emailBroker) start(ctx context.Context) {
-	sub := eb.cache.Subscribe(ctx, mailChannel).Channel()
+	sub := eb.cache.Subscribe(ctx, mailChannel)
+	defer sub.Close()
+
+	ch := sub.Channel()
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case msg, ok := <-sub:
+		case msg, ok := <-ch:
 			if !ok {
 				slog.Warn("mail subscription closed")
 				return
@@ -60,7 +63,7 @@ func SendMail(ctx context.Context, cache db.CacheClient, mail *MailMessage) erro
 	if err != nil {
 		return fmt.Errorf("failed to encode MailMessage, %s", err)
 	}
-	if _, err := cache.Publish(ctx, mailChannel, msg).Result(); err != nil {
+	if err := cache.Publish(ctx, mailChannel, msg).Err(); err != nil {
 		return fmt.Errorf(`failed to publish msg to channel "%s", %s`, mailChannel, err)
 	}
 	return nil
