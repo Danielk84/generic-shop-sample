@@ -47,7 +47,7 @@ type authHandler struct {
 // @Failure	400			{object}	map[string]string
 // @Failure	401			{object}	map[string]string
 // @Failure	404			{object}	map[string]string
-// @Router		/api/auth/login [post]
+// @Router		/auth/login [post]
 func (ah *authHandler) login(c *gin.Context) {
 	var input queries.LoginRequest
 	if err := c.ShouldBindJSON(&input); err != nil {

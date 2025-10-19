@@ -194,6 +194,16 @@ definitions:
       user_id:
         type: string
     type: object
+  queries.OrderUserInfoRequest:
+    properties:
+      address:
+        type: string
+      zip_code:
+        type: boolean
+    required:
+    - address
+    - zip_code
+    type: object
   queries.OwnedProductResponse:
     properties:
       available_quantity:
@@ -364,7 +374,7 @@ info:
   title: Generic Shop API
   version: 0.1.0
 paths:
-  /api/auth/login:
+  /auth/login:
     post:
       consumes:
       - application/json
@@ -405,81 +415,6 @@ paths:
       summary: user login
       tags:
       - auth
-  /api/categories/pc/{id}/tags:
-    get:
-      description: Returns a list of tags for a specific product
-      parameters:
-      - description: Product ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: List of tags
-          schema:
-            items:
-              type: string
-            type: array
-        "404":
-          description: Product not found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: List tags of a product
-      tags:
-      - pc
-    put:
-      consumes:
-      - application/json
-      description: Allows Admin or Vendor to set tags for a product
-      parameters:
-      - description: Product ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Tags input
-        in: body
-        name: input
-        required: true
-        schema:
-          $ref: '#/definitions/api.PC'
-      produces:
-      - application/json
-      responses:
-        "202":
-          description: Accepted
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Invalid tags
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "403":
-          description: Forbidden
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Related product not found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - CookieAuth: []
-      summary: Set tags for a product
-      tags:
-      - pc
   /categories:
     get:
       description: Returns a list of all product categories
@@ -529,6 +464,8 @@ paths:
           description: Not found
           schema:
             type: string
+      security:
+      - CookieAuth: []
       summary: Create a category
       tags:
       - categories
@@ -558,9 +495,87 @@ paths:
           description: Not Found
           schema:
             type: string
+      security:
+      - CookieAuth: []
       summary: Delete a category
       tags:
       - categories
+  /categories/pc/{id}:
+    get:
+      description: Returns a list of tags for a specific product
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of tags
+          schema:
+            items:
+              type: string
+            type: array
+        "404":
+          description: Product not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List tags of a product
+      tags:
+      - pc
+  /categories/pc/set-tags/{id}:
+    post:
+      consumes:
+      - application/json
+      description: Allows Admin or Vendor to set tags for a product
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tags input
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/api.PC'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid tags
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Related product not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Set tags for a product
+      tags:
+      - pc
   /comments/:
     get:
       description: Returns comments with caching
@@ -667,6 +682,28 @@ paths:
       summary: Delete a comment
       tags:
       - comments
+  /comments/full:
+    get:
+      description: Returns full comment list. Admin can see all users
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/queries.RelatedCommentResponse'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: List all related comments for the user
+      tags:
+      - comments
+  /comments/overview/{id}:
     get:
       description: Only the owner or Admin can view the comment
       parameters:
@@ -697,27 +734,6 @@ paths:
       security:
       - CookieAuth: []
       summary: Get a comment by ID
-      tags:
-      - comments
-  /comments/full:
-    get:
-      description: Returns full comment list. Admin can see all users
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/queries.RelatedCommentResponse'
-            type: array
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: List all related comments for the user
       tags:
       - comments
   /comments/set-active/{id}:
@@ -1130,6 +1146,46 @@ paths:
       summary: List order items for a vendor
       tags:
       - order-items
+  /orders/set-user-info/{id}:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Order ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: User Info
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/queries.OrderUserInfoRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/queries.OrderResponse'
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: set user info for specific order
+      tags:
+      - orders
   /orders/vendor:
     get:
       description: List all orders assigned to the authenticated vendor
@@ -1165,8 +1221,6 @@ paths:
       - orders
   /orders/verify/{id}:
     put:
-      consumes:
-      - application/json
       description: Admin or authorized vendor can verify user information for an order
       parameters:
       - description: Order ID
@@ -1716,6 +1770,45 @@ paths:
       summary: Increment product available quantity
       tags:
       - products
+  /products/overview/{id}:
+    get:
+      description: Retrieves a product by ID, access restricted for inactive products
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/queries.OwnedProductResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Get product
+      tags:
+      - products
   /products/set-active/{id}:
     put:
       consumes:
@@ -1796,105 +1889,6 @@ paths:
       summary: Set product available status
       tags:
       - products
-  /user-profile/:
-    delete:
-      description: Deletes the profile image for the authenticated user
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - CookieAuth: []
-      summary: Delete user profile image
-      tags:
-      - user-profile
-    post:
-      consumes:
-      - application/json
-      description: Inserts a new profile or updates existing profile for the authenticated
-        user
-      parameters:
-      - description: User profile data
-        in: body
-        name: profile
-        required: true
-        schema:
-          $ref: '#/definitions/queries.UserProfileRequest'
-      produces:
-      - application/json
-      responses:
-        "202":
-          description: Accepted
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - CookieAuth: []
-      summary: Create or update user profile
-      tags:
-      - user-profile
-  /user-profile/upload:
-    post:
-      consumes:
-      - multipart/form-data
-      description: Uploads a profile image for the authenticated user. Replaces the
-        old image if exists.
-      parameters:
-      - description: Profile image file
-        in: formData
-        name: file
-        required: true
-        type: file
-      produces:
-      - application/json
-      responses:
-        "202":
-          description: Accepted
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "422":
-          description: Unprocessable
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - CookieAuth: []
-      summary: Upload user profile image
-      tags:
-      - user-profile
   /users/:
     delete:
       description: Deletes the authenticated user's account
@@ -2022,7 +2016,7 @@ paths:
       - users
   /users/{username}:
     get:
-      description: Retrieve a user's information by username (admin/customer accessible)
+      description: Retrieve a user's information by username (admin/vendor accessible)
       parameters:
       - description: Username
         in: path
@@ -2045,6 +2039,105 @@ paths:
       summary: Get user details
       tags:
       - users
+  /users/profile/:
+    delete:
+      description: Deletes the profile image for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Delete user profile image
+      tags:
+      - user-profile
+    post:
+      consumes:
+      - application/json
+      description: Inserts a new profile or updates existing profile for the authenticated
+        user
+      parameters:
+      - description: User profile data
+        in: body
+        name: profile
+        required: true
+        schema:
+          $ref: '#/definitions/queries.UserProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Create or update user profile
+      tags:
+      - user-profile
+  /users/profile/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Uploads a profile image for the authenticated user. Replaces the
+        old image if exists.
+      parameters:
+      - description: Profile image file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "422":
+          description: Unprocessable
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - CookieAuth: []
+      summary: Upload user profile image
+      tags:
+      - user-profile
   /users/set-email:
     put:
       consumes:

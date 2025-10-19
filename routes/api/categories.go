@@ -43,6 +43,7 @@ type categoriesHandler struct {
 // @Failure		400		{string}	string				"Invalid tag"
 // @Failure		403		{string}	string				"Forbidden"
 // @Failure		404		{string}	string				"Not found"
+// @Security		CookieAuth
 // @Router			/categories [post]
 func (ch *categoriesHandler) create(c *gin.Context) {
 	claims := md.GetUserClaims(c)
@@ -99,6 +100,7 @@ func (ch *categoriesHandler) list(c *gin.Context) {
 // @Failure		400	{string}	string	"Bad Request"
 // @Failure		403	{string}	string	"Forbidden"
 // @Failure		404	{string}	string	"Not Found"
+// @Security		CookieAuth
 // @Router			/categories/{id} [delete]
 func (ch *categoriesHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
@@ -158,7 +160,7 @@ type pcHandler struct {
 // @Failure		403		{object}	map[string]string	"Forbidden"
 // @Failure		404		{object}	map[string]string	"Related product not found"
 // @Security		CookieAuth
-// @Router			/api/categories/pc/{id}/tags [put]
+// @Router			/categories/pc/set-tags/{id} [post]
 func (pch *pcHandler) setTags(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
@@ -199,7 +201,7 @@ func (pch *pcHandler) setTags(c *gin.Context) {
 // @Param			id	path		string				true	"Product ID"
 // @Success		200	{array}		string				"List of tags"
 // @Failure		404	{object}	map[string]string	"Product not found"
-// @Router			/api/categories/pc/{id}/tags [get]
+// @Router			/categories/pc/{id} [get]
 func (pch *pcHandler) list(c *gin.Context) {
 	id := c.Param("id")
 	ctx := c.Request.Context()

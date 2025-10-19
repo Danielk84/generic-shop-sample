@@ -82,7 +82,7 @@ func (ch *commentsHandler) create(c *gin.Context) {
 // @Failure		403	{object}	map[string]string	"Forbidden"
 // @Failure		404	{object}	map[string]string	"Not Found"
 // @Security		CookieAuth
-// @Router			/comments/{id} [get]
+// @Router			/comments/overview/{id} [get]
 func (ch *commentsHandler) get(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	id := c.Param("id")
