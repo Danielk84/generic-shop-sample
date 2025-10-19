@@ -11,19 +11,20 @@ import (
 
 func OrderRouter(router *gin.RouterGroup) {
 	oh := orderHandler{
-		os: queries.NewOrderStore(db.NewSession()),
+		store: queries.NewOrderStore(db.NewSession()),
 	}
 
 	router.Use(md.AuthMiddleware())
 	router.POST("/", oh.create)
 	router.GET("/customer", oh.customerList)
 	router.GET("/vendor", oh.vendorList)
+	router.PUT("/set-user-info/:id", oh.setUserInfo)
 	router.PUT("/verify/:id", oh.verifyUserInfo)
 	router.GET("/:id", oh.get)
 }
 
 type orderHandler struct {
-	os queries.OrderStore
+	store queries.OrderStore
 }
 
 // @Summary		Create a new order
@@ -43,7 +44,7 @@ func (uh *orderHandler) create(c *gin.Context) {
 		return
 	}
 
-	output, err := uh.os.Create(c.Request.Context(), claims.ID)
+	output, err := uh.store.Create(c.Request.Context(), claims.ID)
 	if err != nil {
 		BadRequest(c, "")
 		return
@@ -69,7 +70,7 @@ func (uh *orderHandler) customerList(c *gin.Context) {
 	}
 
 	page := GetPage(c)
-	output, err := uh.os.CustomerList(c.Request.Context(), claims.ID, defaultPagination, page)
+	output, err := uh.store.CustomerList(c.Request.Context(), claims.ID, defaultPagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -94,7 +95,7 @@ func (uh *orderHandler) vendorList(c *gin.Context) {
 	}
 
 	page := GetPage(c)
-	output, err := uh.os.VendorList(c.Request.Context(), claims.ID, defaultPagination, page)
+	output, err := uh.store.VendorList(c.Request.Context(), claims.ID, defaultPagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -120,7 +121,7 @@ func (uh *orderHandler) get(c *gin.Context) {
 	}
 
 	id := c.Param("id")
-	output, err := uh.os.Get(c.Request.Context(), id, claims.ID)
+	output, err := uh.store.Get(c.Request.Context(), id, claims.ID)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -128,10 +129,41 @@ func (uh *orderHandler) get(c *gin.Context) {
 	c.JSON(http.StatusOK, output)
 }
 
+// @Summary	set user info for specific order
+// @Tags		orders
+// @Accept		json
+// @Produce	json
+// @Param		id		path		string							true	"Order ID"
+// @Param		input	body		queries.OrderUserInfoRequest	true	"User Info"
+// @Success	200		{object}	queries.OrderResponse
+// @Failure	403		{object}	map[string]string	"Forbidden"
+// @Failure	404		{object}	map[string]string	"Not Found"
+// @Security	CookieAuth
+// @Router		/orders/set-user-info/{id} [put]
+func (uh *orderHandler) setUserInfo(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if HasPermissions(nil, claims.PermissionType, queries.BlockUser) {
+		Forbidden(c, "")
+		return
+	}
+
+	var input queries.OrderUserInfoRequest
+	if err := c.ShouldBindJSON(&input); err != nil {
+		BadRequest(c, "")
+		return
+	}
+
+	id := c.Param("id")
+	if err := uh.store.SetUserInfo(c.Request.Context(), id, claims.ID, &input); err != nil {
+		NotFound(c, "")
+		return
+	}
+	Accepted(c, "")
+}
+
 // @Summary		Verify user's information for an order
 // @Description	Admin or authorized vendor can verify user information for an order
 // @Tags			orders
-// @Accept			json
 // @Produce		json
 // @Param			id		path		string				true	"Order ID"
 // @Param			input	body		SetFlag				true	"Verification status"
@@ -154,7 +186,7 @@ func (uh *orderHandler) verifyUserInfo(c *gin.Context) {
 		return
 	}
 	id := c.Param("id")
-	if err := uh.os.VerifyUserInfo(c.Request.Context(), id, claims.ID, input.Accepted); err != nil {
+	if err := uh.store.VerifyUserInfo(c.Request.Context(), id, claims.ID, input.Accepted); err != nil {
 		NotFound(c, "")
 		return
 	}

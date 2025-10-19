@@ -55,7 +55,11 @@ func NewOrderStore(session db.Session) OrderStore {
 }
 
 func (or *OrderRepository) Create(ctx context.Context, userID int32) (string, error) {
-	const q = `INSERT INTO orders(user_id) VALUES ($1) RETURNING order_id`
+	const q = `WITH create_new_order AS (
+			INSERT INTO orders(user_id)
+				SELECT $1 WHERE NOT EXISTS(SELECT 1 FROM orders WHERE user_id = $1 AND is_paid = FALSE)
+		)
+		SELECT id FROM orders WHERE user_id = $1 AND is_paid = FALSE`
 	id := ""
 	err := or.session.QueryRow(ctx, q, userID).Scan(&id)
 	return id, err
