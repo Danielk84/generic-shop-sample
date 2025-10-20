@@ -3,21 +3,22 @@ package queries
 import (
 	"context"
 	"generic-shop-sample/db"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 )
 
 type OrderUserInfoRequest struct {
 	Address string `json:"address" binding:"required"`
-	ZipCode bool   `json:"zip_code" binding:"required"`
+	ZipCode string `json:"zip_code" binding:"required"`
 }
 
 type OrderSummaryResponse struct {
-	ID         string `json:"id"`
-	UserID     string `json:"user_id"`
-	StartedAt  string `json:"update_at"`
-	IsPaid     bool   `json:"is_paid"`
-	IsDeliverd bool   `json:"is_deliverd"`
+	ID          string    `json:"id"`
+	UserID      string    `json:"user_id"`
+	StartedAt   time.Time `json:"started_at"`
+	IsPaid      bool      `json:"is_paid"`
+	IsDelivered bool      `json:"is_delivered"`
 }
 
 type OrderResponse struct {
@@ -80,9 +81,9 @@ func (or *OrderRepository) CustomerList(ctx context.Context, userID int32, pagin
 }
 
 func (or *OrderRepository) VendorList(ctx context.Context, vendorID int32, pagination, page int) ([]OrderSummaryResponse, error) {
-	const q = `SELECT id, user_id, started_id, is_paid, is_delivered FROM orders
+	const q = `SELECT id, user_id, started_at, is_paid, is_delivered FROM orders
 		WHERE id in (
-			SELECT DISTINCT o.order_id FROM order_items AS o JOIN products AS p ON o.product_id = p.id AND p.user_id = @VendoreID
+			SELECT DISTINCT o.order_id FROM order_items AS o JOIN products AS p ON o.product_id = p.id AND p.user_id = @VendorID
 		) AND (is_paid = TRUE OR payment_summary IS NOT NULL)
 		ORDER BY started_at DESC
 		LIMIT @Limit
@@ -104,7 +105,7 @@ func (or *OrderRepository) FullList(ctx context.Context, pagination, page int) (
 }
 
 func (or *OrderRepository) Get(ctx context.Context, id string, userID int32) (*OrderResponse, error) {
-	const q = `SELECT id, started_at, items_total, total_bill, is_paid, address, zip_code, is_confirmed, is_delivered FROM orders
+	const q = `SELECT id, user_id, started_at, items_total, total_bill, is_paid, address, zip_code, is_confirmed, is_delivered FROM orders
 		WHERE id = $1::UUID AND user_id = $2 AND is_confirmed = TRUE`
 	return get[OrderResponse](ctx, or.session, q, id, userID)
 }
@@ -122,7 +123,7 @@ func (or *OrderRepository) SetUserInfo(ctx context.Context, id string, userID in
 }
 
 func (or *OrderRepository) VerifyUserInfo(ctx context.Context, id string, userID int32, isVerified bool) error {
-	const q = `UPDATE orders SET is_confirmed = @IsVerfied WHERE id = @ID::UUID AND user_id = @UserID`
+	const q = `UPDATE orders SET is_confirmed = @IsVerified WHERE id = @ID::UUID AND user_id = @UserID`
 	args := pgx.NamedArgs{
 		"IsVerified": isVerified,
 		"ID":         id,
@@ -132,13 +133,13 @@ func (or *OrderRepository) VerifyUserInfo(ctx context.Context, id string, userID
 }
 
 func (or *OrderRepository) SetPaymentStatus(ctx context.Context, id string, userID int32, status *PaymentStatus) error {
-	const q = `UPDATE orders SET payment_summary = CONCAT(payment_summary, ' ', @Summary), is_paid = @IsPaid
-		WHERE id = @ID AND user_id = @UserID`
+	const q = `UPDATE orders SET payment_summary = CONCAT(payment_summary::TEXT, ' ', @Summary::TEXT), is_paid = @IsPaid
+		WHERE id = @ID::UUID AND user_id = @UserID`
 	args := &pgx.NamedArgs{
 		"Summary": status.PaymentSummary,
 		"IsPaid":  status.IsPaid,
 		"ID":      id,
-		"userID":  userID,
+		"UserID":  userID,
 	}
 	return execOne(ctx, or.session, q, args)
 }
@@ -165,7 +166,7 @@ type OrderItemPackStatusRequest struct {
 }
 
 type OwnedOrderItemResponse struct {
-	ID         string `json:"id"`
+	OrderID    string `json:"order_id"`
 	ProductID  string `json:"product_id"`
 	ItemsTotal string `json:"items_total"`
 	Price      int64  `json:"price"`
@@ -195,7 +196,7 @@ func (oir *OrderItemsRepository) Create(ctx context.Context, userID int32, item 
 	const q = `WITH is_owned_order AS (
 		SELECT id FROM orders WHERE id = @OrderID::UUID AND user_id = @UserID LIMIT 1
 	)
-	INSERT INTO order_items(order_id, product_id, price)
+	INSERT INTO order_items(user_id, order_id, product_id, price)
 		SELECT @UserID, id, @ProductID::UUID, @Price FROM is_owned_order`
 	args := pgx.NamedArgs{
 		"UserID":    userID,
@@ -209,12 +210,12 @@ func (oir *OrderItemsRepository) Create(ctx context.Context, userID int32, item 
 func (oir *OrderItemsRepository) CustomerList(ctx context.Context, orderID string, userID int32, pagination, page int) ([]OwnedOrderItemResponse, error) {
 	const q = `SELECT o.order_id, o.product_id, o.items_total, o.price, o.is_packed, p.name
 		FROM order_items AS o
-			JOIN products AS p ON o.product_id = p.id
-		WHERE o.order_id = @OrderID::UUID AND user_id = @UserID
+			LEFT JOIN products AS p ON o.product_id = p.id
+		WHERE o.order_id = @OrderID::UUID AND o.user_id = @UserID
 		LIMIT @Limit
 		OFFSET @Offset`
 	args := pgx.NamedArgs{
-		"OrderBy": orderID,
+		"OrderID": orderID,
 		"UserID":  userID,
 		"Limit":   pagination,
 		"Offset":  getOffsetFromPageNum(pagination, page),
@@ -226,7 +227,7 @@ func (oir *OrderItemsRepository) VendorList(ctx context.Context, orderID string,
 	const q = `SELECT o.order_id, o.product_id, o.items_total, o.price, o.is_packed, p.name 
 		FROM order_items AS o
 			JOIN products AS p ON o.product_id = p.id AND p.user_id = @VendorID
-		WHERE o.order_id = OrderID::UUID
+		WHERE o.order_id = @OrderID::UUID
 		LIMIT @Limit
 		OFFSET @Offset`
 	args := pgx.NamedArgs{
@@ -239,7 +240,7 @@ func (oir *OrderItemsRepository) VendorList(ctx context.Context, orderID string,
 }
 
 func (oir *OrderItemsRepository) FullList(ctx context.Context, orderID string, pagination, page int) ([]OwnedOrderItemResponse, error) {
-	const q = `SELECT order_id, product_id, item_total, price, is_packed FROM order_items
+	const q = `SELECT order_id, product_id, items_total, price, is_packed, '' as name FROM order_items
 		WHERE order_id = @OrderID::UUID
 		LIMIT @Limit
 		OFFSET @Offset`
@@ -263,12 +264,12 @@ func (oir *OrderItemsRepository) Delete(ctx context.Context, userID int32, order
 
 func (oir *OrderItemsRepository) SetItemsTotal(ctx context.Context, userID int32, itemsTotal int32, orderItem *BaseOrderItemRequest) error {
 	const q = `UPDATE order_items SET items_total = @ItemsTotal
-		WHERE order_id = @OrderID AND product_id = @ProductID::UUID AND user_id = @UserID`
+		WHERE order_id = @OrderID::UUID AND product_id = @ProductID::UUID AND user_id = @UserID`
 	args := pgx.NamedArgs{
 		"OrderID":    orderItem.OrderID,
 		"ProductID":  orderItem.ProductID,
 		"UserID":     userID,
-		"itemsTotal": itemsTotal,
+		"ItemsTotal": itemsTotal,
 	}
 	return execOne(ctx, oir.session, q, args)
 }
