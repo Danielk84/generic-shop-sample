@@ -12,7 +12,7 @@ import (
 
 const (
 	ZPGatewayAddr = "https://payment.zarinpal.com"
-	ZPSandboxAddr = "https://payment.zarinpal.com"
+	ZPSandboxAddr = "https://sandbox.zarinpal.com"
 )
 
 type ZPGatewayStatus struct {
@@ -51,7 +51,7 @@ type ZPResMetadata struct {
 	Message   string `json:"message"`
 	Authority string `json:"authority"`
 	FeeType   string `json:"fee_type"`
-	Fee       string `json:"fee"`
+	Fee       int    `json:"fee"`
 }
 
 type ZPResponse struct {
@@ -65,7 +65,7 @@ type ZPResVerifyMetadata struct {
 	CardPan  string `json:"card_pan"`
 	CardHash string `json:"card_hash"`
 	FeeType  string `json:"fee_type"`
-	Fee      string `json:"fee"`
+	Fee      int    `json:"fee"`
 }
 
 type ZPVerifyReponse struct {
