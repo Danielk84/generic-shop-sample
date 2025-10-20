@@ -47,7 +47,7 @@ experimentation features
 
 Prerequisites
 ```bash
-Go 1.21+
+Go 1.24+
 Docker (optional)
 Zarin-Pal Merchant Account
 ```
@@ -107,10 +107,7 @@ docker compose logs -f
 Run Tests
 ```bash
 ## Unit Tests
-go test ./...
-
-# Integration Tests
-go test -tags=integration ./...
+go test ./... -v
 ```
 
 ## Contact
