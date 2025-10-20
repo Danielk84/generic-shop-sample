@@ -40,7 +40,7 @@ func RegisterRoutesWith(router *gin.RouterGroup, middlewares []gin.HandlerFunc, 
 }
 
 type SetFlag struct {
-	Accepted bool `json:"accepted"`
+	Accepted bool `json:"accepted" binding:"boolean"`
 }
 
 func GetPage(c *gin.Context) int {

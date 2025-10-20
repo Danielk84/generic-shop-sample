@@ -207,11 +207,11 @@ func OrderItemsRouter(router *gin.RouterGroup) {
 }
 
 type ItemsTotal struct {
-	Total int32 `url:"total" binding:"required"`
+	Total int32 `uri:"total" binding:"required"`
 }
 
 type orderItemsHandler struct {
-	ois queries.OrderItemsStore
+	store queries.OrderItemsStore
 }
 
 // @Summary		Add an item to an order
@@ -223,6 +223,7 @@ type orderItemsHandler struct {
 // @Success		201		{object}	map[string]string			"Created"
 // @Failure		400		{object}	map[string]string			"Bad Request"
 // @Failure		403		{object}	map[string]string			"Forbidden"
+// @Failure		404		{object}	map[string]string			"Not Found"
 // @Security		CookieAuth
 // @Router			/orders/items [post]
 func (oih *orderItemsHandler) create(c *gin.Context) {
@@ -237,8 +238,8 @@ func (oih *orderItemsHandler) create(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	if err := oih.ois.Create(c.Request.Context(), claims.ID, &input); err != nil {
-		BadRequest(c, "")
+	if err := oih.store.Create(c.Request.Context(), claims.ID, &input); err != nil {
+		NotFound(c, "")
 		return
 	}
 	Created(c, "")
@@ -264,9 +265,10 @@ func (oih *orderItemsHandler) customerList(c *gin.Context) {
 
 	id := c.Param("id")
 	page := GetPage(c)
-	output, err := oih.ois.CustomerList(c.Request.Context(), id, claims.ID, defaultPagination, page)
+	output, err := oih.store.CustomerList(c.Request.Context(), id, claims.ID, defaultPagination, page)
 	if err != nil {
 		NotFound(c, "")
+		return
 	}
 	c.JSON(http.StatusOK, output)
 }
@@ -289,7 +291,7 @@ func (oih *orderItemsHandler) vendorList(c *gin.Context) {
 
 	id := c.Param("id")
 	page := GetPage(c)
-	output, err := oih.ois.VendorList(c.Request.Context(), id, claims.ID, defaultPagination, page)
+	output, err := oih.store.VendorList(c.Request.Context(), id, claims.ID, defaultPagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -315,7 +317,7 @@ func (oih *orderItemsHandler) fullList(c *gin.Context) {
 
 	id := c.Param("id")
 	page := GetPage(c)
-	output, err := oih.ois.FullList(c.Request.Context(), id, defaultPagination, page)
+	output, err := oih.store.FullList(c.Request.Context(), id, defaultPagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -347,7 +349,7 @@ func (oih *orderItemsHandler) delete(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	if err := oih.ois.Delete(c.Request.Context(), claims.ID, &input); err != nil {
+	if err := oih.store.Delete(c.Request.Context(), claims.ID, &input); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -384,7 +386,7 @@ func (oih *orderItemsHandler) setItemsTotal(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	if err := oih.ois.SetItemsTotal(c.Request.Context(), claims.ID, url.Total, &input); err != nil {
+	if err := oih.store.SetItemsTotal(c.Request.Context(), claims.ID, url.Total, &input); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -413,7 +415,7 @@ func (oih *orderItemsHandler) setPacked(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	if err := oih.ois.SetPacked(c.Request.Context(), claims.ID, &input); err != nil {
+	if err := oih.store.SetPacked(c.Request.Context(), claims.ID, &input); err != nil {
 		NotFound(c, "")
 		return
 	}
