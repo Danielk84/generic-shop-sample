@@ -797,6 +797,15 @@ const docTemplate = `{
                                 "type": "string"
                             }
                         }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
                     }
                 }
             },
@@ -1526,7 +1535,7 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
-                    "307": {
+                    "301": {
                         "description": "Redirect to payment gateway",
                         "schema": {
                             "type": "string"
@@ -3198,7 +3207,7 @@ const docTemplate = `{
                 "is_confirmed": {
                     "type": "boolean"
                 },
-                "is_deliverd": {
+                "is_delivered": {
                     "type": "boolean"
                 },
                 "is_paid": {
@@ -3207,11 +3216,11 @@ const docTemplate = `{
                 "items_total": {
                     "type": "string"
                 },
+                "started_at": {
+                    "type": "string"
+                },
                 "total_bill": {
                     "type": "integer"
-                },
-                "update_at": {
-                    "type": "string"
                 },
                 "user_id": {
                     "type": "string"
@@ -3227,13 +3236,13 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "is_deliverd": {
+                "is_delivered": {
                     "type": "boolean"
                 },
                 "is_paid": {
                     "type": "boolean"
                 },
-                "update_at": {
+                "started_at": {
                     "type": "string"
                 },
                 "user_id": {
@@ -3252,7 +3261,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "zip_code": {
-                    "type": "boolean"
+                    "type": "string"
                 }
             }
         },

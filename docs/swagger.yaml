@@ -166,16 +166,16 @@ definitions:
         type: string
       is_confirmed:
         type: boolean
-      is_deliverd:
+      is_delivered:
         type: boolean
       is_paid:
         type: boolean
       items_total:
         type: string
+      started_at:
+        type: string
       total_bill:
         type: integer
-      update_at:
-        type: string
       user_id:
         type: string
       zip_code:
@@ -185,11 +185,11 @@ definitions:
     properties:
       id:
         type: string
-      is_deliverd:
+      is_delivered:
         type: boolean
       is_paid:
         type: boolean
-      update_at:
+      started_at:
         type: string
       user_id:
         type: string
@@ -199,7 +199,7 @@ definitions:
       address:
         type: string
       zip_code:
-        type: boolean
+        type: string
     required:
     - address
     - zip_code
@@ -946,6 +946,12 @@ paths:
             additionalProperties:
               type: string
             type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
       security:
       - CookieAuth: []
       summary: Add an item to an order
@@ -1280,7 +1286,7 @@ paths:
       produces:
       - application/json
       responses:
-        "307":
+        "301":
           description: Redirect to payment gateway
           schema:
             type: string
