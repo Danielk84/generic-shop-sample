@@ -28,17 +28,17 @@ func PaymentRouter(ctx context.Context, router *gin.RouterGroup) {
 	session := db.NewSession()
 	ph := paymentHandler{
 		cache:       db.NewCache(db.PaymentCache),
-		us:          queries.NewUserStore(session),
-		os:          queries.NewOrderStore(session),
+		userStore:   queries.NewUserStore(session),
+		orderStore:  queries.NewOrderStore(session),
 		zpGateway:   payment.NewZarinPalGateway(addr, &http.Client{Timeout: 10 * time.Second}),
 		merchandID:  config.ZPMerchantID,
 		callbackURL: config.PaymentCallbackURL,
 	}
 
 	rl := md.NewRateLimiter(ctx, 10, 30*time.Minute, 60*time.Second)
-	router.Use(md.AuthMiddleware(), rl.RateLimiterMiddleware())
+	router.Use(rl.RateLimiterMiddleware())
 	router.GET("/callback", ph.callback)
-	router.POST("/:id", ph.init)
+	router.POST("/:id", md.AuthMiddleware(), ph.init)
 }
 
 type UserPayment struct {
@@ -49,8 +49,8 @@ type UserPayment struct {
 
 type paymentHandler struct {
 	cache       db.CacheClient
-	us          queries.UserStore
-	os          queries.OrderStore
+	userStore   queries.UserStore
+	orderStore  queries.OrderStore
 	zpGateway   payment.ZPGateway
 	merchandID  string
 	callbackURL string
@@ -62,7 +62,7 @@ type paymentHandler struct {
 // @Accept			json
 // @Produce		json
 // @Param			id	path		string				true	"Order ID"
-// @Success		307	{string}	string				"Redirect to payment gateway"
+// @Success		301	{string}	string				"Redirect to payment gateway"
 // @Failure		400	{object}	map[string]string	"Bad Request"
 // @Failure		403	{object}	map[string]string	"Forbidden"
 // @Failure		404	{object}	map[string]string	"Not Found"
@@ -77,7 +77,8 @@ func (ph *paymentHandler) init(c *gin.Context) {
 	}
 
 	id := c.Param("id")
-	order, err := ph.os.Get(c.Request.Context(), id, claims.ID)
+	ctx := c.Request.Context()
+	order, err := ph.orderStore.Get(ctx, id, claims.ID)
 	if err != nil {
 		NotFound(c, "Order not found")
 		return
@@ -86,7 +87,7 @@ func (ph *paymentHandler) init(c *gin.Context) {
 		Forbidden(c, "Unconfirmed order")
 		return
 	}
-	user, err := ph.us.GetDetails(c.Request.Context(), claims.Username)
+	user, err := ph.userStore.GetDetails(ctx, claims.Username)
 	if err != nil {
 		slog.Error("unexpected error in UserStore.GetDetails in payment init",
 			"user_id", claims.ID,
@@ -95,7 +96,7 @@ func (ph *paymentHandler) init(c *gin.Context) {
 		return
 	}
 
-	init, err := ph.zpGateway.InitReq(c.Request.Context(), &payment.ZPRequest{
+	init, err := ph.zpGateway.InitReq(ctx, &payment.ZPRequest{
 		MerchantID:  ph.merchandID,
 		Amount:      order.TotalBill,
 		Currency:    "IRT",
@@ -124,7 +125,7 @@ func (ph *paymentHandler) init(c *gin.Context) {
 		Unprocessable(c, "")
 		return
 	}
-	if err := ph.cache.SetEx(c.Request.Context(), init.Data.Authority, output, 30*time.Minute); err != nil {
+	if _, err := ph.cache.SetEx(ctx, init.Data.Authority, output, 30*time.Minute).Result(); err != nil {
 		slog.Error("failed to cache paymeny authority",
 			"user_id", user.ID,
 			"error", err)
@@ -133,7 +134,7 @@ func (ph *paymentHandler) init(c *gin.Context) {
 	}
 
 	gatewayURL := fmt.Sprintf("%s/pg/StartPay/%s", ph.zpGateway.Addr, init.Data.Authority)
-	c.Redirect(http.StatusPermanentRedirect, gatewayURL)
+	c.Redirect(http.StatusMovedPermanently, gatewayURL)
 }
 
 // @Summary		Payment callback
@@ -164,7 +165,7 @@ func (ph *paymentHandler) callback(c *gin.Context) {
 
 	ctx := c.Request.Context()
 	reverse := &payment.ZPReverseRequest{MerchantID: ph.merchandID, Authority: input.Authority}
-	data, err := ph.cache.JSONGet(ctx, input.Authority).Result()
+	data, err := ph.cache.Get(ctx, input.Authority).Result()
 	if err != nil {
 		ph.reverseWithLog(ctx, "failed to get payment authority related data", err, reverse)
 		BadRequest(c, "Invliad authority")
@@ -198,7 +199,7 @@ func (ph *paymentHandler) callback(c *gin.Context) {
 	if slices.Contains([]int{100, 101}, verfiedPayment.Data.Code) {
 		status.IsPaid = true
 	}
-	if err := ph.os.SetPaymentStatus(c.Request.Context(), up.OrderID, up.UserID, status); err != nil {
+	if err := ph.orderStore.SetPaymentStatus(c.Request.Context(), up.OrderID, up.UserID, status); err != nil {
 		ph.reverseWithLog(ctx, "failed to set payment summary", err, reverse)
 		NotFound(c, "Order not found")
 		return

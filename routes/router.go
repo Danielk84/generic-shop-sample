@@ -19,7 +19,7 @@ func APIRouter(ctx context.Context, router *gin.RouterGroup) {
 	api.CommentsRouter(router.Group("/comments"))
 	api.OrderItemsRouter(router.Group("/orders/items"))
 	api.OrderRouter(router.Group("/orders"))
-	api.OrderRouter(router.Group("/payment"))
+	api.PaymentRouter(ctx, router.Group("/payment"))
 }
 
 func StaticRouter(config *internal.Config, router *gin.RouterGroup) {
