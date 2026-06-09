@@ -8,7 +8,7 @@ import (
 	"github.com/go-playground/validator/v10"
 )
 
-func SetCustomValidators() any {
+func SetCustomValidators() {
 	cv := map[string]validator.Func{
 		"username":          usernameValidator,
 		"password":          passwordValidator,
@@ -16,12 +16,18 @@ func SetCustomValidators() any {
 		"iran_phone_number": iranPhoneNumberValidator,
 	}
 
+	v := GetValidator()
+	for key, value := range cv {
+		if err := v.RegisterValidation(key, value); err != nil {
+			panic(err)
+		}
+	}
+}
+
+func GetValidator() *validator.Validate {
 	v, ok := binding.Validator.Engine().(*validator.Validate)
 	if !ok {
 		panic("failed to get validator engine")
-	}
-	for key, value := range cv {
-		v.RegisterValidation(key, value)
 	}
 	return v
 }

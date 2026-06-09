@@ -43,7 +43,7 @@ func newAdmin(cmd *cobra.Command, args []string) {
 		},
 	}
 	var err error
-	validate := internal.SetCustomValidators().(*validator.Validate)
+	validate := internal.GetValidator()
 	if err = validate.Struct(user); err != nil {
 		if username == "" || password == "" {
 			log.Fatalln("username and password required.")
