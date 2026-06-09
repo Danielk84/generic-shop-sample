@@ -7,4 +7,4 @@ FROM alpine:3.22
 WORKDIR /app
 COPY --from=builder /app/shop .
 EXPOSE 8080
-CMD ["./shop", "run"]
+CMD ["./shop", "serve"]
