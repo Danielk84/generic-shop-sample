@@ -3,7 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	_ "generic-shop-sample/docs"
 	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/background"
@@ -77,7 +77,7 @@ func (a *App) Run() {
 		}
 	}()
 
-	background.StartTasks(a.ctx, db.NewSession())
+	background.StartTasks(a.ctx, database.GetSession())
 
 	<-a.ctx.Done()
 

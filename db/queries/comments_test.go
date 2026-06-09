@@ -10,7 +10,7 @@ import (
 func TestCommentStore(t *testing.T) {
 	ctx := t.Context()
 
-	session := db.NewSession()
+	session := database.GetSession()
 
 	if _, err := session.Exec(ctx, "TRUNCATE comments, products CASCADE"); err != nil {
 		t.Errorf("error truncate comments and products, %s", err)
@@ -158,7 +158,7 @@ func TestCommentStore(t *testing.T) {
 func TestFullListComments(t *testing.T) {
 	ctx := t.Context()
 
-	session := db.NewSession()
+	session := database.GetSession()
 	if _, err := session.Exec(ctx, "TRUNCATE comments"); err != nil {
 		t.Errorf("error truncate comments, %s", err)
 		return

@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	md "generic-shop-sample/middlewares"
 	"net/http"
@@ -14,7 +15,7 @@ import (
 
 func CategoriesRouter(router *gin.RouterGroup) {
 	cs := categoriesHandler{
-		store:        queries.NewCategoryStore(db.NewSession()),
+		store:        queries.NewCategoryStore(database.GetSession()),
 		cache:        db.NewCache(db.ProductsCache),
 		baseCacheKey: "categories",
 	}
@@ -125,7 +126,7 @@ func (ch *categoriesHandler) delete(c *gin.Context) {
 }
 
 func PCRouter(router *gin.RouterGroup) {
-	session := db.NewSession()
+	session := database.GetSession()
 	pch := pcHandler{
 		pcStore:      queries.NewPCStore(session),
 		productStore: queries.NewProductStore(session),

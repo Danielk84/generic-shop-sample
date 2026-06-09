@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/internal"
 	"log"
 	"os/signal"
@@ -16,12 +16,12 @@ func main() {
 	defer cancel()
 
 	config := internal.NewConfig()
-	engine, err := db.New(ctx, config.DatabaseURL)
+	db, err := database.New(ctx, config.DatabaseURL)
 	if err != nil {
 		log.Panicf("invalid DATABASE_URL env variable, %s\n", err)
 		return
 	}
-	defer engine.Close()
+	defer db.Close()
 
 	cmd.Execute(ctx)
 }

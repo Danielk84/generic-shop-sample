@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal"
 	md "generic-shop-sample/middlewares"
@@ -16,7 +17,7 @@ import (
 
 func ProductsRouter(router *gin.RouterGroup) {
 	ph := productsHandler{
-		store:           queries.NewProductStore(db.NewSession()),
+		store:           queries.NewProductStore(database.GetSession()),
 		cache:           db.NewCache(db.ProductsCache),
 		baseCacheKey:    "products",
 		cacheExpiration: 1 * time.Hour,
@@ -370,7 +371,7 @@ func (ph *productsHandler) setActive(c *gin.Context) {
 
 func ProductImagesRouter(router *gin.RouterGroup) {
 	config := internal.NewConfig()
-	session := db.NewSession()
+	session := database.GetSession()
 	pih := productImagesHandler{
 		productStore:    queries.NewProductStore(session),
 		imagesStore:     queries.NewProductImagesStore(session),

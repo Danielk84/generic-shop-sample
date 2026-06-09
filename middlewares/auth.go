@@ -2,7 +2,7 @@ package middlewares
 
 import (
 	"context"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal/auth"
 	"net/http"
@@ -34,7 +34,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}
-		us := queries.NewUserStore(db.NewSession())
+		us := queries.NewUserStore(database.GetSession())
 		ctx := c.Request.Context()
 		if !us.IsValidUser(ctx, &queries.ValidUserRquest{ID: claims.ID, Username: claims.Username, PermissionType: claims.PermissionType}) {
 			c.AbortWithStatus(http.StatusNotFound)

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/payment"
@@ -25,7 +26,7 @@ func PaymentRouter(ctx context.Context, router *gin.RouterGroup) {
 		addr = payment.ZPGatewayAddr
 	}
 
-	session := db.NewSession()
+	session := database.GetSession()
 	ph := paymentHandler{
 		cache:       db.NewCache(db.PaymentCache),
 		userStore:   queries.NewUserStore(session),

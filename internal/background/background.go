@@ -3,6 +3,7 @@ package background
 import (
 	"context"
 	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal"
 )
@@ -11,7 +12,7 @@ type BackgroundTask interface {
 	start(ctx context.Context)
 }
 
-func StartTasks(ctx context.Context, session db.Session) {
+func StartTasks(ctx context.Context, session database.Session) {
 	config := internal.NewConfig()
 	tasks := []BackgroundTask{
 		&expiredOrdersCleaner{queries.NewOrderStore(session)},

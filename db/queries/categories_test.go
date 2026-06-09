@@ -1,7 +1,7 @@
 package queries_test
 
 import (
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	"testing"
 )
@@ -9,7 +9,7 @@ import (
 func TestCategoryStore(t *testing.T) {
 	ctx := t.Context()
 
-	session := db.NewSession()
+	session := database.GetSession()
 	cs := queries.NewCategoryStore(session)
 
 	if _, err := session.Exec(ctx, "TRUNCATE categories RESTART IDENTITY CASCADE"); err != nil {
@@ -66,7 +66,7 @@ func TestCategoryStore(t *testing.T) {
 func TestPCStore(t *testing.T) {
 	ctx := t.Context()
 
-	session := db.NewSession()
+	session := database.GetSession()
 
 	if _, err := session.Exec(ctx, "TRUNCATE products, categories RESTART IDENTITY CASCADE"); err != nil {
 		t.Fatalf("failed to truncate products_categories: %s", err)

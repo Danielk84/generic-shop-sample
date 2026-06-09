@@ -2,7 +2,7 @@ package queries_test
 
 import (
 	"context"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	tu "generic-shop-sample/internal/testutils"
 	"os"
@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-type DatabaseFixtureFn func(context.Context, db.Session) error
+type DatabaseFixtureFn func(context.Context, database.Session) error
 
 var setupFuncs = []DatabaseFixtureFn{
 	createTemporaryUsers,
@@ -25,7 +25,7 @@ var teardownFuncs = []DatabaseFixtureFn{
 func TestMain(m *testing.M) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	engine := tu.DBManagerSetup(ctx)
-	session := db.NewSession()
+	session := database.GetSession()
 
 	errs := []error{}
 	for _, fn := range setupFuncs {
@@ -53,7 +53,7 @@ func TestMain(m *testing.M) {
 	os.Exit(exitVal)
 }
 
-func createTemporaryUsers(ctx context.Context, session db.Session) error {
+func createTemporaryUsers(ctx context.Context, session database.Session) error {
 	batch := &pgx.Batch{}
 	const q = `INSERT INTO users (username, password, permission_type, is_active)
 		VALUES (@Username, @Password, @PermissionType, @IsActive)`
@@ -79,7 +79,7 @@ func createTemporaryUsers(ctx context.Context, session db.Session) error {
 	return sb.Close()
 }
 
-func truncateTables(ctx context.Context, session db.Session) error {
+func truncateTables(ctx context.Context, session database.Session) error {
 	const q = `TRUNCATE users, products, categories RESTART IDENTITY CASCADE`
 	_, err := session.Exec(ctx, q)
 	return err

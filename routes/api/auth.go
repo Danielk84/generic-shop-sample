@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/auth"
@@ -18,7 +19,7 @@ import (
 func LoginRouter(ctx context.Context, router *gin.RouterGroup) {
 	config := internal.NewConfig()
 	ah := authHandler{
-		queries.NewUserStore(db.NewSession()),
+		queries.NewUserStore(database.GetSession()),
 		db.NewCache(db.UsersCache),
 		config.AuthExpiration,
 	}

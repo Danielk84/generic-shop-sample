@@ -3,7 +3,7 @@ package api_test
 import (
 	"bytes"
 	"fmt"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	tu "generic-shop-sample/internal/testutils"
 	"io"
@@ -79,7 +79,7 @@ func TestPCHandler(t *testing.T) {
 	app := tu.RouterSetup(ctx)
 	adminToken := tu.LoginSetup(app, "admin_user", "securePassword")
 
-	session := db.NewSession()
+	session := database.GetSession()
 	ps := queries.NewProductStore(session)
 	if err := ps.Create(ctx, 1, &queries.CreateProductRequest{
 		Name:        "new model",

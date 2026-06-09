@@ -2,13 +2,12 @@ package cmd
 
 import (
 	"fmt"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/auth"
 	"log"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/spf13/cobra"
 )
 
@@ -31,7 +30,7 @@ func init() {
 }
 
 func newAdmin(cmd *cobra.Command, args []string) {
-	us := queries.NewUserStore(db.NewSession())
+	us := queries.NewUserStore(database.GetSession())
 	user := queries.CreateUserRequest{
 		LoginRequest: queries.LoginRequest{
 			Username: username,

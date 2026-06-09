@@ -2,7 +2,7 @@ package queries
 
 import (
 	"context"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -30,7 +30,7 @@ type RelatedCommentResponse struct {
 }
 
 type CommentRepository struct {
-	session db.Session
+	session database.Session
 }
 
 type CommentStore interface {
@@ -42,7 +42,7 @@ type CommentStore interface {
 	SetActive(ctx context.Context, id string, isActive bool) error
 }
 
-func NewCommentStore(session db.Session) CommentStore {
+func NewCommentStore(session database.Session) CommentStore {
 	return &CommentRepository{session}
 }
 

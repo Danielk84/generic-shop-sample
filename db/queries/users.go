@@ -2,7 +2,7 @@ package queries
 
 import (
 	"context"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"log/slog"
 
 	"github.com/jackc/pgx/v5"
@@ -69,7 +69,7 @@ type UserDetailsResponse struct {
 }
 
 type UserRepository struct {
-	session db.Session
+	session database.Session
 }
 
 type UserStore interface {
@@ -87,7 +87,7 @@ type UserStore interface {
 	VerifyPhoneNumber(ctx context.Context, id int32, isVerified bool) error
 }
 
-func NewUserStore(session db.Session) UserStore {
+func NewUserStore(session database.Session) UserStore {
 	return &UserRepository{session}
 }
 
@@ -220,7 +220,7 @@ type UserProfileRequest struct {
 }
 
 type UserProfileRepository struct {
-	session db.Session
+	session database.Session
 }
 
 type UserProfileStore interface {
@@ -230,7 +230,7 @@ type UserProfileStore interface {
 	DeleteImgPath(ctx context.Context, userID int32) (string, error)
 }
 
-func NewUserProfileStore(session db.Session) UserProfileStore {
+func NewUserProfileStore(session database.Session) UserProfileStore {
 	return &UserProfileRepository{session}
 }
 

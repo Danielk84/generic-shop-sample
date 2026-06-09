@@ -3,7 +3,7 @@ package api_test
 import (
 	"bytes"
 	"fmt"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	tu "generic-shop-sample/internal/testutils"
 	"io"
@@ -19,7 +19,7 @@ func TestCommentsHandler(t *testing.T) {
 	ctx := t.Context()
 
 	app := tu.RouterSetup(ctx)
-	session := db.NewSession()
+	session := database.GetSession()
 	if _, err := session.Exec(ctx, "TRUNCATE comments, products RESTART IDENTITY CASCADE"); err != nil {
 		t.Errorf("failed to truncate comments, %s", err)
 	}

@@ -2,7 +2,7 @@ package api_test
 
 import (
 	"context"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal/auth"
 	tu "generic-shop-sample/internal/testutils"
@@ -15,8 +15,8 @@ func TestMain(m *testing.M) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	engine := tu.DBManagerSetup(ctx)
-	session := db.NewSession()
+	db := tu.DBManagerSetup(ctx)
+	session := database.GetSession()
 	cache := tu.CacheSetup(ctx)
 
 	password := "securePassword"
@@ -66,7 +66,7 @@ func TestMain(m *testing.M) {
 	}
 
 	cache.Close()
-	engine.Close()
+	db.Close()
 
 	tu.CeckErrList("api", errs)
 

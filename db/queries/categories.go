@@ -2,7 +2,7 @@ package queries
 
 import (
 	"context"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -17,7 +17,7 @@ type Category struct {
 }
 
 type CategoryRepository struct {
-	session db.Session
+	session database.Session
 }
 
 type CategoryStore interface {
@@ -26,7 +26,7 @@ type CategoryStore interface {
 	Delete(ctx context.Context, product_id int32) error
 }
 
-func NewCategoryStore(session db.Session) CategoryStore {
+func NewCategoryStore(session database.Session) CategoryStore {
 	return &CategoryRepository{session}
 }
 
@@ -46,7 +46,7 @@ func (cr *CategoryRepository) Delete(ctx context.Context, id int32) error {
 }
 
 type PCRepository struct {
-	session db.Session
+	session database.Session
 }
 
 type PCStore interface {
@@ -54,7 +54,7 @@ type PCStore interface {
 	List(ctx context.Context, product_id string) ([]string, error)
 }
 
-func NewPCStore(session db.Session) PCStore {
+func NewPCStore(session database.Session) PCStore {
 	return &PCRepository{session}
 }
 

@@ -3,7 +3,7 @@ package queries
 import (
 	"context"
 	"fmt"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"reflect"
 
 	"github.com/jackc/pgx/v5"
@@ -20,7 +20,7 @@ func getOffsetFromPageNum(pagination, page int) int {
 	return (page - 1) * pagination
 }
 
-func execOne(ctx context.Context, session db.Session, query string, args ...any) error {
+func execOne(ctx context.Context, session database.Session, query string, args ...any) error {
 	cTag, err := session.Exec(ctx, query, args...)
 	if err != nil {
 		return err
@@ -31,7 +31,7 @@ func execOne(ctx context.Context, session db.Session, query string, args ...any)
 	return nil
 }
 
-func list[T any](ctx context.Context, session db.Session, query string, args ...any) ([]T, error) {
+func list[T any](ctx context.Context, session database.Session, query string, args ...any) ([]T, error) {
 	rows, err := session.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -55,7 +55,7 @@ func list[T any](ctx context.Context, session db.Session, query string, args ...
 	return items, nil
 }
 
-func get[T any](ctx context.Context, session db.Session, query string, args ...any) (*T, error) {
+func get[T any](ctx context.Context, session database.Session, query string, args ...any) (*T, error) {
 	items, err := list[T](ctx, session, query, args...)
 	if err != nil {
 		return nil, err

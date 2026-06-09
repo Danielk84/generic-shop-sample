@@ -2,7 +2,7 @@ package queries
 
 import (
 	"context"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -36,7 +36,7 @@ type PaymentStatus struct {
 }
 
 type OrderRepository struct {
-	session db.Session
+	session database.Session
 }
 
 type OrderStore interface {
@@ -51,7 +51,7 @@ type OrderStore interface {
 	DeleteExpiredOrders(ctx context.Context) error
 }
 
-func NewOrderStore(session db.Session) OrderStore {
+func NewOrderStore(session database.Session) OrderStore {
 	return &OrderRepository{session}
 }
 
@@ -175,7 +175,7 @@ type OwnedOrderItemResponse struct {
 }
 
 type OrderItemsRepository struct {
-	session db.Session
+	session database.Session
 }
 
 type OrderItemsStore interface {
@@ -188,7 +188,7 @@ type OrderItemsStore interface {
 	SetPacked(ctx context.Context, vendorID int32, item *OrderItemPackStatusRequest) error
 }
 
-func NewOrderItemsStore(session db.Session) OrderItemsStore {
+func NewOrderItemsStore(session database.Session) OrderItemsStore {
 	return &OrderItemsRepository{session}
 }
 

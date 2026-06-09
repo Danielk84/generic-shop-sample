@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	md "generic-shop-sample/middlewares"
 	"net/http"
@@ -14,7 +15,7 @@ import (
 
 func CommentsRouter(router *gin.RouterGroup) {
 	ch := commentsHandler{
-		store:           queries.NewCommentStore(db.NewSession()),
+		store:           queries.NewCommentStore(database.GetSession()),
 		cache:           db.NewCache(db.PublicCache),
 		baseCacheKey:    "comments",
 		cacheExpiration: 1 * time.Hour,

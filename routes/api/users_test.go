@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal"
 	tu "generic-shop-sample/internal/testutils"
@@ -25,7 +25,7 @@ func TestUsersHandler(t *testing.T) {
 	ctx := t.Context()
 
 	app := tu.RouterSetup(ctx)
-	us := queries.NewUserStore(db.NewSession())
+	us := queries.NewUserStore(database.GetSession())
 	adminToken := tu.LoginSetup(app, "admin_user", "securePassword")
 	admin2Token := tu.LoginSetup(app, "admin_user2", "securePassword")
 	customerToken := tu.LoginSetup(app, "customer_user", "securePassword")
@@ -188,13 +188,13 @@ func TestUserProfileHandler(t *testing.T) {
 		t.Errorf(`expected status="%d", but got "%d"`, http.StatusAccepted, w.Code)
 	}
 
-	us := queries.NewUserStore(db.NewSession())
+	us := queries.NewUserStore(database.GetSession())
 	user, err := us.Get(ctx, "vendor_user")
 	if err != nil {
 		t.Errorf("failed to get user, %s", err)
 	}
 
-	ups := queries.NewUserProfileStore(db.NewSession())
+	ups := queries.NewUserProfileStore(database.GetSession())
 	imgPath, err := ups.GetImgPath(ctx, user.ID)
 	if err != nil || imgPath == "" {
 		t.Errorf(`failed to save img in database, imgPath="%s", %s`, imgPath, err)

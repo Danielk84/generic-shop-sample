@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"generic-shop-sample/app"
 	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/internal"
 	"io"
 	"log/slog"
@@ -26,13 +27,13 @@ func RouterSetup(ctx context.Context) *gin.Engine {
 	return app.Router
 }
 
-func DBManagerSetup(ctx context.Context) db.DBManager {
+func DBManagerSetup(ctx context.Context) database.DBManager {
 	config := internal.NewConfig()
-	engine, err := db.New(ctx, config.DatabaseURL)
+	db, err := database.New(ctx, config.DatabaseURL)
 	if err != nil {
 		panic(fmt.Errorf("failed to setup db, %s", err))
 	}
-	return engine
+	return db
 }
 
 func CacheSetup(ctx context.Context) db.CacheManager {

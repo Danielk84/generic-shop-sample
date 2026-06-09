@@ -2,7 +2,7 @@ package middlewares_test
 
 import (
 	"fmt"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal/auth"
 	tu "generic-shop-sample/internal/testutils"
@@ -17,10 +17,10 @@ import (
 )
 
 func TestAuthMiddleware(t *testing.T) {
-	engine := tu.DBManagerSetup(t.Context())
-	defer engine.Close()
+	db := tu.DBManagerSetup(t.Context())
+	defer db.Close()
 
-	us := queries.NewUserStore(db.NewSession())
+	us := queries.NewUserStore(database.GetSession())
 	if err := us.Create(t.Context(), &queries.CreateUserRequest{
 		LoginRequest:          queries.LoginRequest{Username: "auth_user", Password: "securePassword"},
 		UserPermissionRequest: queries.UserPermissionRequest{PermissionType: queries.Admin, IsActive: true},

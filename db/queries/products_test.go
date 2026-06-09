@@ -2,7 +2,7 @@ package queries_test
 
 import (
 	"fmt"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal"
 	"testing"
@@ -11,7 +11,7 @@ import (
 func TestProductStore(t *testing.T) {
 	ctx := t.Context()
 
-	session := db.NewSession()
+	session := database.GetSession()
 	if _, err := session.Exec(ctx, "TRUNCATE products RESTART IDENTITY CASCADE"); err != nil {
 		t.Errorf("failed to truncate products, %s", err)
 	}
@@ -112,7 +112,7 @@ func TestProductStore(t *testing.T) {
 func TestFullListProducts(t *testing.T) {
 	ctx := t.Context()
 
-	session := db.NewSession()
+	session := database.GetSession()
 	if _, err := session.Exec(ctx, "TRUNCATE products RESTART IDENTITY CASCADE"); err != nil {
 		t.Errorf("failed to truncate products")
 	}
@@ -174,7 +174,7 @@ func TestFullListProducts(t *testing.T) {
 func TestProductImagesStore(t *testing.T) {
 	ctx := t.Context()
 
-	session := db.NewSession()
+	session := database.GetSession()
 	ps := queries.NewProductStore(session)
 	pis := queries.NewProductImagesStore(session)
 

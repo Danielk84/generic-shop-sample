@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	tu "generic-shop-sample/internal/testutils"
 	"io"
@@ -25,7 +25,7 @@ func TestProductsHandler(t *testing.T) {
 	adminToken := tu.LoginSetup(app, "admin_user", "securePassword")
 	vendorToken := tu.LoginSetup(app, "vendor_user", "securePassword")
 
-	session := db.NewSession()
+	session := database.GetSession()
 	us := queries.NewUserStore(session)
 	vendor, _ := us.Get(ctx, "vendor_user")
 
@@ -211,7 +211,7 @@ func TestProductImagesRouter(t *testing.T) {
 	ctx := t.Context()
 
 	app := tu.RouterSetup(ctx)
-	session := db.NewSession()
+	session := database.GetSession()
 	us := queries.NewUserStore(session)
 	vendor, _ := us.Get(ctx, "vendor_user")
 	vendorToken := tu.LoginSetup(app, "vendor_user", "securePassword")

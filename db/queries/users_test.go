@@ -1,14 +1,14 @@
 package queries_test
 
 import (
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	"testing"
 	"time"
 )
 
 func TestIsUsernameExists(t *testing.T) {
-	us := queries.NewUserStore(db.NewSession())
+	us := queries.NewUserStore(database.GetSession())
 
 	if us.IsUsernameExists(t.Context(), "InvalidUsername") {
 		t.Errorf("expected false, but it return true for existing of invalid username")
@@ -19,7 +19,7 @@ func TestIsUsernameExists(t *testing.T) {
 }
 
 func TestCreateGetDetailsUser(t *testing.T) {
-	session := db.NewSession()
+	session := database.GetSession()
 	us := queries.NewUserStore(session)
 
 	user := &queries.CreateUserRequest{
@@ -50,7 +50,7 @@ func TestCreateGetDetailsUser(t *testing.T) {
 
 func TestSetEmailAndSetPhoneNumber(t *testing.T) {
 	const getIDFromUsernameQuery = `SELECT id FROM users WHERE username = $1`
-	session := db.NewSession()
+	session := database.GetSession()
 	us := queries.NewUserStore(session)
 	var id int32
 	if err := session.QueryRow(t.Context(), getIDFromUsernameQuery, "customerUser").Scan(&id); err != nil {
@@ -86,7 +86,7 @@ func TestSetEmailAndSetPhoneNumber(t *testing.T) {
 }
 
 func TestGetUser(t *testing.T) {
-	us := queries.NewUserStore(db.NewSession())
+	us := queries.NewUserStore(database.GetSession())
 
 	user := queries.CreateUserRequest{
 		queries.LoginRequest{"NewSimpleUser", "secure password"},
@@ -107,7 +107,7 @@ func TestGetUser(t *testing.T) {
 }
 
 func TestUpdateUserPermission(t *testing.T) {
-	us := queries.NewUserStore(db.NewSession())
+	us := queries.NewUserStore(database.GetSession())
 
 	username := "blockUser"
 	user, err := us.Get(t.Context(), username)
@@ -130,7 +130,7 @@ func TestUpdateUserPermission(t *testing.T) {
 }
 
 func TestDeleteUser(t *testing.T) {
-	us := queries.NewUserStore(db.NewSession())
+	us := queries.NewUserStore(database.GetSession())
 
 	user := &queries.CreateUserRequest{
 		queries.LoginRequest{"deleteUser", "secure password"},
@@ -156,7 +156,7 @@ func TestDeleteUser(t *testing.T) {
 func TestUserProfileStore(t *testing.T) {
 	ctx := t.Context()
 
-	session := db.NewSession()
+	session := database.GetSession()
 	us := queries.NewUserStore(session)
 	ups := queries.NewUserProfileStore(session)
 

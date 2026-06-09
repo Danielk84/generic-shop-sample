@@ -1,7 +1,7 @@
 package api
 
 import (
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	md "generic-shop-sample/middlewares"
 	"net/http"
@@ -11,7 +11,7 @@ import (
 
 func OrderRouter(router *gin.RouterGroup) {
 	oh := orderHandler{
-		store: queries.NewOrderStore(db.NewSession()),
+		store: queries.NewOrderStore(database.GetSession()),
 	}
 
 	router.Use(md.AuthMiddleware())
@@ -194,7 +194,7 @@ func (uh *orderHandler) verifyUserInfo(c *gin.Context) {
 }
 
 func OrderItemsRouter(router *gin.RouterGroup) {
-	oih := orderItemsHandler{queries.NewOrderItemsStore(db.NewSession())}
+	oih := orderItemsHandler{queries.NewOrderItemsStore(database.GetSession())}
 
 	router.Use(md.AuthMiddleware())
 	router.POST("/", oih.create)

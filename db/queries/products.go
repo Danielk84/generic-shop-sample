@@ -2,7 +2,7 @@ package queries
 
 import (
 	"context"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/internal"
 	"time"
 
@@ -44,7 +44,7 @@ type OwnedProductResponse struct {
 }
 
 type ProductRepository struct {
-	session db.Session
+	session database.Session
 }
 
 type ProductStore interface {
@@ -60,7 +60,7 @@ type ProductStore interface {
 	SetActive(ctx context.Context, id string, isActive bool) error
 }
 
-func NewProductStore(session db.Session) ProductStore {
+func NewProductStore(session database.Session) ProductStore {
 	return &ProductRepository{session: session}
 }
 
@@ -169,7 +169,7 @@ type ProductImageResponse struct {
 }
 
 type ProductImagesRepository struct {
-	session db.Session
+	session database.Session
 }
 
 type ProductImagesStore interface {
@@ -178,7 +178,7 @@ type ProductImagesStore interface {
 	Delete(ctx context.Context, id string) (string, error)
 }
 
-func NewProductImagesStore(session db.Session) ProductImagesStore {
+func NewProductImagesStore(session database.Session) ProductImagesStore {
 	return &ProductImagesRepository{session}
 }
 

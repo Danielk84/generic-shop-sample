@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/auth"
@@ -20,7 +21,7 @@ import (
 
 func UsersRouter(router *gin.RouterGroup) {
 	uh := usersHandler{
-		store: queries.NewUserStore(db.NewSession()),
+		store: queries.NewUserStore(database.GetSession()),
 		cache: db.NewCache(db.UsersCache),
 	}
 
@@ -295,7 +296,7 @@ func (uh *usersHandler) setPhoneNumber(c *gin.Context) {
 func UserProfileRouter(router *gin.RouterGroup) {
 	config := internal.NewConfig()
 	uph := userProfileHandler{
-		store:      queries.NewUserProfileStore(db.NewSession()),
+		store:      queries.NewUserProfileStore(database.GetSession()),
 		uploadPath: config.UploadPath,
 	}
 
