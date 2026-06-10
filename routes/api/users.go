@@ -294,10 +294,10 @@ func (uh *usersHandler) setPhoneNumber(c *gin.Context) {
 }
 
 func UserProfileRouter(router *gin.RouterGroup) {
-	config := internal.NewConfig()
+	config := internal.GetConfig()
 	uph := userProfileHandler{
 		store:      queries.NewUserProfileStore(database.GetSession()),
-		uploadPath: config.UploadPath,
+		uploadPath: config.Opt.UploadPath,
 	}
 
 	router.Use(md.AuthMiddleware())

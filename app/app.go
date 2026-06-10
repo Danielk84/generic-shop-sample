@@ -38,10 +38,10 @@ type App struct {
 // @authorizationurl			http://localhost/api/auth/login
 func NewApp(ctx context.Context, config *internal.Config) *App {
 	gin.DisableConsoleColor()
-	gin.SetMode(config.Mode)
+	gin.SetMode(config.Opt.Mode)
 	router := gin.New()
-	router.MaxMultipartMemory = config.MaxMultipartMemory << 20
-	if err := router.SetTrustedProxies(config.TrustedProxies); err != nil {
+	router.MaxMultipartMemory = config.Opt.MaxMultipartMemory << 20
+	if err := router.SetTrustedProxies(config.Opt.TrustedProxies); err != nil {
 		panic(fmt.Errorf("failed to set trusted proxies, %s", err))
 	}
 
@@ -49,7 +49,7 @@ func NewApp(ctx context.Context, config *internal.Config) *App {
 	if gin.Mode() != gin.ReleaseMode {
 		logLevel = slog.LevelDebug
 	}
-	internal.InitAppLogger(logLevel, config.AppLoggerFilepath)
+	internal.InitAppLogger(logLevel, config.Opt.AppLoggerFilepath)
 
 	setMiddlewares(ctx, router, config)
 	internal.SetCustomValidators()
@@ -64,7 +64,7 @@ func NewApp(ctx context.Context, config *internal.Config) *App {
 
 func (a *App) Run() {
 	srv := &http.Server{
-		Addr:              a.config.Addr,
+		Addr:              a.config.Opt.Addr,
 		Handler:           http.TimeoutHandler(a.Router, 10*time.Second, "request timeout"),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       5 * time.Second,
@@ -90,7 +90,7 @@ func (a *App) Run() {
 
 func setMiddlewares(ctx context.Context, router *gin.Engine, config *internal.Config) {
 	corsConfig := &md.CorsConfig{
-		Origins:     config.Origins,
+		Origins:     config.Opt.Origins,
 		Credentials: true,
 		Methods:     []string{http.MethodGet, http.MethodHead, http.MethodPost, http.MethodOptions, http.MethodPut, http.MethodDelete},
 	}
@@ -98,7 +98,7 @@ func setMiddlewares(ctx context.Context, router *gin.Engine, config *internal.Co
 	rl := md.NewRateLimiter(ctx, 500, 10*time.Minute, 30*time.Minute)
 
 	router.Use(
-		md.RequestLoggerMiddleware(config.RequestLoggerFilepath),
+		md.RequestLoggerMiddleware(config.Opt.RequestLoggerFilepath),
 		gin.Recovery(),
 		md.SecurityHeadersMiddleware(),
 		rl.RateLimiterMiddleware(),

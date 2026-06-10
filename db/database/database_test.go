@@ -9,8 +9,8 @@ import (
 )
 
 func TestDBEngine(t *testing.T) {
-	config := internal.NewConfig()
-	engine, err := database.New(t.Context(), config.DatabaseURL)
+	config := internal.GetConfig()
+	engine, err := database.New(t.Context(), config.Opt.DatabaseURL)
 	if err != nil {
 		t.Errorf("incorrect database connection: %s", err)
 	}

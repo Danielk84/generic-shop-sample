@@ -370,7 +370,7 @@ func (ph *productsHandler) setActive(c *gin.Context) {
 }
 
 func ProductImagesRouter(router *gin.RouterGroup) {
-	config := internal.NewConfig()
+	config := internal.GetConfig()
 	session := database.GetSession()
 	pih := productImagesHandler{
 		productStore:    queries.NewProductStore(session),
@@ -378,7 +378,7 @@ func ProductImagesRouter(router *gin.RouterGroup) {
 		cache:           cache.GetCache(cache.ProductsCache),
 		baseCacheKey:    "images",
 		cacheExpiration: 1 * time.Hour,
-		uploadPath:      config.UploadPath,
+		uploadPath:      config.Opt.UploadPath,
 	}
 
 	router.GET("/:productID", pih.list)

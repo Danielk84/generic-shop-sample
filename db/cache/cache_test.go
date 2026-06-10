@@ -7,9 +7,9 @@ import (
 )
 
 func TestCacheManager(t *testing.T) {
-	config := internal.NewConfig()
+	config := internal.GetConfig()
 	dbs := []int{cache.PublicCache, cache.UsersCache}
-	cm, err := cache.New(t.Context(), config.CacheURL, dbs)
+	cm, err := cache.New(t.Context(), config.Opt.CacheURL, dbs)
 	if err != nil {
 		t.Errorf("failed to create new cache manager, %s", err)
 	}

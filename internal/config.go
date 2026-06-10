@@ -9,7 +9,7 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-type Config struct {
+type Option struct {
 	Mode                   string        `yaml:"mode" binding:"required,oneof=debug release"`
 	Addr                   string        `yaml:"addr" binding:"required"`
 	TrustedProxies         []string      `yaml:"trusted_proxies" binding:",required,ip"`
@@ -33,11 +33,11 @@ type Config struct {
 	SMTPPassword           string        `yaml:"smtp_password" binding:"omitempty"`
 }
 
-type ConfigFile struct {
-	Conf Config `yaml:"conf"`
+type Config struct {
+	Opt Option `yaml:"opt"`
 }
 
-func (c *ConfigFile) ReadFile(fp string) error {
+func (c *Config) ReadFile(fp string) error {
 	if filepath.IsAbs(fp) {
 		return fmt.Errorf("%s: empty or not absolute file path", os.ErrInvalid)
 	}
@@ -52,18 +52,18 @@ func (c *ConfigFile) ReadFile(fp string) error {
 	return nil
 }
 
-func (c *ConfigFile) Validate() error {
-	if err := GetValidator().Struct(c.Conf); err != nil {
+func (c *Config) Validate() error {
+	if err := GetValidator().Struct(c.Opt); err != nil {
 		return err
 	}
 	return nil
 }
 
-var defualtConfig *ConfigFile
+var defualtConfig *Config
 
-func NewConfig(fp string) Config {
+func NewConfig(fp string) *Config {
 	if defualtConfig == nil {
-		defualtConfig = &ConfigFile{}
+		defualtConfig = &Config{}
 	}
 	if err := defualtConfig.ReadFile(fp); err != nil {
 		panic(err)
@@ -71,12 +71,12 @@ func NewConfig(fp string) Config {
 	if err := defualtConfig.Validate(); err != nil {
 		panic(err)
 	}
-	return defualtConfig.Conf
+	return defualtConfig
 }
 
-func GetConfig() Config {
+func GetConfig() *Config {
 	if defualtConfig == nil {
 		panic("nil default config")
 	}
-	return defualtConfig.Conf
+	return defualtConfig
 }

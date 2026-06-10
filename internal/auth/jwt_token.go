@@ -18,10 +18,10 @@ type AuthClaims struct {
 }
 
 func TokenEncoder(claims AuthClaims) (string, error) {
-	config := internal.NewConfig()
+	config := internal.GetConfig()
 
 	token := jwt.NewWithClaims(algorithm, claims)
-	tokenString, err := token.SignedString(config.JWTSecretKey)
+	tokenString, err := token.SignedString(config.Opt.JWTSecretKey)
 	if err != nil {
 		slog.Warn("failed to encode claims", "error", err)
 	}
@@ -29,12 +29,12 @@ func TokenEncoder(claims AuthClaims) (string, error) {
 }
 
 func TokenDecoder(tokenString string) (*AuthClaims, error) {
-	config := internal.NewConfig()
+	config := internal.GetConfig()
 
 	token, err := jwt.ParseWithClaims(
 		tokenString,
 		&AuthClaims{},
-		func(t *jwt.Token) (any, error) { return config.JWTSecretKey, nil },
+		func(t *jwt.Token) (any, error) { return config.Opt.JWTSecretKey, nil },
 		jwt.WithStrictDecoding(),
 		jwt.WithExpirationRequired(),
 		jwt.WithValidMethods([]string{algorithm.Alg()}),

@@ -188,8 +188,8 @@ func (pir *ProductImagesRepository) Create(ctx context.Context, productID, imgPa
 	if err != nil {
 		return err
 	}
-	config := internal.NewConfig()
-	if *count >= config.MaxProductImagesAmount {
+	config := internal.GetConfig()
+	if *count >= config.Opt.MaxProductImagesAmount {
 		return ErrFullCapacity
 	}
 

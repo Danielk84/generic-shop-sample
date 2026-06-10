@@ -199,8 +199,8 @@ func TestUserProfileHandler(t *testing.T) {
 	if err != nil || imgPath == "" {
 		t.Errorf(`failed to save img in database, imgPath="%s", %s`, imgPath, err)
 	}
-	config := internal.NewConfig()
-	if _, err := os.Stat(fmt.Sprintf("%s/%s", config.UploadPath, imgPath)); err != nil {
+	config := internal.GetConfig()
+	if _, err := os.Stat(fmt.Sprintf("%s/%s", config.Opt.UploadPath, imgPath)); err != nil {
 		t.Errorf(`failed to save file "%s", %s`, imgPath, err)
 	}
 
@@ -212,7 +212,7 @@ func TestUserProfileHandler(t *testing.T) {
 	if w.Code != http.StatusNoContent {
 		t.Errorf(`expected status="%d", but got "%d"`, http.StatusNoContent, w.Code)
 	}
-	if _, err := os.Stat(fmt.Sprintf("%s/%s", config.UploadPath, imgPath)); err == nil {
+	if _, err := os.Stat(fmt.Sprintf("%s/%s", config.Opt.UploadPath, imgPath)); err == nil {
 		t.Errorf("failed to remove img file")
 	}
 }

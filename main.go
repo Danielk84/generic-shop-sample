@@ -15,8 +15,8 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	config := internal.NewConfig()
-	db, err := database.New(ctx, config.DatabaseURL)
+	config := internal.GetConfig()
+	db, err := database.New(ctx, config.Opt.DatabaseURL)
 	if err != nil {
 		log.Panicf("invalid DATABASE_URL env variable, %s\n", err)
 		return

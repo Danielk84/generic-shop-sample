@@ -16,11 +16,11 @@ var runCmd = &cobra.Command{
 }
 
 func serve(cmd *cobra.Command, args []string) {
-	config := internal.NewConfig()
+	config := internal.GetConfig()
 	ctx := cmd.Context()
 
 	cacheDBs := []int{cache.PublicCache, cache.UsersCache, cache.ProductsCache, cache.PaymentCache}
-	cache, err := cache.New(ctx, config.CacheURL, cacheDBs)
+	cache, err := cache.New(ctx, config.Opt.CacheURL, cacheDBs)
 	if err != nil {
 		log.Panicln(err)
 	}

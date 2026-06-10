@@ -23,5 +23,5 @@ func APIRouter(ctx context.Context, router *gin.RouterGroup) {
 }
 
 func StaticRouter(config *internal.Config, router *gin.RouterGroup) {
-	router.Static("/upload", config.UploadPath)
+	router.Static("/upload", config.Opt.UploadPath)
 }

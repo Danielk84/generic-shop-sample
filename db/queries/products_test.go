@@ -199,20 +199,20 @@ func TestProductImagesStore(t *testing.T) {
 		t.Errorf("failed to get products list, %s", err)
 	}
 
-	config := internal.NewConfig()
-	tests := make([]string, config.MaxProductImagesAmount)
+	config := internal.GetConfig()
+	tests := make([]string, config.Opt.MaxProductImagesAmount)
 	for i := range tests {
 		tests[i] = fmt.Sprintf("path/to/img%d.img", i)
 	}
 
 	for i, imgPath := range tests {
 		if err := pis.Create(ctx, product.ID, imgPath); err != nil {
-			if i == config.MaxProductImagesAmount {
+			if i == config.Opt.MaxProductImagesAmount {
 				break
 			}
 			t.Errorf("failed to create product image row, %s", err)
 		}
-		if i == config.MaxProductImagesAmount {
+		if i == config.Opt.MaxProductImagesAmount {
 			t.Errorf("failed to return error for creating more than max value")
 		}
 	}

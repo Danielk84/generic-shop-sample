@@ -1,4 +1,4 @@
-conf:
+opt:
   mode: "debug" # "debug" or "release"
   addr: ":8080"
   trusted_proxies:

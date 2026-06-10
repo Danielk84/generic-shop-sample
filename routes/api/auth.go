@@ -17,11 +17,11 @@ import (
 )
 
 func LoginRouter(ctx context.Context, router *gin.RouterGroup) {
-	config := internal.NewConfig()
+	config := internal.GetConfig()
 	ah := authHandler{
 		queries.NewUserStore(database.GetSession()),
 		cache.GetCache(cache.UsersCache),
-		config.AuthExpiration,
+		config.Opt.AuthExpiration,
 	}
 
 	rl := md.NewRateLimiter(ctx, 10, 30*time.Minute, 60*time.Second)

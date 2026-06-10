@@ -21,15 +21,15 @@ import (
 )
 
 func RouterSetup(ctx context.Context) *gin.Engine {
-	config := internal.NewConfig()
+	config := internal.GetConfig()
 	app := app.NewApp(ctx, config)
 
 	return app.Router
 }
 
 func DBManagerSetup(ctx context.Context) database.DBManager {
-	config := internal.NewConfig()
-	db, err := database.New(ctx, config.DatabaseURL)
+	config := internal.GetConfig()
+	db, err := database.New(ctx, config.Opt.DatabaseURL)
 	if err != nil {
 		panic(fmt.Errorf("failed to setup db, %s", err))
 	}
@@ -37,8 +37,8 @@ func DBManagerSetup(ctx context.Context) database.DBManager {
 }
 
 func CacheSetup(ctx context.Context) cache.CacheManager {
-	config := internal.NewConfig()
-	cache, err := cache.New(ctx, config.CacheURL, []int{cache.PublicCache, cache.UsersCache, cache.ProductsCache})
+	config := internal.GetConfig()
+	cache, err := cache.New(ctx, config.Opt.CacheURL, []int{cache.PublicCache, cache.UsersCache, cache.ProductsCache})
 	if err != nil {
 		panic(fmt.Errorf("failed to setup cache, %s", err))
 	}

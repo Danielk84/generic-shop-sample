@@ -66,7 +66,7 @@ func TestMain(m *testing.M) {
 	}
 
 	cache.Close()
-	cache.Close()
+	db.Close()
 
 	tu.CeckErrList("api", errs)
 

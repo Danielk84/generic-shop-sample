@@ -19,10 +19,10 @@ import (
 )
 
 func PaymentRouter(ctx context.Context, router *gin.RouterGroup) {
-	config := internal.NewConfig()
+	config := internal.GetConfig()
 
 	addr := payment.ZPSandboxAddr
-	if config.Mode == gin.ReleaseMode {
+	if config.Opt.Mode == gin.ReleaseMode {
 		addr = payment.ZPGatewayAddr
 	}
 
@@ -32,8 +32,8 @@ func PaymentRouter(ctx context.Context, router *gin.RouterGroup) {
 		userStore:   queries.NewUserStore(session),
 		orderStore:  queries.NewOrderStore(session),
 		zpGateway:   payment.NewZarinPalGateway(addr, &http.Client{Timeout: 10 * time.Second}),
-		merchandID:  config.ZPMerchantID,
-		callbackURL: config.PaymentCallbackURL,
+		merchandID:  config.Opt.ZPMerchantID,
+		callbackURL: config.Opt.PaymentCallbackURL,
 	}
 
 	rl := md.NewRateLimiter(ctx, 10, 30*time.Minute, 60*time.Second)
