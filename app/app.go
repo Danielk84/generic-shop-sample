@@ -6,7 +6,6 @@ import (
 	"generic-shop-sample/app/background"
 	md "generic-shop-sample/app/middlewares"
 	"generic-shop-sample/app/routes"
-	_ "generic-shop-sample/docs"
 	"generic-shop-sample/internal"
 	"generic-shop-sample/storage/database"
 	"log/slog"
@@ -14,8 +13,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	swaggerfiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 type App struct {
@@ -24,18 +21,6 @@ type App struct {
 	config *internal.Config
 }
 
-// @title						Generic Shop API
-// @version					0.1.0
-// @host						localhost:8080
-// @BasePath					/api
-// @securityDefinitions.apikey	CookieAuth
-// @in							cookie
-// @name						__Host-auth-token
-// @authorizationurl			http://localhost/api/auth/login
-// @securityDefinitions.apikey	BearerAuth
-// @in							header
-// @name						Authorization
-// @authorizationurl			http://localhost/api/auth/login
 func NewApp(ctx context.Context, config *internal.Config) *App {
 	gin.DisableConsoleColor()
 	gin.SetMode(config.Opt.Mode)
@@ -109,7 +94,4 @@ func setMiddlewares(ctx context.Context, router *gin.Engine, config *internal.Co
 func setRoutes(ctx context.Context, config *internal.Config, router *gin.Engine) {
 	routes.APIRouter(ctx, router.Group("/api"))
 	routes.StaticRouter(config, router.Group("/static"))
-	if gin.Mode() == gin.DebugMode {
-		router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerfiles.Handler))
-	}
 }

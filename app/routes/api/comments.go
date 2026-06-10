@@ -44,17 +44,6 @@ type commentsHandler struct {
 	cacheExpiration time.Duration
 }
 
-// @Summary		Create a new comment
-// @Description	Users can create comments unless blocked
-// @Tags			comments
-// @Accept			json
-// @Produce		json
-// @Param			input	body		queries.CommentRequest	true	"Comment input"
-// @Success		201		{object}	map[string]string		"Created"
-// @Failure		400		{object}	map[string]string		"Bad Request"
-// @Failure		403		{object}	map[string]string		"Forbidden"
-// @Security		CookieAuth
-// @Router			/comments/ [post]
 func (ch *commentsHandler) create(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if HasPermissions(nil, claims.PermissionType, queries.BlockUser) {
@@ -74,16 +63,6 @@ func (ch *commentsHandler) create(c *gin.Context) {
 	Created(c, "")
 }
 
-// @Summary		Get a comment by ID
-// @Description	Only the owner or Admin can view the comment
-// @Tags			comments
-// @Produce		json
-// @Param			id	path		string	true	"Comment ID"
-// @Success		200	{object}	queries.CommentResponse
-// @Failure		403	{object}	map[string]string	"Forbidden"
-// @Failure		404	{object}	map[string]string	"Not Found"
-// @Security		CookieAuth
-// @Router			/comments/overview/{id} [get]
 func (ch *commentsHandler) get(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	id := c.Param("id")
@@ -100,16 +79,6 @@ func (ch *commentsHandler) get(c *gin.Context) {
 	c.JSON(http.StatusOK, output)
 }
 
-// @Summary		List comments by parent and referrer
-// @Description	Returns comments with caching
-// @Tags			comments
-// @Produce		json
-// @Param			parent		query		string	true	"Parent ID (UUID)"
-// @Param			referrer	query		string	true	"Referrer ID (UUID)"
-// @Success		200			{array}		queries.CommentResponse
-// @Failure		400			{object}	map[string]string	"Bad Request"
-// @Failure		404			{object}	map[string]string	"Not Found"
-// @Router			/comments/ [get]
 func (ch *commentsHandler) list(c *gin.Context) {
 	var input RelatedCommentsRequest
 	if err := c.ShouldBindQuery(&input); err != nil {
@@ -135,13 +104,6 @@ func (ch *commentsHandler) list(c *gin.Context) {
 	c.JSON(http.StatusOK, output)
 }
 
-// @Summary		List all related comments for the user
-// @Description	Returns full comment list. Admin can see all users
-// @Tags			comments
-// @Produce		json
-// @Success		200	{array}		queries.RelatedCommentResponse
-// @Failure		404	{object}	map[string]string	"Not Found"
-// @Router			/comments/full [get]
 func (ch *commentsHandler) fullList(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	username := claims.Username
@@ -163,16 +125,6 @@ func (ch *commentsHandler) fullList(c *gin.Context) {
 	c.JSON(http.StatusOK, output)
 }
 
-// @Summary		Delete a comment
-// @Description	Only the owner or admin can delete a comment
-// @Tags			comments
-// @Produce		json
-// @Param			id	path	string	true	"Comment ID"
-// @Success		204	"No Content"
-// @Failure		403	{object}	map[string]string	"Forbidden"
-// @Failure		404	{object}	map[string]string	"Not Found"
-// @Security		CookieAuth
-// @Router			/comments/{id} [delete]
 func (ch *commentsHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	id := c.Param("id")
@@ -195,18 +147,6 @@ func (ch *commentsHandler) delete(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-// @Summary		Set comment active status
-// @Description	Admin can approve or reject a comment
-// @Tags			comments
-// @Accept			json
-// @Produce		json
-// @Param			id		path		string				true	"Comment ID"
-// @Param			input	body		SetFlag				true	"Accepted flag"
-// @Success		202		{object}	map[string]string	"Accepted"
-// @Failure		400		{object}	map[string]string	"Bad Request"
-// @Failure		404		{object}	map[string]string	"Not Found"
-// @Security		CookieAuth
-// @Router			/comments/set-active/{id} [put]
 func (ch *commentsHandler) setActive(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if !HasPermissions(c, claims.PermissionType, queries.Admin) {

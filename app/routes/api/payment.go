@@ -57,19 +57,6 @@ type paymentHandler struct {
 	callbackURL string
 }
 
-// @Summary		Initiate payment
-// @Description	Initializes a payment request for the authenticated user's order
-// @Tags			payment
-// @Accept			json
-// @Produce		json
-// @Param			id	path		string				true	"Order ID"
-// @Success		301	{string}	string				"Redirect to payment gateway"
-// @Failure		400	{object}	map[string]string	"Bad Request"
-// @Failure		403	{object}	map[string]string	"Forbidden"
-// @Failure		404	{object}	map[string]string	"Not Found"
-// @Failure		422	{object}	map[string]string	"Unprocessable Entity"
-// @Security		CookieAuth
-// @Router			/payment/{id} [post]
 func (ph *paymentHandler) init(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if HasPermissions(nil, claims.PermissionType, queries.BlockUser) {
@@ -138,21 +125,6 @@ func (ph *paymentHandler) init(c *gin.Context) {
 	c.Redirect(http.StatusMovedPermanently, gatewayURL)
 }
 
-// @Summary		Payment callback
-// @Description	Handles payment gateway callback and verifies payment status
-// @Tags			payment
-// @Accept			json
-// @Produce		json
-// @Param			Authority	query		string				true	"Payment Authority"
-// @Param			Status		query		string				true	"Payment Status"
-// @Success		202			{object}	map[string]string	"Accepted"
-// @Failure		400			{object}	map[string]string	"Bad Request"
-// @Failure		401			{object}	map[string]string	"Unauthorized"
-// @Failure		403			{object}	map[string]string	"Forbidden"
-// @Failure		404			{object}	map[string]string	"Not Found"
-// @Failure		422			{object}	map[string]string	"Unprocessable Entity"
-// @Security		CookieAuth
-// @Router			/payment/callback [get]
 func (ph *paymentHandler) callback(c *gin.Context) {
 	var input payment.ZPGatewayStatus
 	if err := c.ShouldBindQuery(&input); err != nil {
