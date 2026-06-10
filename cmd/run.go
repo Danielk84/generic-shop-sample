@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"generic-shop-sample/app"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/cache"
 	"generic-shop-sample/internal"
 	"log"
 
@@ -19,8 +19,8 @@ func serve(cmd *cobra.Command, args []string) {
 	config := internal.NewConfig()
 	ctx := cmd.Context()
 
-	cacheDBs := []int{db.PublicCache, db.UsersCache, db.ProductsCache, db.PaymentCache}
-	cache, err := db.NewCacheManager(ctx, config.CacheURL, cacheDBs)
+	cacheDBs := []int{cache.PublicCache, cache.UsersCache, cache.ProductsCache, cache.PaymentCache}
+	cache, err := cache.New(ctx, config.CacheURL, cacheDBs)
 	if err != nil {
 		log.Panicln(err)
 	}

@@ -1,7 +1,7 @@
 package queries_test
 
 import (
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	"testing"
 	"time"

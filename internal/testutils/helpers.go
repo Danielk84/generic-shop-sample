@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"generic-shop-sample/app"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/cache"
 	"generic-shop-sample/db/database"
 	"generic-shop-sample/internal"
 	"io"
@@ -36,9 +36,9 @@ func DBManagerSetup(ctx context.Context) database.DBManager {
 	return db
 }
 
-func CacheSetup(ctx context.Context) db.CacheManager {
+func CacheSetup(ctx context.Context) cache.CacheManager {
 	config := internal.NewConfig()
-	cache, err := db.NewCacheManager(ctx, config.CacheURL, []int{db.PublicCache, db.UsersCache, db.ProductsCache})
+	cache, err := cache.New(ctx, config.CacheURL, []int{cache.PublicCache, cache.UsersCache, cache.ProductsCache})
 	if err != nil {
 		panic(fmt.Errorf("failed to setup cache, %s", err))
 	}

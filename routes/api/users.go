@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/cache"
 	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal"
@@ -22,7 +22,7 @@ import (
 func UsersRouter(router *gin.RouterGroup) {
 	uh := usersHandler{
 		store: queries.NewUserStore(database.GetSession()),
-		cache: db.NewCache(db.UsersCache),
+		cache: cache.GetCache(cache.UsersCache),
 	}
 
 	router.GET("/:username", uh.get)
@@ -44,7 +44,7 @@ type VerfierKey struct {
 
 type usersHandler struct {
 	store queries.UserStore
-	cache db.CacheClient
+	cache cache.CacheClient
 }
 
 // @Summary		Create a new user

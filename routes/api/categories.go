@@ -2,7 +2,7 @@ package api
 
 import (
 	"fmt"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/cache"
 	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	md "generic-shop-sample/middlewares"
@@ -16,7 +16,7 @@ import (
 func CategoriesRouter(router *gin.RouterGroup) {
 	cs := categoriesHandler{
 		store:        queries.NewCategoryStore(database.GetSession()),
-		cache:        db.NewCache(db.ProductsCache),
+		cache:        cache.GetCache(cache.ProductsCache),
 		baseCacheKey: "categories",
 	}
 
@@ -30,7 +30,7 @@ func CategoriesRouter(router *gin.RouterGroup) {
 
 type categoriesHandler struct {
 	store        queries.CategoryStore
-	cache        db.CacheClient
+	cache        cache.CacheClient
 	baseCacheKey string
 }
 
@@ -130,7 +130,7 @@ func PCRouter(router *gin.RouterGroup) {
 	pch := pcHandler{
 		pcStore:      queries.NewPCStore(session),
 		productStore: queries.NewProductStore(session),
-		cache:        db.NewCache(db.ProductsCache),
+		cache:        cache.GetCache(cache.ProductsCache),
 		baseCacheKey: "pc",
 	}
 
@@ -145,7 +145,7 @@ type PC struct {
 type pcHandler struct {
 	pcStore      queries.PCStore
 	productStore queries.ProductStore
-	cache        db.CacheClient
+	cache        cache.CacheClient
 	baseCacheKey string
 }
 

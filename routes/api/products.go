@@ -2,7 +2,7 @@ package api
 
 import (
 	"fmt"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/cache"
 	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal"
@@ -18,7 +18,7 @@ import (
 func ProductsRouter(router *gin.RouterGroup) {
 	ph := productsHandler{
 		store:           queries.NewProductStore(database.GetSession()),
-		cache:           db.NewCache(db.ProductsCache),
+		cache:           cache.GetCache(cache.ProductsCache),
 		baseCacheKey:    "products",
 		cacheExpiration: 1 * time.Hour,
 	}
@@ -44,7 +44,7 @@ type AvailableQuantity struct {
 
 type productsHandler struct {
 	store           queries.ProductStore
-	cache           db.CacheClient
+	cache           cache.CacheClient
 	baseCacheKey    string
 	cacheExpiration time.Duration
 }
@@ -375,7 +375,7 @@ func ProductImagesRouter(router *gin.RouterGroup) {
 	pih := productImagesHandler{
 		productStore:    queries.NewProductStore(session),
 		imagesStore:     queries.NewProductImagesStore(session),
-		cache:           db.NewCache(db.ProductsCache),
+		cache:           cache.GetCache(cache.ProductsCache),
 		baseCacheKey:    "images",
 		cacheExpiration: 1 * time.Hour,
 		uploadPath:      config.UploadPath,
@@ -392,7 +392,7 @@ func ProductImagesRouter(router *gin.RouterGroup) {
 type productImagesHandler struct {
 	productStore    queries.ProductStore
 	imagesStore     queries.ProductImagesStore
-	cache           db.CacheClient
+	cache           cache.CacheClient
 	baseCacheKey    string
 	cacheExpiration time.Duration
 	uploadPath      string

@@ -2,7 +2,7 @@ package background
 
 import (
 	"context"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/cache"
 	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal"
@@ -17,7 +17,7 @@ func StartTasks(ctx context.Context, session database.Session) {
 	tasks := []BackgroundTask{
 		&expiredOrdersCleaner{queries.NewOrderStore(session)},
 		&emailBroker{
-			cache:    db.NewCache(db.UsersCache),
+			cache:    cache.GetCache(cache.UsersCache),
 			from:     config.FromEmail,
 			host:     config.SMTPHost,
 			port:     config.SMTPPort,

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/cache"
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/auth"
@@ -24,7 +24,7 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-var defaultPagination = internal.NewConfig().Pagination
+var defaultPagination = internal.GetConfig().Pagination
 
 type RouteSpec struct {
 	Method       string
@@ -138,7 +138,7 @@ func RandVerifyNum() int {
 	return rand.Intn(max-min) + min
 }
 
-func SetJSONCacheEx(ctx context.Context, cache db.CacheClient, key string, expiration time.Duration, value any) error {
+func SetJSONCacheEx(ctx context.Context, cache cache.CacheClient, key string, expiration time.Duration, value any) error {
 	data, err := json.Marshal(value)
 	if err != nil {
 		return err
@@ -147,7 +147,7 @@ func SetJSONCacheEx(ctx context.Context, cache db.CacheClient, key string, expir
 	return err
 }
 
-func GetJSONCache[T any](ctx context.Context, cache db.CacheClient, key string, value *T) error {
+func GetJSONCache[T any](ctx context.Context, cache cache.CacheClient, key string, value *T) error {
 	data, err := cache.Get(ctx, key).Result()
 	if err != nil {
 		return err

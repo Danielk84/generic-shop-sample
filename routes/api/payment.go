@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/cache"
 	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal"
@@ -28,7 +28,7 @@ func PaymentRouter(ctx context.Context, router *gin.RouterGroup) {
 
 	session := database.GetSession()
 	ph := paymentHandler{
-		cache:       db.NewCache(db.PaymentCache),
+		cache:       cache.GetCache(cache.PaymentCache),
 		userStore:   queries.NewUserStore(session),
 		orderStore:  queries.NewOrderStore(session),
 		zpGateway:   payment.NewZarinPalGateway(addr, &http.Client{Timeout: 10 * time.Second}),
@@ -49,7 +49,7 @@ type UserPayment struct {
 }
 
 type paymentHandler struct {
-	cache       db.CacheClient
+	cache       cache.CacheClient
 	userStore   queries.UserStore
 	orderStore  queries.OrderStore
 	zpGateway   payment.ZPGateway

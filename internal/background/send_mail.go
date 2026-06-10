@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/cache"
 	"log/slog"
 	"net/smtp"
 )
@@ -20,7 +20,7 @@ type MailMessage struct {
 }
 
 type emailBroker struct {
-	cache    db.CacheClient
+	cache    cache.CacheClient
 	from     string
 	host     string
 	port     int
@@ -58,7 +58,7 @@ func (eb *emailBroker) send(to string, msg []byte) {
 	}
 }
 
-func SendMail(ctx context.Context, cache db.CacheClient, mail *MailMessage) error {
+func SendMail(ctx context.Context, cache cache.CacheClient, mail *MailMessage) error {
 	msg, err := json.Marshal(&mail)
 	if err != nil {
 		return fmt.Errorf("failed to encode MailMessage, %s", err)

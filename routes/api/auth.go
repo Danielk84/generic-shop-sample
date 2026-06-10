@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
-	"generic-shop-sample/db"
+	"generic-shop-sample/db/cache"
 	"generic-shop-sample/db/database"
 	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal"
@@ -20,7 +20,7 @@ func LoginRouter(ctx context.Context, router *gin.RouterGroup) {
 	config := internal.NewConfig()
 	ah := authHandler{
 		queries.NewUserStore(database.GetSession()),
-		db.NewCache(db.UsersCache),
+		cache.GetCache(cache.UsersCache),
 		config.AuthExpiration,
 	}
 
@@ -31,7 +31,7 @@ func LoginRouter(ctx context.Context, router *gin.RouterGroup) {
 
 type authHandler struct {
 	us             queries.UserStore
-	cache          db.CacheClient
+	cache          cache.CacheClient
 	authExpiration time.Duration
 }
 
