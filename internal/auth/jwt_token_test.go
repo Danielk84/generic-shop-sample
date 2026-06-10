@@ -1,8 +1,8 @@
 package auth_test
 
 import (
-	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal/auth"
+	"generic-shop-sample/storage/queries"
 	"reflect"
 	"testing"
 	"time"

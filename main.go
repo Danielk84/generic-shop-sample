@@ -8,11 +8,11 @@ import (
 	"syscall"
 
 	"generic-shop-sample/app"
-	"generic-shop-sample/db/cache"
-	"generic-shop-sample/db/database"
-	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/auth"
+	"generic-shop-sample/storage/cache"
+	"generic-shop-sample/storage/database"
+	"generic-shop-sample/storage/queries"
 
 	"github.com/spf13/cobra"
 )

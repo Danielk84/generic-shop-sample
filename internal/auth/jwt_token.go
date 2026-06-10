@@ -1,8 +1,8 @@
 package auth
 
 import (
-	"generic-shop-sample/db/queries"
 	"generic-shop-sample/internal"
+	"generic-shop-sample/storage/queries"
 	"log/slog"
 
 	"github.com/golang-jwt/jwt/v5"
