@@ -2,8 +2,8 @@ package background
 
 import (
 	"context"
+	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/queries"
-	"log/slog"
 	"time"
 )
 
@@ -21,7 +21,7 @@ func (eoc *expiredOrdersCleaner) start(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if err := eoc.os.DeleteExpiredOrders(ctx); err != nil {
-				slog.Error("failed to delete expired orders", "error", err)
+				logger.GetLogger().Error("failed to delete expired orders", "error", err)
 			}
 		}
 	}

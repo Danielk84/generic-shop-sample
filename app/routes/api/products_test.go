@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"generic-shop-sample/internal/logger"
 	tu "generic-shop-sample/internal/testutils"
 	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -26,7 +26,8 @@ func TestProductsHandler(t *testing.T) {
 	vendorToken := tu.LoginSetup(app, "vendor_user", "securePassword")
 
 	session := database.GetSession()
-	us := queries.NewUserStore(session)
+	log := logger.GetLogger()
+	us := queries.NewUserStore(session, log)
 	vendor, _ := us.Get(ctx, "vendor_user")
 
 	if _, err := session.Exec(ctx, "TRUNCATE products RESTART IDENTITY CASCADE"); err != nil {
@@ -212,7 +213,8 @@ func TestProductImagesRouter(t *testing.T) {
 
 	app := tu.RouterSetup(ctx)
 	session := database.GetSession()
-	us := queries.NewUserStore(session)
+	log := logger.GetLogger()
+	us := queries.NewUserStore(session, log)
 	vendor, _ := us.Get(ctx, "vendor_user")
 	vendorToken := tu.LoginSetup(app, "vendor_user", "securePassword")
 	ps := queries.NewProductStore(session)
@@ -247,7 +249,7 @@ func TestProductImagesRouter(t *testing.T) {
 	if err := json.NewDecoder(w.Body).Decode(&resJson); err != nil {
 		t.Errorf("failed to get product-images list, %s", err)
 	}
-	slog.Debug("asd", "asd", resJson)
+	logger.GetLogger().Debug("asd", "asd", resJson)
 
 	// testing productImagesHandler.delete
 	w = httptest.NewRecorder()

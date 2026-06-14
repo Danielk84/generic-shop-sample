@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"generic-shop-sample/app"
 	"generic-shop-sample/internal"
+	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/database"
 	"io"
-	"log/slog"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -48,7 +48,7 @@ func CacheSetup(ctx context.Context) cache.CacheManager {
 func CeckErrList(name string, errs []error) {
 	if len(errs) > 0 {
 		for _, err := range errs {
-			slog.Error("testMain - "+name, "error", err)
+			logger.GetLogger().Error("testMain - "+name, "error", err)
 		}
 		os.Exit(1)
 	}

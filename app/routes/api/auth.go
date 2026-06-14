@@ -6,6 +6,7 @@ import (
 	md "generic-shop-sample/app/middlewares"
 	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/auth"
+	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
@@ -18,8 +19,9 @@ import (
 
 func LoginRouter(ctx context.Context, router *gin.RouterGroup) {
 	config := internal.GetConfig()
+	log := logger.GetLogger()
 	ah := authHandler{
-		queries.NewUserStore(database.GetSession()),
+		queries.NewUserStore(database.GetSession(), log),
 		cache.GetCache(cache.UsersCache),
 		config.Opt.AuthExpiration,
 	}

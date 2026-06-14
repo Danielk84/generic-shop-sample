@@ -3,6 +3,7 @@ package api_test
 import (
 	"bytes"
 	"fmt"
+	"generic-shop-sample/internal/logger"
 	tu "generic-shop-sample/internal/testutils"
 	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
@@ -24,7 +25,8 @@ func TestCommentsHandler(t *testing.T) {
 		t.Errorf("failed to truncate comments, %s", err)
 	}
 
-	us := queries.NewUserStore(session)
+	log := logger.GetLogger()
+	us := queries.NewUserStore(session, log)
 	customer, err := us.Get(ctx, "customer_user")
 	if err != nil {
 		t.Errorf("failed to get customer user, %s", err)

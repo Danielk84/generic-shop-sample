@@ -4,6 +4,7 @@ import (
 	"fmt"
 	md "generic-shop-sample/app/middlewares"
 	"generic-shop-sample/internal/auth"
+	"generic-shop-sample/internal/logger"
 	tu "generic-shop-sample/internal/testutils"
 	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
@@ -20,7 +21,8 @@ func TestAuthMiddleware(t *testing.T) {
 	db := tu.DBManagerSetup(t.Context())
 	defer db.Close()
 
-	us := queries.NewUserStore(database.GetSession())
+	log := logger.GetLogger()
+	us := queries.NewUserStore(database.GetSession(), log)
 	if err := us.Create(t.Context(), &queries.CreateUserRequest{
 		LoginRequest:          queries.LoginRequest{Username: "auth_user", Password: "securePassword"},
 		UserPermissionRequest: queries.UserPermissionRequest{PermissionType: queries.Admin, IsActive: true},

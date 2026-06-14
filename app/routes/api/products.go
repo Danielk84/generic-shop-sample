@@ -4,10 +4,10 @@ import (
 	"fmt"
 	md "generic-shop-sample/app/middlewares"
 	"generic-shop-sample/internal"
+	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
-	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -380,7 +380,7 @@ func (pih *productImagesHandler) delete(c *gin.Context) {
 			Forbidden(c, "")
 			return
 		}
-		slog.Info("error on removing img", "img_path", imgPath, "error", err)
+		logger.GetLogger().Info("error on removing img", "img_path", imgPath, "error", err)
 	}
 	cacheKey := fmt.Sprintf("%s:%s", pih.baseCacheKey, productID)
 	if _, err := pih.cache.Del(ctx, cacheKey).Result(); err != nil {

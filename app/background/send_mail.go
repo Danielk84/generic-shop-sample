@@ -5,8 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
-	"log/slog"
 	"net/smtp"
 )
 
@@ -25,6 +25,7 @@ type emailBroker struct {
 	host     string
 	port     int
 	password string
+	log      logger.Logger
 }
 
 func (eb *emailBroker) start(ctx context.Context) {
@@ -38,12 +39,12 @@ func (eb *emailBroker) start(ctx context.Context) {
 			return
 		case msg, ok := <-ch:
 			if !ok {
-				slog.Warn("mail subscription closed")
+				eb.log.Warn("mail subscription closed")
 				return
 			}
 			var input MailMessage
 			if err := json.NewDecoder(bytes.NewBufferString(msg.Payload)).Decode(&input); err != nil {
-				slog.Error("failed decode EmailMessage", "error", err)
+				eb.log.Error("failed decode EmailMessage", "error", err)
 				continue
 			}
 			eb.send(input.To, input.Msg)
@@ -54,7 +55,7 @@ func (eb *emailBroker) start(ctx context.Context) {
 func (eb *emailBroker) send(to string, msg []byte) {
 	auth := smtp.PlainAuth("", eb.from, eb.password, eb.host)
 	if err := smtp.SendMail(fmt.Sprintf("%s:%d", eb.host, eb.port), auth, eb.from, []string{to}, msg); err != nil {
-		slog.Error("failed to send mail", "error", err)
+		eb.log.Error("failed to send mail", "error", err)
 	}
 }
 

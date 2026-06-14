@@ -7,10 +7,10 @@ import (
 	md "generic-shop-sample/app/middlewares"
 	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/auth"
+	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
-	"log/slog"
 	"net/http"
 	"os"
 	"strconv"
@@ -20,9 +20,11 @@ import (
 )
 
 func UsersRouter(router *gin.RouterGroup) {
+	log := logger.GetLogger()
 	uh := usersHandler{
-		store: queries.NewUserStore(database.GetSession()),
+		store: queries.NewUserStore(database.GetSession(), log),
 		cache: cache.GetCache(cache.UsersCache),
+		log:   log,
 	}
 
 	router.GET("/:username", uh.get)
@@ -45,6 +47,7 @@ type VerfierKey struct {
 type usersHandler struct {
 	store queries.UserStore
 	cache cache.CacheClient
+	log   logger.Logger
 }
 
 func (uh *usersHandler) createUserByAdmin(c *gin.Context) {
@@ -113,7 +116,7 @@ func (uh *usersHandler) updateUserPermission(c *gin.Context) {
 	}
 	var input queries.UserPermissionRequest
 	if err := c.ShouldBindJSON(&input); err != nil {
-		slog.Debug(err.Error())
+		uh.log.Debug(err.Error())
 		BadRequest(c, "invalid permission_id or is_active")
 		return
 	}
@@ -192,7 +195,7 @@ func (uh *usersHandler) verifyEmail(c *gin.Context) {
 		return
 	}
 	if err := uh.store.VerifyEmail(ctx, claims.ID, true); err != nil {
-		slog.Error("unxpected error to UserStore.VerifyEmail", "error", err)
+		uh.log.Error("unxpected error to UserStore.VerifyEmail", "error", err)
 		NotFound(c, "")
 		return
 	}
@@ -215,9 +218,11 @@ func (uh *usersHandler) setPhoneNumber(c *gin.Context) {
 
 func UserProfileRouter(router *gin.RouterGroup) {
 	config := internal.GetConfig()
+	log := logger.GetLogger()
 	uph := userProfileHandler{
-		store:      queries.NewUserProfileStore(database.GetSession()),
+		store:      queries.NewUserProfileStore(database.GetSession(), log),
 		uploadPath: config.Opt.UploadPath,
+		log:        log,
 	}
 
 	router.Use(md.AuthMiddleware())
@@ -229,6 +234,7 @@ func UserProfileRouter(router *gin.RouterGroup) {
 type userProfileHandler struct {
 	store      queries.UserProfileStore
 	uploadPath string
+	log        logger.Logger
 }
 
 func (uph *userProfileHandler) upsert(c *gin.Context) {
@@ -259,13 +265,13 @@ func (uph *userProfileHandler) uploadProfileImg(c *gin.Context) {
 	}
 	resultPath, err := UploadFile(file, claims, "user-profile", dst)
 	if err != nil {
-		slog.Error("failed to upload file", "error", err)
+		uph.log.Error("failed to upload file", "error", err)
 		BadRequest(c, "failed to process file")
 		return
 	}
 	if resultPath != dst {
 		if err := uph.store.SetImgPath(ctx, claims.ID, resultPath); err != nil {
-			slog.Error("failed to set img path", "error", err)
+			uph.log.Error("failed to set img path", "error", err)
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "failed to save file"})
 			return
 		}
@@ -273,15 +279,15 @@ func (uph *userProfileHandler) uploadProfileImg(c *gin.Context) {
 	Accepted(c, "")
 }
 
-func (upr *userProfileHandler) deleteImgPath(c *gin.Context) {
+func (uph *userProfileHandler) deleteImgPath(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	imgPath, err := upr.store.DeleteImgPath(c.Request.Context(), claims.ID)
+	imgPath, err := uph.store.DeleteImgPath(c.Request.Context(), claims.ID)
 	if err != nil {
 		NotFound(c, "")
 		return
 	}
-	if err := os.Remove(fmt.Sprintf("%s/%s", upr.uploadPath, imgPath)); err != nil {
-		slog.Info(`failed to remove file "%s", %s`, imgPath, err)
+	if err := os.Remove(fmt.Sprintf("%s/%s", uph.uploadPath, imgPath)); err != nil {
+		uph.log.Info(`failed to remove file "%s", %s`, imgPath, err)
 	}
 	c.Status(http.StatusNoContent)
 }

@@ -3,6 +3,7 @@ package api_test
 import (
 	"context"
 	"generic-shop-sample/internal/auth"
+	"generic-shop-sample/internal/logger"
 	tu "generic-shop-sample/internal/testutils"
 	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
@@ -43,7 +44,8 @@ func TestMain(m *testing.M) {
 		},
 	}
 
-	us := queries.NewUserStore(session)
+	log := logger.GetLogger()
+	us := queries.NewUserStore(session, log)
 	errs := []error{}
 	var err error
 	for _, user := range users {

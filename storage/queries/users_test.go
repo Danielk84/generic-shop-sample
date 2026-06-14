@@ -1,6 +1,7 @@
 package queries_test
 
 import (
+	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
 	"testing"
@@ -8,7 +9,8 @@ import (
 )
 
 func TestIsUsernameExists(t *testing.T) {
-	us := queries.NewUserStore(database.GetSession())
+	log := logger.GetLogger()
+	us := queries.NewUserStore(database.GetSession(), log)
 
 	if us.IsUsernameExists(t.Context(), "InvalidUsername") {
 		t.Errorf("expected false, but it return true for existing of invalid username")
@@ -20,7 +22,8 @@ func TestIsUsernameExists(t *testing.T) {
 
 func TestCreateGetDetailsUser(t *testing.T) {
 	session := database.GetSession()
-	us := queries.NewUserStore(session)
+	log := logger.GetLogger()
+	us := queries.NewUserStore(session, log)
 
 	user := &queries.CreateUserRequest{
 		queries.LoginRequest{"validUser", "secure_password"},
@@ -51,7 +54,8 @@ func TestCreateGetDetailsUser(t *testing.T) {
 func TestSetEmailAndSetPhoneNumber(t *testing.T) {
 	const getIDFromUsernameQuery = `SELECT id FROM users WHERE username = $1`
 	session := database.GetSession()
-	us := queries.NewUserStore(session)
+	log := logger.GetLogger()
+	us := queries.NewUserStore(session, log)
 	var id int32
 	if err := session.QueryRow(t.Context(), getIDFromUsernameQuery, "customerUser").Scan(&id); err != nil {
 		t.Errorf("failed to query id from username, %s", err)
@@ -86,7 +90,8 @@ func TestSetEmailAndSetPhoneNumber(t *testing.T) {
 }
 
 func TestGetUser(t *testing.T) {
-	us := queries.NewUserStore(database.GetSession())
+	log := logger.GetLogger()
+	us := queries.NewUserStore(database.GetSession(), log)
 
 	user := queries.CreateUserRequest{
 		queries.LoginRequest{"NewSimpleUser", "secure password"},
@@ -107,7 +112,8 @@ func TestGetUser(t *testing.T) {
 }
 
 func TestUpdateUserPermission(t *testing.T) {
-	us := queries.NewUserStore(database.GetSession())
+	log := logger.GetLogger()
+	us := queries.NewUserStore(database.GetSession(), log)
 
 	username := "blockUser"
 	user, err := us.Get(t.Context(), username)
@@ -130,7 +136,8 @@ func TestUpdateUserPermission(t *testing.T) {
 }
 
 func TestDeleteUser(t *testing.T) {
-	us := queries.NewUserStore(database.GetSession())
+	log := logger.GetLogger()
+	us := queries.NewUserStore(database.GetSession(), log)
 
 	user := &queries.CreateUserRequest{
 		queries.LoginRequest{"deleteUser", "secure password"},
@@ -157,8 +164,9 @@ func TestUserProfileStore(t *testing.T) {
 	ctx := t.Context()
 
 	session := database.GetSession()
-	us := queries.NewUserStore(session)
-	ups := queries.NewUserProfileStore(session)
+	log := logger.GetLogger()
+	us := queries.NewUserStore(session, log)
+	ups := queries.NewUserProfileStore(session, log)
 
 	username := "adminUser"
 	userDetails, err := us.GetDetails(ctx, username)

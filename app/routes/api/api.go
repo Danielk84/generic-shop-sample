@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/auth"
+	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/queries"
 	"io"
-	"log/slog"
 	"math/rand"
 	"mime/multipart"
 	"net/http"
@@ -160,7 +160,7 @@ func LogCacheErr(method, section string, err error) {
 	if err == redis.Nil {
 		return
 	}
-	slog.Error("failed to process cache",
+	logger.GetLogger().Error("failed to process cache",
 		"method", method,
 		"secion", section,
 		"err", err,

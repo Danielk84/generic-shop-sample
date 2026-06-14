@@ -10,6 +10,7 @@ import (
 	"generic-shop-sample/app"
 	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/auth"
+	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
@@ -80,7 +81,7 @@ func newAdmin(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	us := queries.NewUserStore(database.GetSession())
+	us := queries.NewUserStore(database.GetSession(), logger.GetLogger())
 	user := queries.CreateUserRequest{
 		LoginRequest: queries.LoginRequest{
 			Username: username,

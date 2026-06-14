@@ -2,8 +2,8 @@ package queries
 
 import (
 	"context"
+	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/database"
-	"log/slog"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -70,6 +70,7 @@ type UserDetailsResponse struct {
 
 type UserRepository struct {
 	session database.Session
+	log     logger.Logger
 }
 
 type UserStore interface {
@@ -87,8 +88,8 @@ type UserStore interface {
 	VerifyPhoneNumber(ctx context.Context, id int32, isVerified bool) error
 }
 
-func NewUserStore(session database.Session) UserStore {
-	return &UserRepository{session}
+func NewUserStore(session database.Session, log logger.Logger) UserStore {
+	return &UserRepository{session, log}
 }
 
 func (ur *UserRepository) IsUsernameExists(ctx context.Context, username string) bool {
@@ -96,7 +97,7 @@ func (ur *UserRepository) IsUsernameExists(ctx context.Context, username string)
 	var isExists bool
 	if err := ur.session.QueryRow(ctx, q, username).Scan(&isExists); err != nil || isExists {
 		if err != nil {
-			slog.Debug(err.Error())
+			ur.log.Debug(err.Error())
 		}
 		return true
 	}
@@ -113,7 +114,7 @@ func (ur *UserRepository) IsValidUser(ctx context.Context, user *ValidUserRquest
 	var isExists bool
 	if err := ur.session.QueryRow(ctx, q, args).Scan(&isExists); err != nil || !isExists {
 		if err != nil {
-			slog.Debug(err.Error())
+			ur.log.Debug(err.Error())
 		}
 		return false
 	}
@@ -221,6 +222,7 @@ type UserProfileRequest struct {
 
 type UserProfileRepository struct {
 	session database.Session
+	log     logger.Logger
 }
 
 type UserProfileStore interface {
@@ -230,8 +232,8 @@ type UserProfileStore interface {
 	DeleteImgPath(ctx context.Context, userID int32) (string, error)
 }
 
-func NewUserProfileStore(session database.Session) UserProfileStore {
-	return &UserProfileRepository{session}
+func NewUserProfileStore(session database.Session, log logger.Logger) UserProfileStore {
+	return &UserProfileRepository{session, log}
 }
 
 func (upr *UserProfileRepository) Upsert(ctx context.Context, userID int32, userProfile *UserProfileRequest) error {
@@ -254,7 +256,7 @@ func (upr *UserProfileRepository) GetImgPath(ctx context.Context, userID int32) 
 }
 
 func (upr *UserProfileRepository) SetImgPath(ctx context.Context, userID int32, imgPath string) error {
-	slog.Debug(imgPath)
+	upr.log.Debug(imgPath)
 	const q = `UPDATE user_profile SET img_path = NULLIF($1, '') WHERE user_id = $2`
 	return execOne(ctx, upr.session, q, imgPath, userID)
 }

@@ -6,11 +6,11 @@ import (
 	"fmt"
 	md "generic-shop-sample/app/middlewares"
 	"generic-shop-sample/internal"
+	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/internal/payment"
 	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
-	"log/slog"
 	"net/http"
 	"slices"
 	"time"
@@ -27,9 +27,10 @@ func PaymentRouter(ctx context.Context, router *gin.RouterGroup) {
 	}
 
 	session := database.GetSession()
+	log := logger.GetLogger()
 	ph := paymentHandler{
 		cache:       cache.GetCache(cache.PaymentCache),
-		userStore:   queries.NewUserStore(session),
+		userStore:   queries.NewUserStore(session, log),
 		orderStore:  queries.NewOrderStore(session),
 		zpGateway:   payment.NewZarinPalGateway(addr, &http.Client{Timeout: 10 * time.Second}),
 		merchandID:  config.Opt.ZPMerchantID,
@@ -55,6 +56,7 @@ type paymentHandler struct {
 	zpGateway   payment.ZPGateway
 	merchandID  string
 	callbackURL string
+	log         logger.Logger
 }
 
 func (ph *paymentHandler) init(c *gin.Context) {
@@ -77,7 +79,7 @@ func (ph *paymentHandler) init(c *gin.Context) {
 	}
 	user, err := ph.userStore.GetDetails(ctx, claims.Username)
 	if err != nil {
-		slog.Error("unexpected error in UserStore.GetDetails in payment init",
+		ph.log.Error("unexpected error in UserStore.GetDetails in payment init",
 			"user_id", claims.ID,
 			"error", err)
 		NotFound(c, "")
@@ -97,24 +99,24 @@ func (ph *paymentHandler) init(c *gin.Context) {
 		},
 	})
 	if err != nil {
-		slog.Error("failed to init payment gateway", "error", err)
+		ph.log.Error("failed to init payment gateway", "error", err)
 		Forbidden(c, "")
 		return
 	}
 	if len(init.Errs) > 0 || init.Data.Code != 100 {
-		slog.Error("unexpected error happend", "init_output", init)
+		ph.log.Error("unexpected error happend", "init_output", init)
 		BadRequest(c, "")
 		return
 	}
 
 	output, err := json.Marshal(UserPayment{UserID: user.ID, OrderID: order.ID, Amount: order.TotalBill})
 	if err != nil {
-		slog.Error("unexpected error in UserPayment encoding", "error", err)
+		ph.log.Error("unexpected error in UserPayment encoding", "error", err)
 		Unprocessable(c, "")
 		return
 	}
 	if _, err := ph.cache.SetEx(ctx, init.Data.Authority, output, 30*time.Minute).Result(); err != nil {
-		slog.Error("failed to cache paymeny authority",
+		ph.log.Error("failed to cache paymeny authority",
 			"user_id", user.ID,
 			"error", err)
 		Unprocessable(c, "Failed to init gateway")
@@ -164,7 +166,7 @@ func (ph *paymentHandler) callback(c *gin.Context) {
 	status := &queries.PaymentStatus{}
 	output, err := json.Marshal(verfiedPayment)
 	if err != nil {
-		slog.Warn("failed to encode internal.payment.ZPVerifyRequest", "error", err)
+		ph.log.Warn("failed to encode internal.payment.ZPVerifyRequest", "error", err)
 		status.PaymentSummary = fmt.Sprintf("%v", &verfiedPayment)
 	}
 	status.PaymentSummary = string(output)
@@ -182,7 +184,7 @@ func (ph *paymentHandler) callback(c *gin.Context) {
 
 func (ph *paymentHandler) reverseWithLog(ctx context.Context, reason string, err error, payload *payment.ZPReverseRequest) {
 	result, rerr := ph.zpGateway.ReverseReq(ctx, payload)
-	slog.Error(fmt.Sprintf(`transaction reversed: %s`, reason),
+	ph.log.Error(fmt.Sprintf(`transaction reversed: %s`, reason),
 		"error", err,
 		"reverse_res", result,
 		"reverse_error", rerr,
