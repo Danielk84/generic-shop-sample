@@ -7,44 +7,47 @@ import (
 	md "generic-shop-sample/app/middlewares"
 	"generic-shop-sample/app/routes"
 	"generic-shop-sample/internal"
+	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/database"
-	"log/slog"
+	"io"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
 )
 
 type App struct {
-	ctx    context.Context
-	Router *gin.Engine
-	config *internal.Config
+	ctx        context.Context
+	Router     *gin.Engine
+	config     *internal.Config
+	log        logger.Logger
+	openWriter []io.WriteCloser
 }
 
 func NewApp(ctx context.Context, config *internal.Config) *App {
 	gin.DisableConsoleColor()
 	gin.SetMode(config.Opt.Mode)
-	router := gin.New()
-	router.MaxMultipartMemory = config.Opt.MaxMultipartMemory << 20
-	if err := router.SetTrustedProxies(config.Opt.TrustedProxies); err != nil {
+
+	app := &App{ctx: ctx, Router: gin.New()}
+	app.Router.MaxMultipartMemory = config.Opt.MaxMultipartMemory << 20
+	if err := app.Router.SetTrustedProxies(config.Opt.TrustedProxies); err != nil {
 		panic(fmt.Errorf("failed to set trusted proxies, %s", err))
 	}
 
-	logLevel := slog.LevelInfo
+	logLevel := logger.LevelWarn
 	if gin.Mode() != gin.ReleaseMode {
-		logLevel = slog.LevelDebug
+		logLevel = logger.LevelDebug
 	}
-	internal.InitAppLogger(logLevel, config.Opt.AppLoggerFilepath)
+	logWriter := logger.CreateLogFile(config.Opt.AppLoggerFilepath)
+	app.openWriter = append(app.openWriter, logWriter)
+	app.log = logger.SetLogger(logLevel, logWriter)
 
-	setMiddlewares(ctx, router, config)
+	app.setMiddlewares()
 	internal.SetCustomValidators()
-	setRoutes(ctx, config, router)
+	app.setRoutes()
 
-	return &App{
-		ctx:    ctx,
-		Router: router,
-		config: config,
-	}
+	return app
 }
 
 func (a *App) Run() {
@@ -58,7 +61,7 @@ func (a *App) Run() {
 	}
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			slog.Error("failed to listen and server", "error", err)
+			a.log.Error("failed to listen and server", "error", err)
 		}
 	}()
 
@@ -69,21 +72,34 @@ func (a *App) Run() {
 	shutdown, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 	if err := srv.Shutdown(shutdown); err != nil {
-		slog.Warn("failed to shutdown server", "error", err)
+		a.log.Warn("failed to shutdown server", "error", err)
+	}
+
+	a.Close()
+}
+
+func (a *App) Close() {
+	for _, writer := range a.openWriter {
+		if err := writer.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "failed to close log writer: %s", err)
+		}
 	}
 }
 
-func setMiddlewares(ctx context.Context, router *gin.Engine, config *internal.Config) {
+func (a *App) setMiddlewares() {
+	rlogWriter := logger.CreateLogFile(a.config.Opt.RequestLoggerFilepath)
+	a.openWriter = append(a.openWriter, rlogWriter)
+
 	corsConfig := &md.CorsConfig{
-		Origins:     config.Opt.Origins,
+		Origins:     a.config.Opt.Origins,
 		Credentials: true,
 		Methods:     []string{http.MethodGet, http.MethodHead, http.MethodPost, http.MethodOptions, http.MethodPut, http.MethodDelete},
 	}
 
-	rl := md.NewRateLimiter(ctx, 500, 10*time.Minute, 30*time.Minute)
+	rl := md.NewRateLimiter(a.ctx, 500, 10*time.Minute, 30*time.Minute)
 
-	router.Use(
-		md.RequestLoggerMiddleware(config.Opt.RequestLoggerFilepath),
+	a.Router.Use(
+		md.RequestLoggerMiddleware(rlogWriter),
 		gin.Recovery(),
 		md.SecurityHeadersMiddleware(),
 		rl.RateLimiterMiddleware(),
@@ -91,7 +107,7 @@ func setMiddlewares(ctx context.Context, router *gin.Engine, config *internal.Co
 	)
 }
 
-func setRoutes(ctx context.Context, config *internal.Config, router *gin.Engine) {
-	routes.APIRouter(ctx, router.Group("/api"))
-	routes.StaticRouter(config, router.Group("/static"))
+func (a *App) setRoutes() {
+	routes.APIRouter(a.ctx, a.Router.Group("/api"))
+	routes.StaticRouter(a.config, a.Router.Group("/static"))
 }

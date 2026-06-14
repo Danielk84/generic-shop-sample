@@ -2,12 +2,12 @@ package middlewares
 
 import (
 	"fmt"
-	"generic-shop-sample/internal"
+	"io"
 
 	"github.com/gin-gonic/gin"
 )
 
-func RequestLoggerMiddleware(fp string) gin.HandlerFunc {
+func RequestLoggerMiddleware(writer io.Writer) gin.HandlerFunc {
 	return gin.LoggerWithConfig(gin.LoggerConfig{
 		Formatter: func(params gin.LogFormatterParams) string {
 			return fmt.Sprintf("[%s] | %s | %d | \"%s\" | size=\"%d\" | latency=\"%s\" | err=\"%s\" \n",
@@ -20,6 +20,6 @@ func RequestLoggerMiddleware(fp string) gin.HandlerFunc {
 				params.ErrorMessage,
 			)
 		},
-		Output: internal.CreateLogFile(fp),
+		Output: writer,
 	})
 }
