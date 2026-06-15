@@ -2,6 +2,7 @@ package queries
 
 import (
 	"context"
+	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/database"
 
 	"github.com/jackc/pgx/v5"
@@ -18,6 +19,7 @@ type Category struct {
 
 type CategoryRepository struct {
 	session database.Session
+	log     logger.Logger
 }
 
 type CategoryStore interface {
@@ -26,27 +28,38 @@ type CategoryStore interface {
 	Delete(ctx context.Context, product_id int32) error
 }
 
-func NewCategoryStore(session database.Session) CategoryStore {
-	return &CategoryRepository{session}
+func NewCategoryStore(session database.Session, log logger.Logger) CategoryStore {
+	return &CategoryRepository{session, log}
 }
 
-func (cr *CategoryRepository) Create(ctx context.Context, tag string) error {
+func (c *CategoryRepository) Create(ctx context.Context, tag string) (err error) {
 	const q = `INSERT INTO categories(tag) VALUES ($1)`
-	return execOne(ctx, cr.session, q, tag)
+	if err = execOne(ctx, c.session, q, tag); err != nil {
+		c.log.Debug("CategoryRepository.Create", "error", err)
+	}
+	return
 }
 
-func (cr *CategoryRepository) List(ctx context.Context) ([]Category, error) {
+func (c *CategoryRepository) List(ctx context.Context) (items []Category, err error) {
 	const q = `SELECT id, tag FROM categories`
-	return list[Category](ctx, cr.session, q)
+	items, err = list[Category](ctx, c.session, q)
+	if err != nil {
+		c.log.Debug("CategoryRepository.List", "error", err)
+	}
+	return
 }
 
-func (cr *CategoryRepository) Delete(ctx context.Context, id int32) error {
+func (c *CategoryRepository) Delete(ctx context.Context, id int32) (err error) {
 	const q = `DELETE FROM categories WHERE id = $1`
-	return execOne(ctx, cr.session, q, id)
+	if err = execOne(ctx, c.session, q, id); err != nil {
+		c.log.Debug("CategoryRepository.Delete", "error", err)
+	}
+	return
 }
 
 type PCRepository struct {
 	session database.Session
+	log     logger.Logger
 }
 
 type PCStore interface {
@@ -54,18 +67,18 @@ type PCStore interface {
 	List(ctx context.Context, product_id string) ([]string, error)
 }
 
-func NewPCStore(session database.Session) PCStore {
-	return &PCRepository{session}
+func NewPCStore(session database.Session, log logger.Logger) PCStore {
+	return &PCRepository{session, log}
 }
 
-func (pcr *PCRepository) SetTags(ctx context.Context, product_id string, tags []string) error {
+func (p *PCRepository) SetTags(ctx context.Context, product_id string, tags []string) (err error) {
 	const q = `DELETE FROM products_categories WHERE product_id = $1::UUID`
 
 	tagsLen := len(tags)
 	if tagsLen == 0 {
 		return nil
 	}
-	return pgx.BeginFunc(ctx, pcr.session, func(tx pgx.Tx) error {
+	err = pgx.BeginFunc(ctx, p.session, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, q, product_id); err != nil {
 			return err
 		}
@@ -78,9 +91,17 @@ func (pcr *PCRepository) SetTags(ctx context.Context, product_id string, tags []
 		)
 		return err
 	})
+	if err != nil {
+	}
+	p.log.Debug("PCRepository.SetTags", "error", err)
+	return
 }
 
-func (pcr *PCRepository) List(ctx context.Context, id string) ([]string, error) {
+func (p *PCRepository) List(ctx context.Context, id string) (items []string, err error) {
 	const q = `SELECT tag FROM products_categories WHERE product_id = $1::UUID`
-	return list[string](ctx, pcr.session, q, id)
+	items, err = list[string](ctx, p.session, q, id)
+	if err != nil {
+		p.log.Debug("PCRepository.List", "error", err)
+	}
+	return
 }

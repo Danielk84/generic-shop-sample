@@ -37,9 +37,9 @@ AS $$
             RAISE EXCEPTION 'invalid price';
         END IF;
 
-        UPDATE products SET available_quantity = available_quantity - 1 WHERE id = NEW.product_id;
+        UPDATE products SET available_quantity = (available_quantity - NEW.items_total) WHERE id = NEW.product_id;
 
-        UPDATE orders SET items_total = items_total + 1, total_bill = total_bill + product_price
+        UPDATE orders SET items_total = (items_total + NEW.items_total), total_bill = (total_bill + (NEW.items_total * product_price))
             WHERE id = NEW.order_id;
 
         RETURN NEW;
@@ -75,10 +75,10 @@ CREATE OR REPLACE TRIGGER update_order_after_update_order_items_trigger
 CREATE OR REPLACE FUNCTION update_order_after_delete_order_items() RETURNS TRIGGER
 AS $$
     BEGIN
-        UPDATE orders SET items_total = items_total - 1, total_bill = total_bill - OLD.price
+        UPDATE orders SET items_total = (items_total - OLD.items_total), total_bill = total_bill - (OLD.items_total * OLD.price)
             WHERE id = OLD.order_id;
 
-        UPDATE products SET available_quantity = available_quantity + 1 WHERE id = OLD.product_id;
+        UPDATE products SET available_quantity = (available_quantity +  OLD.items_total) WHERE id = OLD.product_id;
         RETURN OLD;
     END;
 $$ LANGUAGE PLPGSQL;

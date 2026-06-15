@@ -2,6 +2,7 @@ package queries
 
 import (
 	"context"
+	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/database"
 	"time"
 
@@ -37,6 +38,7 @@ type PaymentStatus struct {
 
 type OrderRepository struct {
 	session database.Session
+	log     logger.Logger
 }
 
 type OrderStore interface {
@@ -44,29 +46,30 @@ type OrderStore interface {
 	CustomerList(ctx context.Context, userID int32, pagination, page int) ([]OrderSummaryResponse, error)
 	VendorList(ctx context.Context, vendorID int32, pagination, page int) ([]OrderSummaryResponse, error)
 	FullList(ctx context.Context, pagination, page int) ([]OrderSummaryResponse, error)
-	Get(ctx context.Context, id string, userID int32) (*OrderResponse, error)
+	Get(ctx context.Context, id string, userID int32) (OrderResponse, error)
 	SetUserInfo(ctx context.Context, id string, userID int32, info *OrderUserInfoRequest) error
 	VerifyUserInfo(ctx context.Context, id string, userID int32, isVerified bool) error
 	SetPaymentStatus(ctx context.Context, id string, userID int32, status *PaymentStatus) error
 	DeleteExpiredOrders(ctx context.Context) error
 }
 
-func NewOrderStore(session database.Session) OrderStore {
-	return &OrderRepository{session}
+func NewOrderStore(session database.Session, log logger.Logger) OrderStore {
+	return &OrderRepository{session, log}
 }
 
-func (or *OrderRepository) Create(ctx context.Context, userID int32) (string, error) {
+func (o *OrderRepository) Create(ctx context.Context, userID int32) (item string, err error) {
 	const q = `WITH create_new_order AS (
 			INSERT INTO orders(user_id)
 				SELECT $1 WHERE NOT EXISTS(SELECT 1 FROM orders WHERE user_id = $1 AND is_paid = FALSE)
 		)
 		SELECT id FROM orders WHERE user_id = $1 AND is_paid = FALSE`
-	id := ""
-	err := or.session.QueryRow(ctx, q, userID).Scan(&id)
-	return id, err
+	if err = o.session.QueryRow(ctx, q, userID).Scan(&item); err != nil {
+		o.log.Warn("OrderRepository.Create", "error", err)
+	}
+	return
 }
 
-func (or *OrderRepository) CustomerList(ctx context.Context, userID int32, pagination, page int) ([]OrderSummaryResponse, error) {
+func (o *OrderRepository) CustomerList(ctx context.Context, userID int32, pagination, page int) (items []OrderSummaryResponse, err error) {
 	const q = `SELECT id, user_id, started_at, is_paid, is_delivered FROM orders
 		WHERE user_id = @UserID
 		ORDER BY started_at DESC
@@ -77,10 +80,14 @@ func (or *OrderRepository) CustomerList(ctx context.Context, userID int32, pagin
 		"Limit":  pagination,
 		"Offset": getOffsetFromPageNum(pagination, page),
 	}
-	return list[OrderSummaryResponse](ctx, or.session, q, args)
+	items, err = list[OrderSummaryResponse](ctx, o.session, q, args)
+	if err != nil {
+		o.log.Debug("OrderRepository.CustomerList", "error", err)
+	}
+	return
 }
 
-func (or *OrderRepository) VendorList(ctx context.Context, vendorID int32, pagination, page int) ([]OrderSummaryResponse, error) {
+func (o *OrderRepository) VendorList(ctx context.Context, vendorID int32, pagination, page int) (items []OrderSummaryResponse, err error) {
 	const q = `SELECT id, user_id, started_at, is_paid, is_delivered FROM orders
 		WHERE id in (
 			SELECT DISTINCT o.order_id FROM order_items AS o JOIN products AS p ON o.product_id = p.id AND p.user_id = @VendorID
@@ -93,24 +100,36 @@ func (or *OrderRepository) VendorList(ctx context.Context, vendorID int32, pagin
 		"Limit":    pagination,
 		"Offset":   getOffsetFromPageNum(pagination, page),
 	}
-	return list[OrderSummaryResponse](ctx, or.session, q, args)
+	items, err = list[OrderSummaryResponse](ctx, o.session, q, args)
+	if err != nil {
+		o.log.Debug("OrderRepository.VendorList", "error", err)
+	}
+	return
 }
 
-func (or *OrderRepository) FullList(ctx context.Context, pagination, page int) ([]OrderSummaryResponse, error) {
+func (o *OrderRepository) FullList(ctx context.Context, pagination, page int) (items []OrderSummaryResponse, err error) {
 	const q = `SELECT id, user_id, started_at, is_paid, is_delivered FROM orders
 		ORDER BY started_at DESC
 		LIMIT $1
 		OFFSET $2`
-	return list[OrderSummaryResponse](ctx, or.session, q, pagination, getOffsetFromPageNum(pagination, page))
+	items, err = list[OrderSummaryResponse](ctx, o.session, q, pagination, getOffsetFromPageNum(pagination, page))
+	if err != nil {
+		o.log.Debug("OrderRepository.FullList", "error", err)
+	}
+	return
 }
 
-func (or *OrderRepository) Get(ctx context.Context, id string, userID int32) (*OrderResponse, error) {
+func (o *OrderRepository) Get(ctx context.Context, id string, userID int32) (item OrderResponse, err error) {
 	const q = `SELECT id, user_id, started_at, items_total, total_bill, is_paid, address, zip_code, is_confirmed, is_delivered FROM orders
 		WHERE id = $1::UUID AND user_id = $2 AND is_confirmed = TRUE`
-	return get[OrderResponse](ctx, or.session, q, id, userID)
+	item, err = get[OrderResponse](ctx, o.session, q, id, userID)
+	if err != nil {
+		o.log.Debug("OrderRepository.Get", "error", err)
+	}
+	return
 }
 
-func (or *OrderRepository) SetUserInfo(ctx context.Context, id string, userID int32, info *OrderUserInfoRequest) error {
+func (o *OrderRepository) SetUserInfo(ctx context.Context, id string, userID int32, info *OrderUserInfoRequest) (err error) {
 	const q = `UPDATE orders SET address = @Address, zip_code = @ZipCode, is_confirmed = FALSE
 		WHERE id = @ID::UUID AND user_id = @UserID`
 	args := pgx.NamedArgs{
@@ -119,20 +138,26 @@ func (or *OrderRepository) SetUserInfo(ctx context.Context, id string, userID in
 		"ID":      id,
 		"UserID":  userID,
 	}
-	return execOne(ctx, or.session, q, args)
+	if err = execOne(ctx, o.session, q, args); err != nil {
+		o.log.Debug("OrderRepository.SetUserInfo", "error", err)
+	}
+	return
 }
 
-func (or *OrderRepository) VerifyUserInfo(ctx context.Context, id string, userID int32, isVerified bool) error {
+func (o *OrderRepository) VerifyUserInfo(ctx context.Context, id string, userID int32, isVerified bool) (err error) {
 	const q = `UPDATE orders SET is_confirmed = @IsVerified WHERE id = @ID::UUID AND user_id = @UserID`
 	args := pgx.NamedArgs{
 		"IsVerified": isVerified,
 		"ID":         id,
 		"UserID":     userID,
 	}
-	return execOne(ctx, or.session, q, args)
+	if err = execOne(ctx, o.session, q, args); err != nil {
+		o.log.Debug("OrderRepository.VerifyUserInfo", "error", err)
+	}
+	return
 }
 
-func (or *OrderRepository) SetPaymentStatus(ctx context.Context, id string, userID int32, status *PaymentStatus) error {
+func (o *OrderRepository) SetPaymentStatus(ctx context.Context, id string, userID int32, status *PaymentStatus) (err error) {
 	const q = `UPDATE orders SET payment_summary = CONCAT(payment_summary::TEXT, ' ', @Summary::TEXT), is_paid = @IsPaid
 		WHERE id = @ID::UUID AND user_id = @UserID`
 	args := &pgx.NamedArgs{
@@ -141,13 +166,18 @@ func (or *OrderRepository) SetPaymentStatus(ctx context.Context, id string, user
 		"ID":      id,
 		"UserID":  userID,
 	}
-	return execOne(ctx, or.session, q, args)
+	if err = execOne(ctx, o.session, q, args); err != nil {
+		o.log.Error("OrderRepository.SetPaymentStatus", "error", err)
+	}
+	return
 }
 
-func (or *OrderRepository) DeleteExpiredOrders(ctx context.Context) error {
+func (o *OrderRepository) DeleteExpiredOrders(ctx context.Context) (err error) {
 	const q = `DELETE FROM orders WHERE started_at > NOW() AND is_paid = FALSE AND payment_summary IS NULL`
-	_, err := or.session.Exec(ctx, q)
-	return err
+	if _, err = o.session.Exec(ctx, q); err != nil {
+		o.log.Warn("OrderRepository.DeleteExpiredOrders", "error", err)
+	}
+	return
 }
 
 type BaseOrderItemRequest struct {
@@ -176,6 +206,7 @@ type OwnedOrderItemResponse struct {
 
 type OrderItemsRepository struct {
 	session database.Session
+	log     logger.Logger
 }
 
 type OrderItemsStore interface {
@@ -188,11 +219,11 @@ type OrderItemsStore interface {
 	SetPacked(ctx context.Context, vendorID int32, item *OrderItemPackStatusRequest) error
 }
 
-func NewOrderItemsStore(session database.Session) OrderItemsStore {
-	return &OrderItemsRepository{session}
+func NewOrderItemsStore(session database.Session, log logger.Logger) OrderItemsStore {
+	return &OrderItemsRepository{session, log}
 }
 
-func (oir *OrderItemsRepository) Create(ctx context.Context, userID int32, item *OrderItemRequest) error {
+func (o *OrderItemsRepository) Create(ctx context.Context, userID int32, item *OrderItemRequest) (err error) {
 	const q = `WITH is_owned_order AS (
 		SELECT id FROM orders WHERE id = @OrderID::UUID AND user_id = @UserID LIMIT 1
 	)
@@ -204,10 +235,14 @@ func (oir *OrderItemsRepository) Create(ctx context.Context, userID int32, item 
 		"ProductID": item.ProductID,
 		"Price":     item.Price,
 	}
-	return execOne(ctx, oir.session, q, args)
+	if err = execOne(ctx, o.session, q, args); err != nil {
+		o.log.Warn("OrderItemRepository.Create", "error", err)
+	}
+	return
 }
 
-func (oir *OrderItemsRepository) CustomerList(ctx context.Context, orderID string, userID int32, pagination, page int) ([]OwnedOrderItemResponse, error) {
+func (o *OrderItemsRepository) CustomerList(ctx context.Context,
+	orderID string, userID int32, pagination, page int) (items []OwnedOrderItemResponse, err error) {
 	const q = `SELECT o.order_id, o.product_id, o.items_total, o.price, o.is_packed, p.name
 		FROM order_items AS o
 			LEFT JOIN products AS p ON o.product_id = p.id
@@ -220,10 +255,15 @@ func (oir *OrderItemsRepository) CustomerList(ctx context.Context, orderID strin
 		"Limit":   pagination,
 		"Offset":  getOffsetFromPageNum(pagination, page),
 	}
-	return list[OwnedOrderItemResponse](ctx, oir.session, q, args)
+	items, err = list[OwnedOrderItemResponse](ctx, o.session, q, args)
+	if err != nil {
+		o.log.Debug("OrderItemsRepository.CustomerList", "error", err)
+	}
+	return
 }
 
-func (oir *OrderItemsRepository) VendorList(ctx context.Context, orderID string, vendorID int32, pagination, page int) ([]OwnedOrderItemResponse, error) {
+func (o *OrderItemsRepository) VendorList(ctx context.Context,
+	orderID string, vendorID int32, pagination, page int) (items []OwnedOrderItemResponse, err error) {
 	const q = `SELECT o.order_id, o.product_id, o.items_total, o.price, o.is_packed, p.name 
 		FROM order_items AS o
 			JOIN products AS p ON o.product_id = p.id AND p.user_id = @VendorID
@@ -236,10 +276,15 @@ func (oir *OrderItemsRepository) VendorList(ctx context.Context, orderID string,
 		"Limit":    pagination,
 		"Offset":   getOffsetFromPageNum(pagination, page),
 	}
-	return list[OwnedOrderItemResponse](ctx, oir.session, q, args)
+	items, err = list[OwnedOrderItemResponse](ctx, o.session, q, args)
+	if err != nil {
+		o.log.Debug("OrderItemsRepository.VendorList")
+	}
+	return
 }
 
-func (oir *OrderItemsRepository) FullList(ctx context.Context, orderID string, pagination, page int) ([]OwnedOrderItemResponse, error) {
+func (o *OrderItemsRepository) FullList(ctx context.Context,
+	orderID string, pagination, page int) (items []OwnedOrderItemResponse, err error) {
 	const q = `SELECT order_id, product_id, items_total, price, is_packed, '' as name FROM order_items
 		WHERE order_id = @OrderID::UUID
 		LIMIT @Limit
@@ -249,20 +294,28 @@ func (oir *OrderItemsRepository) FullList(ctx context.Context, orderID string, p
 		"Limit":   pagination,
 		"Offset":  getOffsetFromPageNum(pagination, page),
 	}
-	return list[OwnedOrderItemResponse](ctx, oir.session, q, args)
+	items, err = list[OwnedOrderItemResponse](ctx, o.session, q, args)
+	if err != nil {
+		o.log.Debug("OrderItemsRepository.FullList", "error", err)
+	}
+	return
 }
 
-func (oir *OrderItemsRepository) Delete(ctx context.Context, userID int32, orderItem *BaseOrderItemRequest) error {
+func (o *OrderItemsRepository) Delete(ctx context.Context, userID int32, orderItem *BaseOrderItemRequest) (err error) {
 	const q = `DELETE FROM order_items WHERE order_id = @OrderID::UUID AND product_id = @ProductID::UUID AND user_id = @UserID`
 	args := pgx.NamedArgs{
 		"OrderID":   orderItem.OrderID,
 		"ProductID": orderItem.ProductID,
 		"UserID":    userID,
 	}
-	return execOne(ctx, oir.session, q, args)
+	if err = execOne(ctx, o.session, q, args); err != nil {
+		o.log.Debug("OrderItemsRepository.Delete", "error", err)
+	}
+	return
 }
 
-func (oir *OrderItemsRepository) SetItemsTotal(ctx context.Context, userID int32, itemsTotal int32, orderItem *BaseOrderItemRequest) error {
+func (o *OrderItemsRepository) SetItemsTotal(ctx context.Context,
+	userID int32, itemsTotal int32, orderItem *BaseOrderItemRequest) (err error) {
 	const q = `UPDATE order_items SET items_total = @ItemsTotal
 		WHERE order_id = @OrderID::UUID AND product_id = @ProductID::UUID AND user_id = @UserID`
 	args := pgx.NamedArgs{
@@ -271,10 +324,13 @@ func (oir *OrderItemsRepository) SetItemsTotal(ctx context.Context, userID int32
 		"UserID":     userID,
 		"ItemsTotal": itemsTotal,
 	}
-	return execOne(ctx, oir.session, q, args)
+	if err = execOne(ctx, o.session, q, args); err != nil {
+		o.log.Error("OrderItemsRepository.SetItemsTotal", "error", err)
+	}
+	return
 }
 
-func (oir *OrderItemsRepository) SetPacked(ctx context.Context, vendorID int32, item *OrderItemPackStatusRequest) error {
+func (o *OrderItemsRepository) SetPacked(ctx context.Context, vendorID int32, item *OrderItemPackStatusRequest) (err error) {
 	const q = `UPDATE order_items SET is_packed = @IsPacked
 		WHERE order_id = @OrderID AND product_id in (
 			SELECT id FROM products WHERE id = @ProductID AND user_id = @VendorID  
@@ -285,5 +341,8 @@ func (oir *OrderItemsRepository) SetPacked(ctx context.Context, vendorID int32, 
 		"IsPacked":  item.IsPacked,
 		"VendorID":  vendorID,
 	}
-	return execOne(ctx, oir.session, q, args)
+	if err = execOne(ctx, o.session, q, args); err != nil {
+		o.log.Warn("OrderItemsRepository.SetPacked", "error", err)
+	}
+	return
 }

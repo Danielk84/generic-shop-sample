@@ -2,6 +2,7 @@ package queries
 
 import (
 	"context"
+	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/database"
 	"time"
 
@@ -31,22 +32,23 @@ type RelatedCommentResponse struct {
 
 type CommentRepository struct {
 	session database.Session
+	log     logger.Logger
 }
 
 type CommentStore interface {
 	Create(ctx context.Context, username string, comment *CommentRequest) error
-	Get(ctx context.Context, id string) (*RelatedCommentResponse, error)
+	Get(ctx context.Context, id string) (RelatedCommentResponse, error)
 	List(ctx context.Context, parent string, referrer string, pagination, page int) ([]CommentResponse, error)
 	FullList(ctx context.Context, username string, pagination, page int) ([]RelatedCommentResponse, error)
 	Delete(ctx context.Context, id string) error
 	SetActive(ctx context.Context, id string, isActive bool) error
 }
 
-func NewCommentStore(session database.Session) CommentStore {
-	return &CommentRepository{session}
+func NewCommentStore(session database.Session, log logger.Logger) CommentStore {
+	return &CommentRepository{session, log}
 }
 
-func (cr *CommentRepository) Create(ctx context.Context, username string, comment *CommentRequest) error {
+func (c *CommentRepository) Create(ctx context.Context, username string, comment *CommentRequest) (err error) {
 	const createCommentQuery = `INSERT INTO comments(username, parent, children_amount, referrer, body)
 		VALUES (@Username, NULLIF(@Parent, '')::UUID, 0, @Referrer, @Body)`
 	const upadteChildrenCount = `UPDATE comments SET children_amount = children_amount + 1 WHERE id = $1::UUID`
@@ -57,7 +59,7 @@ func (cr *CommentRepository) Create(ctx context.Context, username string, commen
 		"Referrer": comment.Referrer,
 		"Body":     comment.Body,
 	}
-	return pgx.BeginFunc(ctx, cr.session, func(tx pgx.Tx) error {
+	err = pgx.BeginFunc(ctx, c.session, func(tx pgx.Tx) error {
 		cTag, err := tx.Exec(ctx, createCommentQuery, args)
 		if err != nil {
 			return err
@@ -73,15 +75,24 @@ func (cr *CommentRepository) Create(ctx context.Context, username string, commen
 		}
 		return nil
 	})
+	if err != nil {
+		c.log.Debug("CommentRepository.Create", "error", err)
+	}
+	return
 }
 
-func (cr *CommentRepository) Get(ctx context.Context, id string) (*RelatedCommentResponse, error) {
-	const q = `SELECT id, COALESCE(username, 'deleted') AS username, pub_date, COALESCE(parent::TEXT, '') AS parent, children_amount, referrer, body, is_active FROM comments
+func (c *CommentRepository) Get(ctx context.Context, id string) (item RelatedCommentResponse, err error) {
+	const q = `SELECT id, COALESCE(username, 'deleted') AS username, pub_date, COALESCE(parent::TEXT, '') AS parent,
+			children_amount, referrer, body, is_active FROM comments
 		WHERE id = $1::UUID`
-	return get[RelatedCommentResponse](ctx, cr.session, q, id)
+	item, err = get[RelatedCommentResponse](ctx, c.session, q, id)
+	if err != nil {
+		c.log.Debug("CommentRepository.Get", "error", err)
+	}
+	return
 }
 
-func (cr *CommentRepository) List(ctx context.Context, parent string, referrer string, pagination, page int) ([]CommentResponse, error) {
+func (c *CommentRepository) List(ctx context.Context, parent string, referrer string, pagination, page int) (items []CommentResponse, err error) {
 	const q = `SELECT id, COALESCE(username, 'deleted') AS username, pub_date, children_amount, body FROM comments
 		WHERE COALESCE(parent::TEXT, '') = @Parent
 			AND referrer = @Referrer
@@ -95,10 +106,14 @@ func (cr *CommentRepository) List(ctx context.Context, parent string, referrer s
 		"Limit":    pagination,
 		"Offset":   getOffsetFromPageNum(pagination, page),
 	}
-	return list[CommentResponse](ctx, cr.session, q, args)
+	items, err = list[CommentResponse](ctx, c.session, q, args)
+	if err != nil {
+		c.log.Debug("CommentRepository.List", "error", err)
+	}
+	return
 }
 
-func (cr *CommentRepository) FullList(ctx context.Context, username string, pagination, page int) ([]RelatedCommentResponse, error) {
+func (c *CommentRepository) FullList(ctx context.Context, username string, pagination, page int) (items []RelatedCommentResponse, err error) {
 	const baseQuery = "SELECT id, COALESCE(username, 'deleted') AS username, pub_date, COALESCE(parent::TEXT, '') AS parent, children_amount, referrer, body, is_active FROM comments"
 	const limitOffset = ` LIMIT @Limit OFFSET @Offset`
 	args := pgx.NamedArgs{
@@ -106,22 +121,32 @@ func (cr *CommentRepository) FullList(ctx context.Context, username string, pagi
 		"Offset": getOffsetFromPageNum(pagination, page),
 	}
 
+	var q string
 	if username == "" {
-		q := baseQuery + " ORDER BY pub_date DESC, is_active" + limitOffset
-		return list[RelatedCommentResponse](ctx, cr.session, q, args)
+		q = baseQuery + " ORDER BY pub_date DESC, is_active" + limitOffset
+	} else {
+		args["Username"] = username
+		q = baseQuery + " WHERE username = NULLIF(@Username, 'deleted') ORDER BY pub_date DESC" + limitOffset
 	}
-	args["Username"] = username
-	q := baseQuery + " WHERE username = NULLIF(@Username, 'deleted') ORDER BY pub_date DESC" + limitOffset
-	return list[RelatedCommentResponse](ctx, cr.session, q, args)
+	items, err = list[RelatedCommentResponse](ctx, c.session, q, args)
+	if err != nil {
+		c.log.Debug("CommentRepository.FullList", "error", err)
+	}
+	return
 }
 
-func (cr *CommentRepository) Delete(ctx context.Context, id string) error {
+func (c *CommentRepository) Delete(ctx context.Context, id string) (err error) {
 	const q = `DELETE FROM comments WHERE id = $1::UUID OR parent = $1::UUID`
-	_, err := cr.session.Exec(ctx, q, id)
-	return err
+	if _, err = c.session.Exec(ctx, q, id); err != nil {
+		c.log.Debug("CommentRepository.Delete", "error", err)
+	}
+	return
 }
 
-func (cr *CommentRepository) SetActive(ctx context.Context, id string, isActive bool) error {
+func (c *CommentRepository) SetActive(ctx context.Context, id string, isActive bool) (err error) {
 	const q = `UPDATE comments SET is_active = $1 WHERE id = $2::UUID`
-	return execOne(ctx, cr.session, q, isActive, id)
+	if err = execOne(ctx, c.session, q, isActive, id); err != nil {
+		c.log.Debug("CommentRepository.SetActive", "error", err)
+	}
+	return
 }

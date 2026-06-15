@@ -37,14 +37,7 @@ func list[T any](ctx context.Context, session database.Session, query string, ar
 		return nil, err
 	}
 
-	var items []T
-	var t T
-	typ := reflect.TypeOf(t)
-	if typ.Kind() == reflect.Struct {
-		items, err = pgx.CollectRows(rows, pgx.RowToStructByName[T])
-	} else {
-		items, err = pgx.CollectRows(rows, pgx.RowTo[T])
-	}
+	items, err := pgx.CollectRows(rows, getRowToFunc[T]())
 	if err != nil {
 		return nil, err
 	}
@@ -55,13 +48,21 @@ func list[T any](ctx context.Context, session database.Session, query string, ar
 	return items, nil
 }
 
-func get[T any](ctx context.Context, session database.Session, query string, args ...any) (*T, error) {
-	items, err := list[T](ctx, session, query, args...)
+func get[T any](ctx context.Context, session database.Session, query string, args ...any) (item T, err error) {
+	rows, err := session.Query(ctx, query, args...)
 	if err != nil {
-		return nil, err
+		return
 	}
-	if len(items) != 1 {
-		return nil, pgx.ErrTooManyRows
+	item, err = pgx.CollectOneRow(rows, getRowToFunc[T]())
+	return
+}
+
+func getRowToFunc[T any]() pgx.RowToFunc[T] {
+	var t T
+	typ := reflect.TypeOf(t)
+	if typ.Kind() == reflect.Struct {
+		return pgx.RowToStructByName[T]
+	} else {
+		return pgx.RowTo[T]
 	}
-	return &items[0], nil
 }
