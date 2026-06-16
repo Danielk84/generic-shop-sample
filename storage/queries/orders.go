@@ -58,6 +58,8 @@ func NewOrderStore(session database.Session, log logger.Logger) OrderStore {
 }
 
 func (o *OrderRepository) Create(ctx context.Context, userID int32) (item string, err error) {
+	// this query check, if there is not ended order (not paid), return existed id
+	// instead of creating new one.
 	const q = `WITH create_new_order AS (
 			INSERT INTO orders(user_id)
 				SELECT $1 WHERE NOT EXISTS(SELECT 1 FROM orders WHERE user_id = $1 AND is_paid = FALSE)

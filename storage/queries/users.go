@@ -227,7 +227,7 @@ func (u *UserRepository) SetEmail(ctx context.Context, id int32, email *EmailAdd
 func (u *UserRepository) VerifyEmail(ctx context.Context, id int32, isVerified bool) (err error) {
 	const q = `UPDATE users SET is_v_email = $1 WHERE id = $2`
 	if err = execOne(ctx, u.session, q, isVerified, id); err != nil {
-		u.log.Debug("UserRepository.VerifyEmail", "error", err)
+		u.log.Warn("UserRepository.VerifyEmail", "error", err)
 	}
 	return
 }
@@ -307,7 +307,7 @@ func (u *UserProfileRepository) DeleteImgPath(ctx context.Context, UserID int32)
 	const q = `UPDATE user_profile SET img_path = null WHERE user_id = $1
 		RETURNING OLD.img_path AS img_path`
 	if err = u.session.QueryRow(ctx, q, UserID).Scan(&imgPath); err != nil {
-		u.log.Debug("UserProfileRepository.DeleteImgPath", "error", err)
+		u.log.Error("UserProfileRepository.DeleteImgPath", "error", err)
 	}
 	return
 }

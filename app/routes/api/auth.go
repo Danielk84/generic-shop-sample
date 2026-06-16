@@ -20,32 +20,39 @@ import (
 func LoginRouter(ctx context.Context, router *gin.RouterGroup) {
 	config := internal.GetConfig()
 	log := logger.GetLogger()
-	ah := authHandler{
+	h := authHandler{
 		queries.NewUserStore(database.GetSession(), log),
 		cache.GetCache(cache.UsersCache),
+		log,
 		config.Opt.AuthExpiration,
 	}
 
 	rl := md.NewRateLimiter(ctx, 10, 30*time.Minute, 60*time.Second)
-	router.Use(rl.RateLimiterMiddleware())
-	router.POST("/login", ah.login)
+	RegisterRoutesWith(router, []gin.HandlerFunc{rl.RateLimiterMiddleware()}, []RouteSpec{
+		{http.MethodPost, "/login", []gin.HandlerFunc{h.login}},
+	})
+	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware()}, []RouteSpec{
+		{http.MethodGet, "/ping", []gin.HandlerFunc{h.ping}},
+	})
 }
 
 type authHandler struct {
 	us             queries.UserStore
 	cache          cache.CacheClient
+	log            logger.Logger
 	authExpiration time.Duration
 }
 
-func (ah *authHandler) login(c *gin.Context) {
+func (h *authHandler) login(c *gin.Context) {
 	var input queries.LoginRequest
 	if err := c.ShouldBindJSON(&input); err != nil {
+		h.log.Debug("authHandler.login", "step", "ShouldBindJSON", "error", err)
 		BadRequest(c, "invalid username or password")
 		return
 	}
 
 	ctx := c.Request.Context()
-	user, err := ah.us.Get(ctx, input.Username)
+	user, err := h.us.Get(ctx, input.Username)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -54,13 +61,15 @@ func (ah *authHandler) login(c *gin.Context) {
 		Unauthorized(c, "")
 		return
 	}
-	authExpiration := time.Now().Add(ah.authExpiration * time.Minute)
-	maxAge := time.Until(authExpiration)
+
 	cacheKey := fmt.Sprintf("login:%d", user.ID)
+	var maxAge time.Duration
 	var output string
-	if err := ah.cache.Get(c.Request.Context(), cacheKey).Scan(&output); err != nil {
+	if err := h.cache.Get(c.Request.Context(), cacheKey).Scan(&output); err != nil {
 		LogCacheErr("Get", cacheKey, err)
 
+		authExpiration := time.Now().Add(h.authExpiration * time.Minute)
+		maxAge = time.Until(authExpiration)
 		claims := auth.AuthClaims{
 			ID:             user.ID,
 			Username:       user.Username,
@@ -76,15 +85,25 @@ func (ah *authHandler) login(c *gin.Context) {
 			BadRequest(c, "")
 			return
 		}
-		if err = ah.cache.Set(ctx, cacheKey, output, maxAge).Err(); err != nil {
+		if err = h.cache.Set(ctx, cacheKey, output, maxAge).Err(); err != nil {
 			LogCacheErr("Set", cacheKey, err)
 		}
+	} else {
+		ttl := h.cache.TTL(ctx, cacheKey)
+		if err := ttl.Err(); err != nil {
+			LogCacheErr("TTL", cacheKey, err)
+			maxAge = 0
+		} else {
+			maxAge = ttl.Val()
+		}
 	}
-	loginResponse(c, output, int(maxAge))
+
+	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie("__Host-auth-token", output, int(maxAge), "/", "", true, true)
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
-func loginResponse(c *gin.Context, tokenString string, maxAge int) {
-	c.SetSameSite(http.SameSiteStrictMode)
-	c.SetCookie("__Host-auth-token", tokenString, maxAge, "/", "", true, true)
-	c.JSON(http.StatusOK, gin.H{"token": "Bearer " + tokenString})
+// auth token validator
+func (h *authHandler) ping(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"status": "PONG"})
 }

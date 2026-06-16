@@ -62,8 +62,8 @@ type ProductStore interface {
 	SetActive(ctx context.Context, id string, isActive bool) error
 }
 
-func NewProductStore(session database.Session) ProductStore {
-	return &ProductRepository{session: session}
+func NewProductStore(session database.Session, log logger.Logger) ProductStore {
+	return &ProductRepository{session, log}
 }
 
 func (p *ProductRepository) Create(ctx context.Context, userID int32, product *CreateProductRequest) (err error) {

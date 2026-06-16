@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/auth"
@@ -24,6 +25,13 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+var (
+	ErrReadFile        = errors.New("failed to read file")
+	ErrOperationFailed = errors.New("operation failed")
+	ErrInvalidMimeType = errors.New("invalid mime type")
+	ErrUploadFile      = errors.New("failed to upload and save file")
+)
+
 var defaultPagination = internal.GetConfig().Opt.Pagination
 
 type RouteSpec struct {
@@ -32,10 +40,16 @@ type RouteSpec struct {
 	Handlers     []gin.HandlerFunc
 }
 
-func RegisterRoutesWith(router *gin.RouterGroup, middlewares []gin.HandlerFunc, ehs []RouteSpec) {
-	for _, eh := range ehs {
-		handlers := append(middlewares, eh.Handlers...)
-		router.Handle(eh.Method, eh.RelativePath, handlers...)
+func RegisterRoutesWith(router *gin.RouterGroup, middlewares []gin.HandlerFunc, rs []RouteSpec) {
+	if len(middlewares) == 0 || len(rs) == 0 {
+		panic("invalid empty middlewares or RouteSpec list")
+	}
+	for _, e := range rs {
+		if e.Method == "" || len(e.Handlers) == 0 {
+			panic("invalid RouteSpec")
+		}
+		handlers := append(middlewares, e.Handlers...)
+		router.Handle(e.Method, e.RelativePath, handlers...)
 	}
 }
 
@@ -51,40 +65,61 @@ func GetPage(c *gin.Context) int {
 	return page
 }
 
-func UploadFile(file *multipart.FileHeader, claims *auth.AuthClaims, group, dst string) (string, error) {
+type FileUploaderFunc func(file *multipart.FileHeader, claims *auth.AuthClaims, group, dst string) (string, error)
+
+func GetFileUploader(config *internal.Config, log logger.Logger) FileUploaderFunc {
+	uf := uploadFile{config, log}
+	return uf.local
+}
+
+type uploadFile struct {
+	config *internal.Config
+	log    logger.Logger
+}
+
+func (u *uploadFile) local(file *multipart.FileHeader, claims *auth.AuthClaims, group, dst string) (string, error) {
 	src, err := file.Open()
 	if err != nil {
-		return "", fmt.Errorf("failed to open file")
+		u.log.Warn("uploadFile.local", "step", "file.open", "error", err)
+		return "", ErrReadFile
 	}
 	defer src.Close()
 
 	buf := make([]byte, 512)
-	n, _ := src.Read(buf)
+	n, err := src.Read(buf)
+	if err != nil {
+		u.log.Error("uploadFile.local", "step", "src.Read", "error", err)
+		return "", ErrReadFile
+	}
 	if _, err = src.Seek(0, io.SeekStart); err != nil {
-		return "", err
+		u.log.Error("uploadFile.local", "step", "src.Seek", "error", err)
+		return "", ErrOperationFailed
 	}
 	mtype := mimetype.Detect(buf[:n])
-	config := internal.GetConfig()
-	if !mimetype.EqualsAny(mtype.String(), config.Opt.AllowedImgMimetype...) {
-		return "", err
+	if !mimetype.EqualsAny(mtype.String(), u.config.Opt.AllowedImgMimetype...) {
+		return "", ErrInvalidMimeType
 	}
 
 	if dst == "" {
 		y, m, d := time.Now().Date()
 		dst = fmt.Sprintf("%s/%d/%d/%d/%s-%d%s", group, y, m, d, claims.Username, time.Now().UnixNano(), mtype.Extension())
 	}
-	path := fmt.Sprintf("%s/%s", config.Opt.UploadPath, dst)
+	path := fmt.Sprintf("%s/%s", u.config.Opt.UploadPath, dst)
+	u.log.Debug("uploadFile.local", "path", path)
 	if err = os.MkdirAll(filepath.Dir(path), 0750); err != nil {
-		return "", err
+		u.log.Error("uploadFile.local", "step", "os.MkdirAll", "error", err)
+		return "", ErrOperationFailed
 	}
 	out, err := os.Create(path)
 	if err != nil {
-		return "", err
+		u.log.Error("uploadFile.local", "step", "os.Create", "error", err)
+		return "", ErrOperationFailed
 	}
 	defer out.Close()
 
 	if _, err := io.Copy(out, src); err != nil {
-		return "", err
+		u.log.Error("uploadFile.local", "step", "io.Copy", "error", err)
+		return "", ErrUploadFile
 	}
 	return dst, nil
 }
@@ -143,7 +178,7 @@ func SetJSONCacheEx(ctx context.Context, cache cache.CacheClient, key string, ex
 	if err != nil {
 		return err
 	}
-	_, err = cache.SetEx(ctx, key, data, expiration).Result()
+	_, err = cache.Set(ctx, key, data, expiration).Result()
 	return err
 }
 
