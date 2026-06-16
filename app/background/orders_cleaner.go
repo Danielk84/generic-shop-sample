@@ -8,10 +8,11 @@ import (
 )
 
 type expiredOrdersCleaner struct {
-	os queries.OrderStore
+	store queries.OrderStore
+	log   logger.Logger
 }
 
-func (eoc *expiredOrdersCleaner) start(ctx context.Context) {
+func (b *expiredOrdersCleaner) start(ctx context.Context) {
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
 
@@ -20,7 +21,7 @@ func (eoc *expiredOrdersCleaner) start(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if err := eoc.os.DeleteExpiredOrders(ctx); err != nil {
+			if err := b.store.DeleteExpiredOrders(ctx); err != nil {
 				logger.GetLogger().Error("failed to delete expired orders", "error", err)
 			}
 		}

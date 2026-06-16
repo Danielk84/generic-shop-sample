@@ -28,8 +28,8 @@ type emailBroker struct {
 	log      logger.Logger
 }
 
-func (eb *emailBroker) start(ctx context.Context) {
-	sub := eb.cache.Subscribe(ctx, mailChannel)
+func (b *emailBroker) start(ctx context.Context) {
+	sub := b.cache.Subscribe(ctx, mailChannel)
 	defer sub.Close()
 
 	ch := sub.Channel()
@@ -39,23 +39,23 @@ func (eb *emailBroker) start(ctx context.Context) {
 			return
 		case msg, ok := <-ch:
 			if !ok {
-				eb.log.Warn("mail subscription closed")
+				b.log.Warn("mail subscription closed")
 				return
 			}
 			var input MailMessage
 			if err := json.NewDecoder(bytes.NewBufferString(msg.Payload)).Decode(&input); err != nil {
-				eb.log.Error("failed decode EmailMessage", "error", err)
+				b.log.Error("failed decode EmailMessage", "error", err)
 				continue
 			}
-			eb.send(input.To, input.Msg)
+			b.send(input.To, input.Msg)
 		}
 	}
 }
 
-func (eb *emailBroker) send(to string, msg []byte) {
-	auth := smtp.PlainAuth("", eb.from, eb.password, eb.host)
-	if err := smtp.SendMail(fmt.Sprintf("%s:%d", eb.host, eb.port), auth, eb.from, []string{to}, msg); err != nil {
-		eb.log.Error("failed to send mail", "error", err)
+func (b *emailBroker) send(to string, msg []byte) {
+	auth := smtp.PlainAuth("", b.from, b.password, b.host)
+	if err := smtp.SendMail(fmt.Sprintf("%s:%d", b.host, b.port), auth, b.from, []string{to}, msg); err != nil {
+		b.log.Error("failed to send mail", "error", err)
 	}
 }
 

@@ -3,6 +3,7 @@ package background
 import (
 	"context"
 	"generic-shop-sample/internal"
+	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
@@ -14,8 +15,12 @@ type BackgroundTask interface {
 
 func StartTasks(ctx context.Context, session database.Session) {
 	config := internal.GetConfig()
+	log := logger.GetLogger()
 	tasks := []BackgroundTask{
-		&expiredOrdersCleaner{queries.NewOrderStore(session)},
+		&expiredOrdersCleaner{
+			store: queries.NewOrderStore(session, log),
+			log:   log,
+		},
 		&emailBroker{
 			cache:    cache.GetCache(cache.UsersCache),
 			from:     config.Opt.FromEmail,
