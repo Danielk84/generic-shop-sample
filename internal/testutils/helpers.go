@@ -20,7 +20,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func getConfig() *internal.Config {
+func GetConfig() *internal.Config {
 	configFile, ok := os.LookupEnv("TEST_CONFIG")
 	if !ok {
 		panic(`Please set "TEST_CONFIG=/path/to/config.yaml"`)
@@ -29,14 +29,14 @@ func getConfig() *internal.Config {
 }
 
 func RouterSetup(ctx context.Context) *gin.Engine {
-	config := getConfig()
+	config := GetConfig()
 	app := app.NewApp(ctx, config)
 
 	return app.Router
 }
 
 func DBManagerSetup(ctx context.Context) database.DBManager {
-	config := getConfig()
+	config := GetConfig()
 	db, err := database.New(ctx, config.Opt.DatabaseURL)
 	if err != nil {
 		panic(fmt.Errorf("failed to setup db, %s", err))
@@ -45,7 +45,7 @@ func DBManagerSetup(ctx context.Context) database.DBManager {
 }
 
 func CacheSetup(ctx context.Context) cache.CacheManager {
-	config := getConfig()
+	config := GetConfig()
 	cache, err := cache.New(ctx, config.Opt.CacheURL, []int{cache.PublicCache, cache.UsersCache, cache.ProductsCache})
 	if err != nil {
 		panic(fmt.Errorf("failed to setup cache, %s", err))

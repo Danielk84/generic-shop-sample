@@ -1,13 +1,13 @@
 package cache_test
 
 import (
-	"generic-shop-sample/internal"
+	"generic-shop-sample/internal/testutils"
 	"generic-shop-sample/storage/cache"
 	"testing"
 )
 
 func TestCacheManager(t *testing.T) {
-	config := internal.GetConfig()
+	config := testutils.GetConfig()
 	dbs := []int{cache.PublicCache, cache.UsersCache}
 	cm, err := cache.New(t.Context(), config.Opt.CacheURL, dbs)
 	if err != nil {
