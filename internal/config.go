@@ -37,7 +37,7 @@ type Config struct {
 }
 
 func (c *Config) ReadFile(fp string) error {
-	if filepath.IsAbs(fp) {
+	if !filepath.IsAbs(fp) {
 		return fmt.Errorf("%s: empty or not absolute file path", os.ErrInvalid)
 	}
 	yamlFile, err := os.ReadFile(fp)

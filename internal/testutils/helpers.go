@@ -20,15 +20,23 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func getConfig() *internal.Config {
+	configFile, ok := os.LookupEnv("TEST_CONFIG")
+	if !ok {
+		panic(`Please set "TEST_CONFIG=/path/to/config.yaml"`)
+	}
+	return internal.NewConfig(configFile)
+}
+
 func RouterSetup(ctx context.Context) *gin.Engine {
-	config := internal.GetConfig()
+	config := getConfig()
 	app := app.NewApp(ctx, config)
 
 	return app.Router
 }
 
 func DBManagerSetup(ctx context.Context) database.DBManager {
-	config := internal.GetConfig()
+	config := getConfig()
 	db, err := database.New(ctx, config.Opt.DatabaseURL)
 	if err != nil {
 		panic(fmt.Errorf("failed to setup db, %s", err))
@@ -37,7 +45,7 @@ func DBManagerSetup(ctx context.Context) database.DBManager {
 }
 
 func CacheSetup(ctx context.Context) cache.CacheManager {
-	config := internal.GetConfig()
+	config := getConfig()
 	cache, err := cache.New(ctx, config.Opt.CacheURL, []int{cache.PublicCache, cache.UsersCache, cache.ProductsCache})
 	if err != nil {
 		panic(fmt.Errorf("failed to setup cache, %s", err))
@@ -69,11 +77,11 @@ func FileUploadRequest(url, token, fileName, path string) (*http.Request, error)
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
-	defer writer.Close()
+	defer func() { _ = writer.Close() }()
 
 	part, err := writer.CreateFormFile(fileName, filepath.Base(path))
 	if err != nil {

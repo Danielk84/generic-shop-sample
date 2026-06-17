@@ -1,6 +1,8 @@
 package queries_test
 
 import (
+	"context"
+	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
 	"testing"
@@ -8,24 +10,41 @@ import (
 
 func TestCategoryStore(t *testing.T) {
 	ctx := t.Context()
-
 	session := database.GetSession()
-	cs := queries.NewCategoryStore(session)
+	log := logger.GetLogger()
+	store := queries.NewCategoryStore(session, log)
 
 	if _, err := session.Exec(ctx, "TRUNCATE categories RESTART IDENTITY CASCADE"); err != nil {
 		t.Fatalf("failed to truncate categories: %s", err)
 	}
 
+	s := testCategoryStore{ctx: ctx, session: session, store: store}
+
+	s.create(t)
+	s.list(t)
+	s.delete(t)
+}
+
+type testCategoryStore struct {
+	ctx      context.Context
+	session  database.Session
+	store    queries.CategoryStore
+	category queries.Category
+}
+
+func (s *testCategoryStore) create(t *testing.T) {
 	c1 := &queries.Category{CategoryTag: queries.CategoryTag{"electronics"}}
-	if err := cs.Create(ctx, c1.Tag); err != nil {
+	if err := s.store.Create(s.ctx, c1.Tag); err != nil {
 		t.Fatalf("failed to create category: %s", err)
 	}
 	c2 := &queries.CategoryTag{Tag: "books"}
-	if err := cs.Create(ctx, c2.Tag); err != nil {
+	if err := s.store.Create(s.ctx, c2.Tag); err != nil {
 		t.Fatalf("failed to create category: %s", err)
 	}
+}
 
-	list, err := cs.List(ctx)
+func (s *testCategoryStore) list(t *testing.T) {
+	list, err := s.store.List(s.ctx)
 	if err != nil {
 		t.Fatalf("failed to categories list: %s", err)
 	}
@@ -39,15 +58,17 @@ func TestCategoryStore(t *testing.T) {
 			t.Errorf("unexpected category tag in list: %q", cat.Tag)
 		}
 		if cat.Tag == "electronics" {
-			c1.ID = cat.ID
+			s.category.ID = cat.ID
 		}
 	}
+}
 
-	if err := cs.Delete(ctx, c1.ID); err != nil {
-		t.Fatalf("failed to delete category id=%d, %s", c1.ID, err)
+func (s *testCategoryStore) delete(t *testing.T) {
+	if err := s.store.Delete(s.ctx, s.category.ID); err != nil {
+		t.Fatalf("failed to delete category id=%d, %s", s.category.ID, err)
 	}
 
-	list, err = cs.List(ctx)
+	list, err := s.store.List(s.ctx)
 	if err != nil {
 		t.Fatalf("failed to list categories after delete, %s", err)
 	}
@@ -58,49 +79,49 @@ func TestCategoryStore(t *testing.T) {
 		t.Errorf("expected remaining tag 'books', got %q", list[0].Tag)
 	}
 
-	if err := cs.Delete(ctx, 9999); err == nil {
+	if err := s.store.Delete(s.ctx, 9999); err == nil {
 		t.Errorf("expected error deleting non-existing category, but got nil")
 	}
 }
 
 func TestPCStore(t *testing.T) {
 	ctx := t.Context()
-
 	session := database.GetSession()
+	log := logger.GetLogger()
 
 	if _, err := session.Exec(ctx, "TRUNCATE products, categories RESTART IDENTITY CASCADE"); err != nil {
 		t.Fatalf("failed to truncate products_categories: %s", err)
 	}
 
-	cs := queries.NewCategoryStore(session)
+	categoryStore := queries.NewCategoryStore(session, log)
 	for _, tag := range []string{"1", "2", "3", "4", "5"} {
-		if err := cs.Create(ctx, tag); err != nil {
+		if err := categoryStore.Create(ctx, tag); err != nil {
 			t.Error("failed to create category tags", err)
 		}
 	}
 
-	ps := queries.NewProductStore(session)
+	productStore := queries.NewProductStore(session, log)
 	product := queries.CreateProductRequest{Name: "item 1", Price: 10, Description: "some description", Details: `{"info": "some info"}`, IsAvailable: true}
-	if err := ps.Create(ctx, 1, &product); err != nil {
+	if err := productStore.Create(ctx, 1, &product); err != nil {
 		t.Error("failed to create product", err)
 	}
 
 	if _, err := session.Exec(ctx, "UPDATE products SET is_active = true"); err != nil {
 		t.Errorf("failed to active products, %s", err)
 	}
-	products, err := ps.List(ctx, 1, 1)
+	products, err := productStore.List(ctx, 1, 1)
 	if err != nil {
 		t.Error("unexpected error in list method, ", err)
 	}
 	productID := products[0].ID
 
-	pcs := queries.NewPCStore(session)
+	store := queries.NewPCStore(session, log)
 	initialTags := []string{"1", "2", "3"}
-	if err := pcs.SetTags(ctx, productID, initialTags); err != nil {
+	if err := store.SetTags(ctx, productID, initialTags); err != nil {
 		t.Fatalf("SetTags failed: %s", err)
 	}
 
-	got, err := pcs.List(ctx, productID)
+	got, err := store.List(ctx, productID)
 	if err != nil {
 		t.Fatalf("List failed: %s", err)
 	}
@@ -115,11 +136,11 @@ func TestPCStore(t *testing.T) {
 		}
 	}
 	newTags := []string{"4", "5"}
-	if err := pcs.SetTags(ctx, productID, newTags); err != nil {
+	if err := store.SetTags(ctx, productID, newTags); err != nil {
 		t.Fatalf("SetTags overwrite failed: %s", err)
 	}
 
-	got, err = pcs.List(ctx, productID)
+	got, err = store.List(ctx, productID)
 	if err != nil {
 		t.Fatalf("List failed after overwrite: %s", err)
 	}

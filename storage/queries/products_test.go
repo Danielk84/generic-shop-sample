@@ -1,6 +1,7 @@
 package queries_test
 
 import (
+	"context"
 	"fmt"
 	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/logger"
@@ -11,59 +12,92 @@ import (
 
 func TestProductStore(t *testing.T) {
 	ctx := t.Context()
-
 	session := database.GetSession()
 	if _, err := session.Exec(ctx, "TRUNCATE products RESTART IDENTITY CASCADE"); err != nil {
 		t.Errorf("failed to truncate products, %s", err)
 	}
-	ps := queries.NewProductStore(session)
+	log := logger.GetLogger()
+	store := queries.NewProductStore(session, log)
 
-	product := queries.CreateProductRequest{
+	productInstance := queries.CreateProductRequest{
 		Name:        "TestProduct",
 		Price:       1999,
 		Description: "Test product description",
 		Details:     `{"color": "red", "size": "M"}`,
 		IsAvailable: true,
 	}
-
-	if err := ps.Create(ctx, 1, &product); err != nil {
-		t.Fatalf("failed to create product, %s", err)
+	s := testProductStore{
+		ctx:             ctx,
+		session:         session,
+		store:           store,
+		productInstance: productInstance,
 	}
 
-	if _, err := session.Exec(ctx, "UPDATE products SET is_active = true"); err != nil {
+	s.create(t)
+	s.getList(t)
+	s.incrDecrBy(t)
+	s.get(t)
+	s.update(t)
+	s.setActiveAvailable(t)
+	s.delete(t)
+}
+
+type testProductStore struct {
+	ctx             context.Context
+	session         database.Session
+	store           queries.ProductStore
+	productInstance queries.CreateProductRequest
+	summaryResponse queries.ProductSummaryResponse
+	userID          int32
+}
+
+func (s *testProductStore) create(t *testing.T) {
+	if err := s.store.Create(s.ctx, 1, &s.productInstance); err != nil {
+		t.Fatalf("failed to create product, %s", err)
+	}
+}
+
+func (s *testProductStore) getList(t *testing.T) {
+	if _, err := s.session.Exec(s.ctx, "UPDATE products SET is_active = true"); err != nil {
 		t.Fatalf("failed to activate products")
 	}
 
-	list, err := ps.List(ctx, 10, 1)
+	list, err := s.store.List(s.ctx, 10, 1)
 	if err != nil {
 		t.Fatalf("failed to get peoducts list, %s", err)
 	}
 	if len(list) != 1 {
 		t.Fatalf("expected 1 product in list, but got %d", len(list))
 	}
-	gotSummary := list[0]
-	if gotSummary.Name != product.Name || gotSummary.Price != product.Price {
-		t.Errorf("list mismatch: got %+v, expected name=%q, price=%d", gotSummary, product.Name, product.Price)
+	s.summaryResponse = list[0]
+	if s.summaryResponse.Name != s.productInstance.Name || s.summaryResponse.Price != s.productInstance.Price {
+		t.Errorf("list mismatch: got %+v, expected name=%q, price=%d", s.summaryResponse, s.productInstance.Name, s.productInstance.Price)
 	}
+}
 
-	if err := ps.IncrBy(ctx, gotSummary.ID, 1, 10); err != nil {
+func (s *testProductStore) incrDecrBy(t *testing.T) {
+	if err := s.store.IncrBy(s.ctx, s.summaryResponse.ID, 1, 10); err != nil {
 		t.Errorf("failed to incr by, %s", err)
 	}
-	if err := ps.DecrBy(ctx, gotSummary.ID, 1, 5); err != nil {
+	if err := s.store.DecrBy(s.ctx, s.summaryResponse.ID, 1, 5); err != nil {
 		t.Errorf("failed to decr by, %s", err)
 	}
+}
 
-	got, err := ps.Get(ctx, gotSummary.ID)
+func (s *testProductStore) get(t *testing.T) {
+	got, err := s.store.Get(s.ctx, s.summaryResponse.ID)
 	if err != nil {
 		t.Fatalf("failed to get product, %s", err)
 	}
-	if got.Name != product.Name || got.Description != product.Description || got.AvailableQuantity != 5 {
+	if got.Name != s.productInstance.Name || got.Description != s.productInstance.Description || got.AvailableQuantity != 5 {
 		t.Errorf(`get mismatch: got "%+v", expected name="%q", description="%q", available_quantity="%d"`,
-			got, product.Name, product.Description, 5)
+			got, s.productInstance.Name, s.productInstance.Description, 5)
 	}
+}
 
+func (s *testProductStore) update(t *testing.T) {
 	uProduct := queries.UpdateProductRequest{
-		got.ID,
+		s.summaryResponse.ID,
 		queries.CreateProductRequest{
 			Name:        "TestProduct",
 			Price:       1999,
@@ -72,11 +106,11 @@ func TestProductStore(t *testing.T) {
 			IsAvailable: false,
 		},
 	}
-	if err := ps.Update(ctx, 1, &uProduct); err != nil {
+	if err := s.store.Update(s.ctx, 1, &uProduct); err != nil {
 		t.Fatalf("failed to update product, %s", err)
 	}
 
-	updated, err := ps.Get(ctx, got.ID)
+	updated, err := s.store.Get(s.ctx, s.summaryResponse.ID)
 	if err != nil {
 		t.Fatalf("failed to get updated product, %s", err)
 	}
@@ -84,27 +118,32 @@ func TestProductStore(t *testing.T) {
 		t.Errorf("update mismatch: got %+v, expected description=%q, isAvailable=false",
 			updated, uProduct.Description)
 	}
+}
 
-	if err := ps.SetActive(ctx, got.ID, false); err != nil {
+func (s *testProductStore) setActiveAvailable(t *testing.T) {
+	if err := s.store.SetActive(s.ctx, s.summaryResponse.ID, false); err != nil {
 		t.Fatalf("failed to set active: %s", err)
 	}
-	if err := ps.SetAvailable(ctx, got.ID, true); err != nil {
+	if err := s.store.SetAvailable(s.ctx, s.summaryResponse.ID, true); err != nil {
 		t.Fatalf("failed to set available, %s", err)
 	}
 
-	check, err := ps.Get(ctx, got.ID)
+	check, err := s.store.Get(s.ctx, s.summaryResponse.ID)
 	if err != nil {
 		t.Fatalf("failed to get product after state changes: %s", err)
 	}
 	if check.IsActive != false || check.IsAvailable != true {
 		t.Errorf("expected isActive=false, isAvailable=true; got %+v", check)
 	}
+	s.userID = check.UserID
+}
 
-	if err := ps.Delete(ctx, got.ID, got.UserID); err != nil {
+func (s *testProductStore) delete(t *testing.T) {
+	if err := s.store.Delete(s.ctx, s.summaryResponse.ID, s.userID); err != nil {
 		t.Fatalf("failed to delete product, %s", err)
 	}
 
-	_, err = ps.Get(ctx, got.ID)
+	_, err := s.store.Get(s.ctx, s.summaryResponse.ID)
 	if err == nil {
 		t.Errorf("expected error when getting deleted product, got nil")
 	}
@@ -112,13 +151,12 @@ func TestProductStore(t *testing.T) {
 
 func TestFullListProducts(t *testing.T) {
 	ctx := t.Context()
-
 	session := database.GetSession()
 	if _, err := session.Exec(ctx, "TRUNCATE products RESTART IDENTITY CASCADE"); err != nil {
 		t.Errorf("failed to truncate products")
 	}
-
-	ps := queries.NewProductStore(session)
+	log := logger.GetLogger()
+	store := queries.NewProductStore(session, log)
 
 	description := "some descriptions"
 	info := `{"info": "some info"}`
@@ -133,7 +171,7 @@ func TestFullListProducts(t *testing.T) {
 		{3, queries.CreateProductRequest{Name: "item 5", Price: 10, Description: description, Details: info, IsAvailable: true}},
 	}
 	for i, product := range products {
-		if err := ps.Create(ctx, product.userID, &product.product); err != nil {
+		if err := store.Create(ctx, product.userID, &product.product); err != nil {
 			t.Errorf(`failed to create product "%d", %s`, i, err)
 		}
 	}
@@ -157,7 +195,7 @@ func TestFullListProducts(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(st *testing.T) {
-			items, err := ps.FullList(ctx, test.id, test.pagination, test.page)
+			items, err := store.FullList(ctx, test.id, test.pagination, test.page)
 			if err != nil {
 				if test.expectedCount == 0 {
 					return
@@ -174,17 +212,17 @@ func TestFullListProducts(t *testing.T) {
 
 func TestProductImagesStore(t *testing.T) {
 	ctx := t.Context()
-
 	session := database.GetSession()
 	log := logger.GetLogger()
-	ps := queries.NewProductStore(session)
-	pis := queries.NewProductImagesStore(session, log)
+	config := internal.GetConfig()
+	productStore := queries.NewProductStore(session, log)
+	store := queries.NewProductImagesStore(session, log)
 
 	if _, err := session.Exec(ctx, "TRUNCATE products RESTART IDENTITY CASCADE"); err != nil {
 		t.Errorf("failed to truncate products, %s", err)
 	}
 
-	if err := ps.Create(ctx, 1, &queries.CreateProductRequest{
+	if err := productStore.Create(ctx, 1, &queries.CreateProductRequest{
 		Name:        "new product",
 		Price:       10,
 		IsAvailable: true,
@@ -194,38 +232,55 @@ func TestProductImagesStore(t *testing.T) {
 	if _, err := session.Exec(ctx, "UPDATE products SET is_active = true"); err != nil {
 		t.Errorf("failed to activate products, %s", err)
 	}
-	var product queries.ProductSummaryResponse
-	if products, err := ps.List(ctx, 10, 1); err == nil {
-		product = products[0]
+	var summaryResponse queries.ProductSummaryResponse
+	if products, err := productStore.List(ctx, 10, 1); err == nil {
+		summaryResponse = products[0]
 	} else {
 		t.Errorf("failed to get products list, %s", err)
 	}
 
-	config := internal.GetConfig()
-	tests := make([]string, config.Opt.MaxProductImagesAmount)
-	for i := range tests {
-		tests[i] = fmt.Sprintf("path/to/img%d.img", i)
+	s := testProductImagesStore{ctx, session, config, store, summaryResponse}
+
+	s.create(t)
+	s.list(t)
+}
+
+type testProductImagesStore struct {
+	ctx             context.Context
+	session         database.Session
+	config          *internal.Config
+	store           queries.ProductImagesStore
+	summaryResponse queries.ProductSummaryResponse
+}
+
+func (s *testProductImagesStore) create(t *testing.T) {
+	productImages := make([]string, s.config.Opt.MaxProductImagesAmount)
+	for i := range productImages {
+		productImages[i] = fmt.Sprintf("path/to/img%d.img", i)
 	}
 
-	for i, imgPath := range tests {
-		if err := pis.Create(ctx, product.ID, imgPath); err != nil {
-			if i == config.Opt.MaxProductImagesAmount {
+	for i, imgPath := range productImages {
+		if err := s.store.Create(s.ctx, s.summaryResponse.ID, imgPath); err != nil {
+			if i == s.config.Opt.MaxProductImagesAmount {
 				break
 			}
 			t.Errorf("failed to create product image row, %s", err)
 		}
-		if i == config.Opt.MaxProductImagesAmount {
+		if i == s.config.Opt.MaxProductImagesAmount {
 			t.Errorf("failed to return error for creating more than max value")
 		}
 	}
-	productImages, err := pis.List(ctx, product.ID)
+}
+
+func (s *testProductImagesStore) list(t *testing.T) {
+	productImages, err := s.store.List(s.ctx, s.summaryResponse.ID)
 	if err != nil {
 		t.Errorf("failed to get product images list, %s", err)
 	}
-	if got := len(productImages); got != len(tests) {
-		t.Errorf(`expected list return "%d" product images, but got "%d"`, len(tests), got)
+	if got := len(productImages); got != s.config.Opt.MaxProductImagesAmount {
+		t.Errorf(`expected list return "%d" product images, but got "%d"`, s.config.Opt.MaxProductImagesAmount, got)
 	}
-	if imgPath, err := pis.Delete(ctx, productImages[0].ID); err == nil {
+	if imgPath, err := s.store.Delete(s.ctx, productImages[0].ID); err == nil {
 		if imgPath != productImages[0].ImgPath {
 			t.Error("failed to match imgPath")
 		}

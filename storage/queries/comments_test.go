@@ -1,6 +1,7 @@
 package queries_test
 
 import (
+	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
 	"testing"
@@ -9,16 +10,16 @@ import (
 
 func TestCommentStore(t *testing.T) {
 	ctx := t.Context()
-
 	session := database.GetSession()
+	log := logger.GetLogger()
 
 	if _, err := session.Exec(ctx, "TRUNCATE comments, products CASCADE"); err != nil {
 		t.Errorf("error truncate comments and products, %s", err)
 		return
 	}
 
-	ps := queries.NewProductStore(session)
-	if err := ps.Create(ctx, 1, &queries.CreateProductRequest{
+	productStore := queries.NewProductStore(session, log)
+	if err := productStore.Create(ctx, 1, &queries.CreateProductRequest{
 		Name:        "new product for comments",
 		Price:       1001,
 		Description: "lalala",
@@ -27,16 +28,16 @@ func TestCommentStore(t *testing.T) {
 	}); err != nil {
 		t.Errorf("failed to create product, %s", err)
 	}
-	products, err := ps.FullList(ctx, 0, 20, 1)
+	products, err := productStore.FullList(ctx, 0, 20, 1)
 	if err != nil {
 		t.Errorf("failed to get products full list, %s", err)
 	}
 	product := products[0]
 
 	username := "adminUser"
-	cs := queries.NewCommentStore(session)
+	store := queries.NewCommentStore(session, log)
 	parentComment := &queries.CommentRequest{"", product.ID, "some content"}
-	if err := cs.Create(ctx, username, parentComment); err != nil {
+	if err := store.Create(ctx, username, parentComment); err != nil {
 		t.Errorf("failed to create parent comment, %s", err)
 	}
 	var parentCommentID string
@@ -86,7 +87,7 @@ func TestCommentStore(t *testing.T) {
 		if (i+1)%3 == 0 {
 			u = "customerUser"
 		}
-		if err := cs.Create(ctx, u, &test.comment); err != nil && !test.isErrExist {
+		if err := store.Create(ctx, u, &test.comment); err != nil && !test.isErrExist {
 			t.Errorf(`[%s] unexpected error creating comment, %s`, test.name, err)
 		}
 		if !test.isErrExist && test.comment.Parent != "" {
@@ -108,7 +109,7 @@ func TestCommentStore(t *testing.T) {
 		return
 	}
 
-	list, err := cs.List(ctx, "", product.ID, 3, 1)
+	list, err := store.List(ctx, "", product.ID, 3, 1)
 	if err != nil {
 		t.Errorf("failed to query comments list, %s", err)
 		return
@@ -129,7 +130,7 @@ func TestCommentStore(t *testing.T) {
 		}
 	}
 
-	if comment, err := cs.Get(ctx, parentCommentID); err != nil {
+	if comment, err := store.Get(ctx, parentCommentID); err != nil {
 		t.Errorf("failed to get comment, %s", err)
 	} else {
 		if comment.Body != body && comment.ID != parentCommentID {
@@ -137,12 +138,12 @@ func TestCommentStore(t *testing.T) {
 		}
 	}
 
-	if err := cs.SetActive(ctx, parentCommentID, false); err != nil {
+	if err := store.SetActive(ctx, parentCommentID, false); err != nil {
 		t.Errorf("bad CommentStore.SetActive, %s", err)
 	}
 
 	const isCommentsExistsByID = "SELECT EXISTS(SELECT 1 FROM comments WHERE id = $1::UUID OR parent = $1::UUID)"
-	if err := cs.Delete(ctx, parentCommentID); err != nil {
+	if err := store.Delete(ctx, parentCommentID); err != nil {
 		t.Errorf("failed to delete comment, %s", err)
 	} else {
 		var isExists bool
@@ -157,21 +158,21 @@ func TestCommentStore(t *testing.T) {
 
 func TestFullListComments(t *testing.T) {
 	ctx := t.Context()
-
 	session := database.GetSession()
 	if _, err := session.Exec(ctx, "TRUNCATE comments"); err != nil {
 		t.Errorf("error truncate comments, %s", err)
 		return
 	}
+	log := logger.GetLogger()
 
-	ps := queries.NewProductStore(session)
-	products, err := ps.FullList(ctx, 0, 20, 1)
+	productStore := queries.NewProductStore(session, log)
+	products, err := productStore.FullList(ctx, 0, 20, 1)
 	if err != nil {
 		t.Errorf("failed to get products full list, %s", err)
 	}
 	product := products[0]
 
-	cs := queries.NewCommentStore(session)
+	store := queries.NewCommentStore(session, log)
 	comments := []struct {
 		username string
 		queries.CommentRequest
@@ -183,7 +184,7 @@ func TestFullListComments(t *testing.T) {
 	}
 
 	for i, comment := range comments {
-		if err := cs.Create(ctx, comment.username, &comment.CommentRequest); err != nil {
+		if err := store.Create(ctx, comment.username, &comment.CommentRequest); err != nil {
 			t.Errorf(`failed to create comment "%d", %s`, i, err)
 		}
 	}
@@ -227,7 +228,7 @@ func TestFullListComments(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(st *testing.T) {
-			flist, err := cs.FullList(ctx, test.username, test.pagination, test.page)
+			flist, err := store.FullList(ctx, test.username, test.pagination, test.page)
 			if err != nil {
 				if test.expectedCount == 0 {
 					return
