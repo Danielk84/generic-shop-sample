@@ -1,7 +1,7 @@
 config.yaml
 
 generic-shop-sample
-cmd/manager
+log/
 gin.log
 app.log
 upload/

@@ -24,7 +24,7 @@ func LoginRouter(ctx context.Context, router *gin.RouterGroup) {
 		queries.NewUserStore(database.GetSession(), log),
 		cache.GetCache(cache.UsersCache),
 		log,
-		config.Opt.AuthExpiration,
+		time.Duration(config.Opt.AuthExpiration),
 	}
 
 	rl := md.NewRateLimiter(ctx, 10, 30*time.Minute, 60*time.Second)

@@ -41,6 +41,7 @@ func NewApp(ctx context.Context, config *internal.Config) *App {
 	}
 	logWriter := logger.CreateLogFile(config.Opt.AppLoggerFilepath)
 	app.openWriter = append(app.openWriter, logWriter)
+	app.config = config
 	app.log = logger.SetLogger(logLevel, logWriter)
 
 	app.setMiddlewares()

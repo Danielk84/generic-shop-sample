@@ -7,26 +7,26 @@ opt:
   origins:
     - "http://localhost:8080"
     - "http://127.0.0.1:3000"
-  database_url: "postgresql://postgres:1234@localhost:5432/mydb"
+  database_url: "postgresql://postgres:password@localhost:5432/"
   cache_url: "redis://localhost:6379"
   jwt_secret_key: "vmsi1prfkvfetemqgfyqykfotw2jidm1yqyny1ksxjrllskz4bco4cvpw1rxdaqw9dfhzrxnn62l7l6g-ypjvq"
-  pagination: "20"
-  max_multipart_memory: "10" # 10mb
+  pagination: 20
+  max_multipart_memory: 10 # 10mb
   allowed_image_mimetype:
     - "image/png"
     - "image/jpeg"
     - "image/webp"
     - "image/gif"
     - "image/avif"
-  upload_path: "/app/generic-shop-sample/upload/"
-  max_product_images_amount: "5"
-  auth_expiration: "720" # 12 hours
-  request_logger_filepath: "/app/generic-shop-sample/gin.log"
-  app_logger_filepath: "/app/generic-shop-sample/app.log"
+  upload_path: "./upload/"
+  max_product_images_amount: 5
+  auth_expiration: 720 # 12 hours
+  request_logger_filepath: "./log/gin.log"
+  app_logger_filepath: "./log/app.log"
   zp_merchant_id: "111111111111111111111111111111111111" # must be 36 
   payment_callback_url: "http://localhost:8080/api/payment/callback"
   from_email: "sample@example.com"
   smtp_host: "smtp.gmail.com"
-  smtp_port: "587"
+  smtp_port: 587
   smtp_password: "password"
   
