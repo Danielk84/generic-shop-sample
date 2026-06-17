@@ -32,8 +32,6 @@ var (
 	ErrUploadFile      = errors.New("failed to upload and save file")
 )
 
-var defaultPagination = internal.GetConfig().Opt.Pagination
-
 type RouteSpec struct {
 	Method       string
 	RelativePath string

@@ -2,6 +2,7 @@ package api
 
 import (
 	md "generic-shop-sample/app/middlewares"
+	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
@@ -12,9 +13,11 @@ import (
 
 func OrderRouter(router *gin.RouterGroup) {
 	log := logger.GetLogger()
+	config := internal.GetConfig()
 	h := orderHandler{
-		store: queries.NewOrderStore(database.GetSession(), log),
-		log:   log,
+		store:      queries.NewOrderStore(database.GetSession(), log),
+		log:        log,
+		pagination: config.Opt.Pagination,
 	}
 
 	router.Use(md.AuthMiddleware())
@@ -27,8 +30,9 @@ func OrderRouter(router *gin.RouterGroup) {
 }
 
 type orderHandler struct {
-	store queries.OrderStore
-	log   logger.Logger
+	store      queries.OrderStore
+	log        logger.Logger
+	pagination int
 }
 
 func (h *orderHandler) create(c *gin.Context) {
@@ -54,7 +58,7 @@ func (h *orderHandler) customerList(c *gin.Context) {
 	}
 
 	page := GetPage(c)
-	output, err := h.store.CustomerList(c.Request.Context(), claims.ID, defaultPagination, page)
+	output, err := h.store.CustomerList(c.Request.Context(), claims.ID, h.pagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -69,7 +73,7 @@ func (h *orderHandler) vendorList(c *gin.Context) {
 	}
 
 	page := GetPage(c)
-	output, err := h.store.VendorList(c.Request.Context(), claims.ID, defaultPagination, page)
+	output, err := h.store.VendorList(c.Request.Context(), claims.ID, h.pagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -138,9 +142,11 @@ func (h *orderHandler) verifyUserInfo(c *gin.Context) {
 
 func OrderItemsRouter(router *gin.RouterGroup) {
 	log := logger.GetLogger()
+	config := internal.GetConfig()
 	h := orderItemsHandler{
-		store: queries.NewOrderItemsStore(database.GetSession(), log),
-		log:   log,
+		store:      queries.NewOrderItemsStore(database.GetSession(), log),
+		log:        log,
+		pagination: config.Opt.Pagination,
 	}
 
 	router.Use(md.AuthMiddleware())
@@ -158,8 +164,9 @@ type ItemsTotal struct {
 }
 
 type orderItemsHandler struct {
-	store queries.OrderItemsStore
-	log   logger.Logger
+	store      queries.OrderItemsStore
+	log        logger.Logger
+	pagination int
 }
 
 func (h *orderItemsHandler) create(c *gin.Context) {
@@ -191,7 +198,7 @@ func (h *orderItemsHandler) customerList(c *gin.Context) {
 
 	id := c.Param("id")
 	page := GetPage(c)
-	output, err := h.store.CustomerList(c.Request.Context(), id, claims.ID, defaultPagination, page)
+	output, err := h.store.CustomerList(c.Request.Context(), id, claims.ID, h.pagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -207,7 +214,7 @@ func (h *orderItemsHandler) vendorList(c *gin.Context) {
 
 	id := c.Param("id")
 	page := GetPage(c)
-	output, err := h.store.VendorList(c.Request.Context(), id, claims.ID, defaultPagination, page)
+	output, err := h.store.VendorList(c.Request.Context(), id, claims.ID, h.pagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -223,7 +230,7 @@ func (h *orderItemsHandler) fullList(c *gin.Context) {
 
 	id := c.Param("id")
 	page := GetPage(c)
-	output, err := h.store.FullList(c.Request.Context(), id, defaultPagination, page)
+	output, err := h.store.FullList(c.Request.Context(), id, h.pagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return

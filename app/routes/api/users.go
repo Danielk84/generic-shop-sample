@@ -21,10 +21,12 @@ import (
 
 func UsersRouter(router *gin.RouterGroup) {
 	log := logger.GetLogger()
+	config := internal.GetConfig()
 	h := usersHandler{
-		store: queries.NewUserStore(database.GetSession(), log),
-		cache: cache.GetCache(cache.UsersCache),
-		log:   log,
+		store:      queries.NewUserStore(database.GetSession(), log),
+		cache:      cache.GetCache(cache.UsersCache),
+		log:        log,
+		pagination: config.Opt.Pagination,
 	}
 
 	router.GET("/:username", h.get)
@@ -45,9 +47,10 @@ type VerfierKey struct {
 }
 
 type usersHandler struct {
-	store queries.UserStore
-	cache cache.CacheClient
-	log   logger.Logger
+	store      queries.UserStore
+	cache      cache.CacheClient
+	log        logger.Logger
+	pagination int
 }
 
 func (h *usersHandler) createUserByAdmin(c *gin.Context) {
@@ -87,7 +90,7 @@ func (h *usersHandler) list(c *gin.Context) {
 		return
 	}
 
-	output, err := h.store.List(c.Request.Context(), defaultPagination, GetPage(c))
+	output, err := h.store.List(c.Request.Context(), h.pagination, GetPage(c))
 	if err != nil {
 		NotFound(c, "")
 		return

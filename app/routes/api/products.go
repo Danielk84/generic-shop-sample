@@ -17,12 +17,14 @@ import (
 
 func ProductsRouter(router *gin.RouterGroup) {
 	log := logger.GetLogger()
+	config := internal.GetConfig()
 	h := productsHandler{
 		store:           queries.NewProductStore(database.GetSession(), log),
 		cache:           cache.GetCache(cache.ProductsCache),
 		baseCacheKey:    "products",
 		cacheExpiration: 1 * time.Hour,
 		log:             log,
+		pagination:      config.Opt.Pagination,
 	}
 
 	router.GET("/", h.list)
@@ -50,6 +52,7 @@ type productsHandler struct {
 	baseCacheKey    string
 	cacheExpiration time.Duration
 	log             logger.Logger
+	pagination      int
 }
 
 func (h *productsHandler) create(c *gin.Context) {
@@ -80,7 +83,7 @@ func (h *productsHandler) list(c *gin.Context) {
 	if err := GetJSONCache(ctx, h.cache, cacheKey, &output); err != nil {
 		LogCacheErr("HGetAll", cacheKey, err)
 
-		output, err = h.store.List(ctx, defaultPagination, page)
+		output, err = h.store.List(ctx, h.pagination, page)
 		if err != nil {
 			NotFound(c, "")
 			return
@@ -109,7 +112,7 @@ func (h *productsHandler) fullList(c *gin.Context) {
 	if err := GetJSONCache(ctx, h.cache, cacheKey, &output); err != nil {
 		LogCacheErr("HGetAll", cacheKey, err)
 
-		output, err = h.store.FullList(ctx, id, defaultPagination, page)
+		output, err = h.store.FullList(ctx, id, h.pagination, page)
 		if err != nil {
 			NotFound(c, "")
 			return

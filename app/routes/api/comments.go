@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	md "generic-shop-sample/app/middlewares"
+	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/database"
@@ -16,12 +17,14 @@ import (
 
 func CommentsRouter(router *gin.RouterGroup) {
 	log := logger.GetLogger()
+	config := internal.GetConfig()
 	ch := commentsHandler{
 		store:           queries.NewCommentStore(database.GetSession(), log),
 		cache:           cache.GetCache(cache.PublicCache),
 		baseCacheKey:    "comments",
 		cacheExpiration: 1 * time.Hour,
 		log:             log,
+		pagination:      config.Opt.Pagination,
 	}
 
 	router.GET("/", ch.list)
@@ -46,6 +49,7 @@ type commentsHandler struct {
 	baseCacheKey    string
 	cacheExpiration time.Duration
 	log             logger.Logger
+	pagination      int
 }
 
 func (h *commentsHandler) create(c *gin.Context) {
@@ -98,7 +102,7 @@ func (h *commentsHandler) list(c *gin.Context) {
 	if err := GetJSONCache(ctx, h.cache, cacheKey, &output); err != nil {
 		LogCacheErr("HGetAll", cacheKey, err)
 
-		output, err = h.store.List(ctx, input.Parent, url.QueryEscape(input.Referrer), defaultPagination, GetPage(c))
+		output, err = h.store.List(ctx, input.Parent, url.QueryEscape(input.Referrer), h.pagination, GetPage(c))
 		if err != nil {
 			NotFound(c, "")
 			return
@@ -122,7 +126,7 @@ func (h *commentsHandler) fullList(c *gin.Context) {
 	var output []queries.RelatedCommentResponse
 	if err := h.cache.HGetAll(ctx, cacheKey).Scan(&output); err != nil {
 		LogCacheErr("HGetAll", cacheKey, err)
-		output, err = h.store.FullList(ctx, username, defaultPagination, GetPage(c))
+		output, err = h.store.FullList(ctx, username, h.pagination, GetPage(c))
 		if err != nil {
 			NotFound(c, "")
 			return
