@@ -27,12 +27,12 @@ func TestUsersHandler(t *testing.T) {
 
 	app := tu.RouterSetup(ctx)
 	log := logger.GetLogger()
-	us := queries.NewUserStore(database.GetSession(), log)
+	store := queries.NewUserStore(database.GetSession(), log)
 	adminToken := tu.LoginSetup(app, "admin_user", "securePassword")
 	admin2Token := tu.LoginSetup(app, "admin_user2", "securePassword")
 	customerToken := tu.LoginSetup(app, "customer_user", "securePassword")
 
-	blockUser, _ := us.Get(ctx, "block_user")
+	blockUser, _ := store.Get(ctx, "block_user")
 
 	tests := []struct {
 		name   string
@@ -51,7 +51,7 @@ func TestUsersHandler(t *testing.T) {
 			adminToken,
 			http.StatusCreated,
 			func(st *testing.T, w *httptest.ResponseRecorder) {
-				if isExists := us.IsUsernameExists(ctx, "new-user-by-admin"); !isExists {
+				if isExists := store.IsUsernameExists(ctx, "new-user-by-admin"); !isExists {
 					st.Errorf("failed to create new user by admin")
 				}
 			},
@@ -146,7 +146,7 @@ func TestUsersHandler(t *testing.T) {
 		t.Run(test.name, func(st *testing.T) {
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest(test.method, test.url, test.body)
-			req.Header.Set("Authorization", test.token)
+			tu.AddAuthCookie(req, test.token)
 			app.ServeHTTP(w, req)
 			if w.Code != test.code {
 				st.Errorf(`expected status="%d", but got "%d"`, test.code, w.Code)
@@ -178,7 +178,7 @@ func TestUserProfileHandler(t *testing.T) {
 
 	// testing userProfileHandler.uploadProfileImg
 	_, p, _, _ := runtime.Caller(0)
-	basePath := filepath.Join(filepath.Dir(p), "..", "..", "internal", "testutils", "testfile", "temp.jpeg")
+	basePath := filepath.Join(filepath.Dir(p), "..", "..", "..", "internal", "testutils", "testfile", "temp.jpeg")
 	w = httptest.NewRecorder()
 	req, err := tu.FileUploadRequest(fmt.Sprintf("%supload", baseUserProfileURL), tokenString, "file", basePath)
 	if err != nil {
@@ -191,14 +191,14 @@ func TestUserProfileHandler(t *testing.T) {
 	}
 
 	log := logger.GetLogger()
-	us := queries.NewUserStore(database.GetSession(), log)
-	user, err := us.Get(ctx, "vendor_user")
+	userStore := queries.NewUserStore(database.GetSession(), log)
+	user, err := userStore.Get(ctx, "vendor_user")
 	if err != nil {
 		t.Errorf("failed to get user, %s", err)
 	}
 
-	ups := queries.NewUserProfileStore(database.GetSession(), log)
-	imgPath, err := ups.GetImgPath(ctx, user.ID)
+	userProfileStore := queries.NewUserProfileStore(database.GetSession(), log)
+	imgPath, err := userProfileStore.GetImgPath(ctx, user.ID)
 	if err != nil || imgPath == "" {
 		t.Errorf(`failed to save img in database, imgPath="%s", %s`, imgPath, err)
 	}
@@ -210,7 +210,7 @@ func TestUserProfileHandler(t *testing.T) {
 	// testing userProfileHandler.deleteImgFile
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest(http.MethodDelete, baseUserProfileURL, nil)
-	req.Header.Set("Authorization", tokenString)
+	tu.AddAuthCookie(req, tokenString)
 	app.ServeHTTP(w, req)
 	if w.Code != http.StatusNoContent {
 		t.Errorf(`expected status="%d", but got "%d"`, http.StatusNoContent, w.Code)

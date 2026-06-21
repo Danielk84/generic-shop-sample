@@ -25,7 +25,7 @@ func CategoriesRouter(router *gin.RouterGroup) {
 
 	router.GET("/", h.list)
 
-	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware()}, []RouteSpec{
+	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(log)}, []RouteSpec{
 		{http.MethodPost, "/", []gin.HandlerFunc{h.create}},
 		{http.MethodDelete, "/:id", []gin.HandlerFunc{h.delete}},
 	})
@@ -113,7 +113,7 @@ func PCRouter(router *gin.RouterGroup) {
 	}
 
 	router.GET("/:id", h.list)
-	router.POST("/set-tags/:id", md.AuthMiddleware(), h.setTags)
+	router.POST("/set-tags/:id", md.AuthMiddleware(log), h.setTags)
 }
 
 type PC struct {

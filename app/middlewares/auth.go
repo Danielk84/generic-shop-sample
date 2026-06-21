@@ -16,7 +16,7 @@ type userContextKey struct{}
 
 var userKey = userContextKey{}
 
-func AuthMiddleware() gin.HandlerFunc {
+func AuthMiddleware(log logger.Logger) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var tokenString string
 		if cookie, err := c.Cookie("__Host-auth-token"); err == nil {
@@ -27,19 +27,21 @@ func AuthMiddleware() gin.HandlerFunc {
 			if !found {
 				c.Header("WWW-Authenticate", "Bearer")
 				c.AbortWithStatus(http.StatusUnauthorized)
+				log.Debug("AuthMiddleware", "error", "invalid cookie")
 				return
 			}
 		}
 		claims, err := auth.TokenDecoder(tokenString)
 		if err != nil {
+			log.Debug("AuthMiddleware:invalid token", "token", tokenString)
 			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}
-		log := logger.GetLogger()
-		us := queries.NewUserStore(database.GetSession(), log)
+		store := queries.NewUserStore(database.GetSession(), log)
 		ctx := c.Request.Context()
-		if !us.IsValidUser(ctx, &queries.ValidUserRquest{ID: claims.ID, Username: claims.Username, PermissionType: claims.PermissionType}) {
+		if !store.IsValidUser(ctx, &queries.ValidUserRquest{ID: claims.ID, Username: claims.Username, PermissionType: claims.PermissionType}) {
 			c.AbortWithStatus(http.StatusNotFound)
+			log.Debug("AuthMiddleware:invalid user", "username", claims.Username)
 			return
 		}
 		ctx = context.WithValue(ctx, userKey, claims)

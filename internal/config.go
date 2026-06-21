@@ -18,7 +18,7 @@ type Option struct {
 	JWTSecretKey           string   `yaml:"jwt_secret_key" binding:"required,ascii"`
 	Pagination             int      `yaml:"pagination" binding:"required,min=0"`
 	MaxMultipartMemory     int64    `yaml:"max_multipart_memory" binding:"required,min=0"`
-	AllowedImgMimetype     []string `yaml:"allowed_img_mimetype" binding:"dive,required,mimetype=image/*"`
+	AllowedImgMimetype     []string `yaml:"allowed_image_mimetype" binding:"required,dive,required"`
 	UploadPath             string   `yaml:"upload_path" binding:"required,dirpath"`
 	MaxProductImagesAmount int      `yaml:"max_product_images_amount" binding:"required,min=5"`
 	AuthExpiration         int      `yaml:"auth_expiration" binding:"required,min=0"`

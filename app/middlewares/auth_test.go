@@ -10,6 +10,7 @@ import (
 	"generic-shop-sample/storage/queries"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -18,18 +19,23 @@ import (
 )
 
 func TestAuthMiddleware(t *testing.T) {
-	db := tu.DBManagerSetup(t.Context())
+	ctx := t.Context()
+	db := tu.DBManagerSetup(ctx)
 	defer db.Close()
 
-	log := logger.GetLogger()
-	us := queries.NewUserStore(database.GetSession(), log)
-	if err := us.Create(t.Context(), &queries.CreateUserRequest{
+	session := database.GetSession()
+	log := logger.SetLogger(logger.LevelDebug, os.Stdout)
+	if _, err := session.Exec(ctx, "TRUNCATE users RESTART IDENTITY CASCADE"); err != nil {
+		t.Fatal(err)
+	}
+	store := queries.NewUserStore(session, log)
+	if err := store.Create(ctx, &queries.CreateUserRequest{
 		LoginRequest:          queries.LoginRequest{Username: "auth_user", Password: "securePassword"},
 		UserPermissionRequest: queries.UserPermissionRequest{PermissionType: queries.Admin, IsActive: true},
 	}); err != nil {
 		t.Errorf("failed to create user, %s", err)
 	}
-	user, _ := us.Get(t.Context(), "auth_user")
+	user, _ := store.Get(ctx, "auth_user")
 
 	baseClaims := auth.AuthClaims{
 		ID:             user.ID,
@@ -46,7 +52,7 @@ func TestAuthMiddleware(t *testing.T) {
 		t.Errorf("failed to encode token string, %s", err)
 	}
 	router := gin.Default()
-	router.Use(md.AuthMiddleware())
+	router.Use(md.AuthMiddleware(log))
 	router.GET("/", func(c *gin.Context) {
 		claims := md.GetUserClaims(c)
 		if claims.ID == baseClaims.ID &&

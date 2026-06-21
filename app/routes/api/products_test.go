@@ -27,15 +27,15 @@ func TestProductsHandler(t *testing.T) {
 
 	session := database.GetSession()
 	log := logger.GetLogger()
-	us := queries.NewUserStore(session, log)
-	vendor, _ := us.Get(ctx, "vendor_user")
+	userStore := queries.NewUserStore(session, log)
+	vendor, _ := userStore.Get(ctx, "vendor_user")
 
 	if _, err := session.Exec(ctx, "TRUNCATE products RESTART IDENTITY CASCADE"); err != nil {
 		t.Errorf("failed to truncate products, %s", err)
 	}
-	ps := queries.NewProductStore(session)
+	productStore := queries.NewProductStore(session, log)
 	for i := range 10 {
-		if err := ps.Create(ctx, vendor.ID, &queries.CreateProductRequest{
+		if err := productStore.Create(ctx, vendor.ID, &queries.CreateProductRequest{
 			Name:        fmt.Sprintf("product - %d", i),
 			Price:       10,
 			Description: "some info",
@@ -49,7 +49,7 @@ func TestProductsHandler(t *testing.T) {
 		t.Errorf("failed to activate products, %s", err)
 	}
 
-	products, err := ps.FullList(ctx, 0, 10, 1)
+	products, err := productStore.FullList(ctx, 0, 10, 1)
 	if err != nil {
 		t.Errorf("failed to get full products list, %s", err)
 	}
@@ -193,7 +193,7 @@ func TestProductsHandler(t *testing.T) {
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest(test.method, test.url, test.body)
 			if test.token != "" {
-				req.Header.Set("Authorization", test.token)
+				tu.AddAuthCookie(req, test.token)
 			}
 			app.ServeHTTP(w, req)
 			if w.Code != test.code {
@@ -214,18 +214,18 @@ func TestProductImagesRouter(t *testing.T) {
 	app := tu.RouterSetup(ctx)
 	session := database.GetSession()
 	log := logger.GetLogger()
-	us := queries.NewUserStore(session, log)
-	vendor, _ := us.Get(ctx, "vendor_user")
+	userStore := queries.NewUserStore(session, log)
+	vendor, _ := userStore.Get(ctx, "vendor_user")
 	vendorToken := tu.LoginSetup(app, "vendor_user", "securePassword")
-	ps := queries.NewProductStore(session)
-	products, err := ps.FullList(ctx, vendor.ID, 20, 1)
+	productStore := queries.NewProductStore(session, log)
+	products, err := productStore.FullList(ctx, vendor.ID, 20, 1)
 	if err != nil {
 		t.Errorf("failed to get vendor's products full list, %s", err)
 	}
 
 	// testing productImagesHandler.create
 	_, p, _, _ := runtime.Caller(0)
-	basePath := filepath.Join(filepath.Dir(p), "..", "..", "internal", "testutils", "testfile", "temp.jpeg")
+	basePath := filepath.Join(filepath.Dir(p), "..", "..", "..", "internal", "testutils", "testfile", "temp.jpeg")
 	w := httptest.NewRecorder()
 	req, err := tu.FileUploadRequest(fmt.Sprintf("%s%s", baseProductImagesURL, products[0].ID), vendorToken, "file", basePath)
 	if err != nil {
@@ -254,7 +254,7 @@ func TestProductImagesRouter(t *testing.T) {
 	// testing productImagesHandler.delete
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest(http.MethodDelete, fmt.Sprintf("%s%s/%s", baseProductImagesURL, products[0].ID, resJson[0]["id"]), nil)
-	req.Header.Set("Authorization", vendorToken)
+	tu.AddAuthCookie(req, vendorToken)
 	app.ServeHTTP(w, req)
 	if w.Code != http.StatusNoContent {
 		t.Errorf(`expected status="%d", but got "%d"`, http.StatusNoContent, w.Code)

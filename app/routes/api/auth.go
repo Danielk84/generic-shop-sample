@@ -31,7 +31,7 @@ func LoginRouter(ctx context.Context, router *gin.RouterGroup) {
 	RegisterRoutesWith(router, []gin.HandlerFunc{rl.RateLimiterMiddleware()}, []RouteSpec{
 		{http.MethodPost, "/login", []gin.HandlerFunc{h.login}},
 	})
-	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware()}, []RouteSpec{
+	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(log)}, []RouteSpec{
 		{http.MethodGet, "/ping", []gin.HandlerFunc{h.ping}},
 	})
 }

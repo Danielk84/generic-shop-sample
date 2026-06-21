@@ -26,16 +26,16 @@ func TestCommentsHandler(t *testing.T) {
 	}
 
 	log := logger.GetLogger()
-	us := queries.NewUserStore(session, log)
-	customer, err := us.Get(ctx, "customer_user")
+	userStore := queries.NewUserStore(session, log)
+	customer, err := userStore.Get(ctx, "customer_user")
 	if err != nil {
 		t.Errorf("failed to get customer user, %s", err)
 	}
 	customerToken := tu.LoginSetup(app, "customer_user", "securePassword")
 	adminToken := tu.LoginSetup(app, "admin_user", "securePassword")
 
-	ps := queries.NewProductStore(session)
-	if err := ps.Create(ctx, 1, &queries.CreateProductRequest{
+	productStore := queries.NewProductStore(session, log)
+	if err := productStore.Create(ctx, 1, &queries.CreateProductRequest{
 		Name:        "new product for comments",
 		Price:       1001,
 		Description: "lalala",
@@ -44,15 +44,15 @@ func TestCommentsHandler(t *testing.T) {
 	}); err != nil {
 		t.Errorf("failed to create product, %s", err)
 	}
-	products, err := ps.FullList(ctx, 0, 20, 1)
+	products, err := productStore.FullList(ctx, 0, 20, 1)
 	if err != nil {
 		t.Errorf("failed to get products full list, %s", err)
 	}
 	product := products[0]
 
-	cs := queries.NewCommentStore(session)
+	commentStore := queries.NewCommentStore(session, log)
 	referrer := product.ID
-	if err = cs.Create(ctx, customer.Username, &queries.CommentRequest{
+	if err = commentStore.Create(ctx, customer.Username, &queries.CommentRequest{
 		Parent:   "",
 		Referrer: referrer,
 		Body:     "yeppi",
@@ -62,7 +62,7 @@ func TestCommentsHandler(t *testing.T) {
 	if _, err := session.Exec(ctx, "UPDATE comments SET is_active = true"); err != nil {
 		t.Errorf("failed to activate comments, %s", err)
 	}
-	parents, err := cs.List(ctx, "", referrer, 20, 1)
+	parents, err := commentStore.List(ctx, "", referrer, 20, 1)
 	if err != nil {
 		t.Errorf("failed to get comments list, %s", err)
 	}
@@ -151,11 +151,12 @@ func TestCommentsHandler(t *testing.T) {
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest(test.method, test.url, test.body)
 			if test.token != "" {
-				req.Header.Set("Authorization", test.token)
+				tu.AddAuthCookie(req, test.token)
 			}
 			app.ServeHTTP(w, req)
 			if w.Code != test.code {
 				st.Errorf(`expected status="%d", but got "%d"`, test.code, w.Code)
+				st.Errorf(`token="%s"`, test.token)
 			}
 			if test.after != nil {
 				test.after(st, w)

@@ -29,7 +29,7 @@ func CommentsRouter(router *gin.RouterGroup) {
 
 	router.GET("/", ch.list)
 
-	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware()}, []RouteSpec{
+	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(log)}, []RouteSpec{
 		{http.MethodPost, "/", []gin.HandlerFunc{ch.create}},
 		{http.MethodGet, "/full", []gin.HandlerFunc{ch.fullList}},
 		{http.MethodGet, "/overview/:id", []gin.HandlerFunc{ch.get}},

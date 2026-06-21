@@ -2,6 +2,7 @@ package auth_test
 
 import (
 	"generic-shop-sample/internal/auth"
+	tu "generic-shop-sample/internal/testutils"
 	"generic-shop-sample/storage/queries"
 	"reflect"
 	"testing"
@@ -11,6 +12,7 @@ import (
 )
 
 func TestJWTToken(t *testing.T) {
+	_ = tu.GetConfig()
 	t.Run("validate claims data", func(st *testing.T) {
 		claims := auth.AuthClaims{
 			ID:             123,

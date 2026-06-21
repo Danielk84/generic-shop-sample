@@ -41,7 +41,7 @@ func PaymentRouter(ctx context.Context, router *gin.RouterGroup) {
 	rl := md.NewRateLimiter(ctx, 10, 30*time.Minute, 60*time.Second)
 	router.Use(rl.RateLimiterMiddleware())
 	router.GET("/callback", ph.callback)
-	router.POST("/:id", md.AuthMiddleware(), ph.init)
+	router.POST("/:id", md.AuthMiddleware(log), ph.init)
 }
 
 type UserPayment struct {

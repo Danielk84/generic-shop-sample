@@ -67,9 +67,15 @@ func LoginSetup(app *gin.Engine, username, password string) string {
 	body, _ := json.Marshal(map[string]string{"username": username, "password": password})
 	req, _ := http.NewRequest(http.MethodPost, "/api/auth/login", bytes.NewBuffer(body))
 	app.ServeHTTP(w, req)
-	var resJson map[string]string
-	_ = json.NewDecoder(w.Body).Decode(&resJson)
-	return resJson["token"]
+	cokies := w.Result().Cookies()
+	return cokies[0].Value
+}
+
+func AddAuthCookie(req *http.Request, authToken string) {
+	cookie := http.Cookie{}
+	cookie.Name = "__Host-auth-token"
+	cookie.Value = authToken
+	req.AddCookie(&cookie)
 }
 
 func FileUploadRequest(url, token, fileName, path string) (*http.Request, error) {
@@ -95,6 +101,6 @@ func FileUploadRequest(url, token, fileName, path string) (*http.Request, error)
 
 	req, err := http.NewRequest(http.MethodPost, url, body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-	req.Header.Set("Authorization", token)
+	AddAuthCookie(req, token)
 	return req, err
 }

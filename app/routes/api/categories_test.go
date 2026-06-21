@@ -3,6 +3,7 @@ package api_test
 import (
 	"bytes"
 	"fmt"
+	"generic-shop-sample/internal/logger"
 	tu "generic-shop-sample/internal/testutils"
 	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
@@ -60,7 +61,7 @@ func TestCategoriesHandler(t *testing.T) {
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest(test.method, test.url, test.body)
 			if test.token != "" {
-				req.Header.Set("Authorization", test.token)
+				tu.AddAuthCookie(req, test.token)
 			}
 			app.ServeHTTP(w, req)
 			if w.Code != test.code {
@@ -80,8 +81,9 @@ func TestPCHandler(t *testing.T) {
 	adminToken := tu.LoginSetup(app, "admin_user", "securePassword")
 
 	session := database.GetSession()
-	ps := queries.NewProductStore(session)
-	if err := ps.Create(ctx, 1, &queries.CreateProductRequest{
+	log := logger.GetLogger()
+	productStore := queries.NewProductStore(session, log)
+	if err := productStore.Create(ctx, 1, &queries.CreateProductRequest{
 		Name:        "new model",
 		Price:       1233,
 		Description: "some info",
@@ -93,14 +95,17 @@ func TestPCHandler(t *testing.T) {
 	if _, err := session.Exec(ctx, "UPDATE products SET is_active = true"); err != nil {
 		t.Errorf("failed to activate products, %s", err)
 	}
-	products, err := ps.List(ctx, 20, 1)
+	products, err := productStore.List(ctx, 20, 1)
 	if err != nil {
 		t.Errorf("failed to get products list, %s", err)
 	}
 
-	cs := queries.NewCategoryStore(session)
+	if _, err := session.Exec(ctx, "TRUNCATE categories, products_categories RESTART IDENTITY CASCADE"); err != nil {
+		t.Fatal(err)
+	}
+	categoryStore := queries.NewCategoryStore(session, log)
 	for _, tag := range []string{"a", "b", "c"} {
-		if err := cs.Create(ctx, tag); err != nil {
+		if err := categoryStore.Create(ctx, tag); err != nil {
 			t.Errorf(`failed to create tag, %s, %s`, tag, err)
 		}
 	}
@@ -108,7 +113,7 @@ func TestPCHandler(t *testing.T) {
 	// testing pcHandler.setTag
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("%sset-tags/%s", basePCURL, products[0].ID), bytes.NewBuffer([]byte(`{"tags": ["a", "b", "c"]}`)))
-	req.Header.Set("Authorization", adminToken)
+	tu.AddAuthCookie(req, adminToken)
 	app.ServeHTTP(w, req)
 	if w.Code != http.StatusAccepted {
 		t.Errorf(`expected status="%d", but got "%d"`, http.StatusAccepted, w.Code)

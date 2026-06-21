@@ -20,7 +20,7 @@ func OrderRouter(router *gin.RouterGroup) {
 		pagination: config.Opt.Pagination,
 	}
 
-	router.Use(md.AuthMiddleware())
+	router.Use(md.AuthMiddleware(log))
 	router.POST("/", h.create)
 	router.GET("/customer", h.customerList)
 	router.GET("/vendor", h.vendorList)
@@ -149,7 +149,7 @@ func OrderItemsRouter(router *gin.RouterGroup) {
 		pagination: config.Opt.Pagination,
 	}
 
-	router.Use(md.AuthMiddleware())
+	router.Use(md.AuthMiddleware(log))
 	router.POST("/", h.create)
 	router.DELETE("/", h.delete)
 	router.GET("/customer/:id", h.customerList)

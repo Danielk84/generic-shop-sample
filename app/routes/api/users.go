@@ -31,7 +31,7 @@ func UsersRouter(router *gin.RouterGroup) {
 
 	router.GET("/:username", h.get)
 
-	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware()}, []RouteSpec{
+	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(log)}, []RouteSpec{
 		{http.MethodGet, "/", []gin.HandlerFunc{h.list}},
 		{http.MethodPost, "/", []gin.HandlerFunc{h.createUserByAdmin}},
 		{http.MethodDelete, "/", []gin.HandlerFunc{h.delete}},
@@ -234,7 +234,7 @@ func UserProfileRouter(router *gin.RouterGroup) {
 		fileUploader: GetFileUploader(config, log),
 	}
 
-	router.Use(md.AuthMiddleware())
+	router.Use(md.AuthMiddleware(log))
 	router.POST("/", h.upsert)
 	router.POST("/upload", h.uploadProfileImg)
 	router.DELETE("/", h.deleteImgPath)

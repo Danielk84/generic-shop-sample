@@ -81,7 +81,7 @@ func (u *uploadFile) local(file *multipart.FileHeader, claims *auth.AuthClaims, 
 		u.log.Warn("uploadFile.local", "step", "file.open", "error", err)
 		return "", ErrReadFile
 	}
-	defer src.Close()
+	defer func() { _ = src.Close() }()
 
 	buf := make([]byte, 512)
 	n, err := src.Read(buf)
@@ -94,7 +94,11 @@ func (u *uploadFile) local(file *multipart.FileHeader, claims *auth.AuthClaims, 
 		return "", ErrOperationFailed
 	}
 	mtype := mimetype.Detect(buf[:n])
-	if !mimetype.EqualsAny(mtype.String(), u.config.Opt.AllowedImgMimetype...) {
+	if mtypeStr := mtype.String(); !mimetype.EqualsAny(mtypeStr, u.config.Opt.AllowedImgMimetype...) {
+		u.log.Debug("uploadFile.local",
+			"step", "mimetype.Detect",
+			"mimeType", mtypeStr,
+			"expected", u.config.Opt.AllowedImgMimetype)
 		return "", ErrInvalidMimeType
 	}
 
@@ -113,7 +117,7 @@ func (u *uploadFile) local(file *multipart.FileHeader, claims *auth.AuthClaims, 
 		u.log.Error("uploadFile.local", "step", "os.Create", "error", err)
 		return "", ErrOperationFailed
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 
 	if _, err := io.Copy(out, src); err != nil {
 		u.log.Error("uploadFile.local", "step", "io.Copy", "error", err)

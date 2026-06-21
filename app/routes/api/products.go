@@ -28,7 +28,7 @@ func ProductsRouter(router *gin.RouterGroup) {
 	}
 
 	router.GET("/", h.list)
-	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware()}, []RouteSpec{
+	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(log)}, []RouteSpec{
 		{http.MethodPost, "/", []gin.HandlerFunc{h.create}},
 		{http.MethodPut, "/", []gin.HandlerFunc{h.update}},
 		{http.MethodDelete, "/:id", []gin.HandlerFunc{h.delete}},
@@ -293,7 +293,7 @@ func ProductImagesRouter(router *gin.RouterGroup) {
 
 	router.GET("/:productID", h.list)
 
-	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware()}, []RouteSpec{
+	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(log)}, []RouteSpec{
 		{http.MethodPost, "/:productID", []gin.HandlerFunc{h.create}},
 		{http.MethodDelete, "/:productID/:id", []gin.HandlerFunc{h.delete}},
 	})
@@ -330,11 +330,13 @@ func (h *productImagesHandler) create(c *gin.Context) {
 
 	file, err := c.FormFile("file")
 	if err != nil {
+		h.log.Debug("productImagesHandler.create:c.FormFile", "error", err)
 		BadRequest(c, "")
 		return
 	}
 	resultPath, err := h.fileUploader(file, claims, "product-images", "")
 	if err != nil {
+		h.log.Debug("productImagesHandler.create:h.fileUploader", "error", err)
 		BadRequest(c, "")
 		return
 	}

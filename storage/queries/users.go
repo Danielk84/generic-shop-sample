@@ -253,7 +253,7 @@ func (u *UserRepository) VerifyPhoneNumber(ctx context.Context, userID int32, is
 
 type UserProfileRequest struct {
 	Birthday string `json:"birthday" binding:"required,date"`
-	Bio      string `json:"bio" binding:"required,len=450"`
+	Bio      string `json:"bio" binding:"required,max=450"`
 }
 
 type UserProfileRepository struct {

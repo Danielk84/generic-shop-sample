@@ -45,13 +45,18 @@ func TestMain(m *testing.M) {
 	}
 
 	log := logger.GetLogger()
-	us := queries.NewUserStore(session, log)
+	store := queries.NewUserStore(session, log)
 	errs := []error{}
 	var err error
+	// if _, err := session.Exec(ctx,
+	// 	"TRUNCATE users, products, categories RESTART IDENTITY CASCADE",
+	// ); err != nil {
+	// 	errs = append(errs, err)
+	// }
 	for _, user := range users {
 		if user.Password, err = auth.PasswordHash(user.Password); err != nil {
 			errs = append(errs, err)
-		} else if err = us.Create(ctx, &user); err != nil {
+		} else if err = store.Create(ctx, &user); err != nil {
 			errs = append(errs, err)
 		}
 	}
