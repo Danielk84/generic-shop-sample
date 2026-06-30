@@ -7,3 +7,39 @@ gin.log
 app.log
 upload/
 dist/
+
+# Logs
+client/logs
+client/*.log
+client/npm-debug.log*
+client/yarn-debug.log*
+client/yarn-error.log*
+client/pnpm-debug.log*
+client/lerna-debug.log*
+client/node_modules
+client/.DS_Store
+client/dist
+client/dist-ssr
+client/coverage
+client/*.local
+
+# Editor directories and files
+client/.vscode/*
+client/.idea
+client/*.suo
+client/*.ntvs*
+client/*.njsproj
+client/*.sln
+client/*.sw?
+client/*.tsbuildinfo
+client/.eslintcache
+
+# Cypress
+client//cypress/videos/
+client/cypress/screenshots/
+
+# Vitest
+client/__screenshots__/
+
+# Vite
+client/*.timestamp-*-*.mjs
