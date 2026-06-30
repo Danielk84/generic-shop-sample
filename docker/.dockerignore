@@ -1,2 +1,9 @@
 .git
-.env
+config.yaml
+
+generic-shop-sample
+log/
+gin.log
+app.log
+upload/
+dist/

@@ -5,3 +5,4 @@ log/
 gin.log
 app.log
 upload/
+dist/

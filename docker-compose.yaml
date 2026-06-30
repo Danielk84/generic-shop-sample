@@ -1,30 +1,74 @@
 services:
-  web:
+  backend:
+    container_name: backend
     build:
       context: .
-      dockerfile: docker/app.Dockerfile
+      dockerfile: docker/server.Dockerfile
     ports:
       - "8080:8080"
-    volumes:
-      - ./.env:/app/.env
-    env_file: .env
-    depends_on:
-      - psql
-      - rdb
-
-  psql:
-    image: postgres:17.6-alpine3.22
-    ports:
-      - "5432:5432"
     environment:
-      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      MIGRATE_VERSION: ${MIGRATE_VERSION:-10}
     volumes:
-      - psql-data:/var/lib/postgresql/data
-  
-  rdb:
-    image: redis:8.2-alpine
-    ports:
-      - "6379:6379"
+      - type: bind
+        source: ${BACKEND_CONFIG:-./docker/configs/server.yaml}
+        target: "/app/config.yaml"
+        read_only: true
+      - backend-deps:/go
+      - backend-build-cache:/root/.cache/go-build
+      - backend-upload:/app/upload
+      - backend-logs:/app/logs
+    networks:
+      - server
+    depends_on:
+      database:
+        condition: service_healthy
+        restart: true
+      cache:
+        condition: service_healthy
+        restart: true
+
+  database:
+    image: postgres:18-alpine3.24
+    container_name: database
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    volumes:
+      - database-data:/var/lib/postgresql
+    networks:
+      - server
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-U", "${POSTGRES_USER:-postgres}", "-d", "${POSTGRES_DB:-postgres}"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+
+  cache:
+    container_name: cache
+    image: redis:8-alpine
+    restart: always
+    networks:
+      - server
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 volumes:
-  psql-data:
+  backend-deps:
+  backend-build-cache:
+  backend-upload:
+  backend-logs:
+  database-data:
+
+networks:
+  server:
+

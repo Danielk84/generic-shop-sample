@@ -7,8 +7,8 @@ opt:
   origins:
     - "http://localhost:8080"
     - "http://127.0.0.1:3000"
-  database_url: "postgresql://postgres:password@localhost:5432/"
-  cache_url: "redis://localhost:6379"
+  database_url: "postgresql://postgres:password@database:5432/"
+  cache_url: "redis://cache:6379"
   jwt_secret_key: "vmsi1prfkvfetemqgfyqykfotw2jidm1yqyny1ksxjrllskz4bco4cvpw1rxdaqw9dfhzrxnn62l7l6g-ypjvq"
   pagination: 20
   max_multipart_memory: 10 # 10mb
