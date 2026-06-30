@@ -18,28 +18,26 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type (
+	dbContextKey    struct{}
+	cacheContextKey struct{}
+)
+
+var (
+	dbKey    = dbContextKey{}
+	cacheKey = cacheContextKey{}
+)
+
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
 	rootCmd := &cobra.Command{
-		Use:     "cmd",
-		Short:   "app manager cli",
-		Example: `cmd -c="path/to/file" [commands]`,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			configFile, err := cmd.Flags().GetString("config")
-			if err != nil {
-				return err
-			}
-			config := internal.NewConfig(configFile)
-			db, err := database.New(ctx, config.Opt.DatabaseURL)
-			if err != nil {
-				return fmt.Errorf("invalid DATABASE_URL opt variable, %s", err)
-			}
-			defer db.Close()
-			fmt.Println(configFile)
-			return nil
-		},
+		Use:                "cmd",
+		Short:              "app manager cli",
+		Example:            `cmd -c="path/to/file" [commands]`,
+		PersistentPreRunE:  persistentPreRunE,
+		PersistentPostRunE: persistentPostRunE,
 	}
 	setSubCommands(rootCmd)
 
@@ -47,6 +45,40 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+}
+
+func persistentPreRunE(cmd *cobra.Command, args []string) error {
+	configFile, err := cmd.Flags().GetString("config")
+	if err != nil {
+		return err
+	}
+	config := internal.NewConfig(configFile)
+
+	internal.SetCustomValidators()
+
+	ctx := cmd.Context()
+	db, err := database.New(ctx, config.Opt.DatabaseURL)
+	if err != nil {
+		return fmt.Errorf("invalid DATABASE_URL opt variable, %s", err)
+	}
+	ctx = context.WithValue(ctx, dbKey, db)
+	cmd.SetContext(ctx)
+
+	return nil
+}
+
+func persistentPostRunE(cmd *cobra.Command, args []string) error {
+	ctx := cmd.Context()
+
+	db, ok := ctx.Value(dbKey).(database.DB)
+	if ok {
+		db.Close()
+	}
+	cache, ok := ctx.Value(cacheKey).(cache.CacheManager)
+	if ok {
+		cache.Close()
+	}
+	return nil
 }
 
 func setSubCommands(rootCmd *cobra.Command) {
@@ -81,7 +113,7 @@ func newAdmin(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	us := queries.NewUserStore(database.GetSession(), logger.GetLogger())
+	store := queries.NewUserStore(database.GetSession(), logger.GetLogger())
 	user := queries.CreateUserRequest{
 		LoginRequest: queries.LoginRequest{
 			Username: username,
@@ -102,7 +134,7 @@ func newAdmin(cmd *cobra.Command, args []string) error {
 	if user.Password, err = auth.PasswordHash(password); err != nil {
 		return fmt.Errorf("failed to hash password, %s", err)
 	}
-	if err = us.Create(cmd.Context(), &user); err != nil {
+	if err = store.Create(cmd.Context(), &user); err != nil {
 		return fmt.Errorf("failed to create admin, %s", err)
 
 	}
@@ -118,7 +150,8 @@ func run(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	defer cache.Close()
+	ctx = context.WithValue(ctx, cacheKey, cache)
+	cmd.SetContext(ctx)
 
 	server := app.NewApp(ctx, config)
 	server.Run()

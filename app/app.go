@@ -45,7 +45,6 @@ func NewApp(ctx context.Context, config *internal.Config) *App {
 	app.log = logger.SetLogger(logLevel, logWriter)
 
 	app.setMiddlewares()
-	internal.SetCustomValidators()
 	app.setRoutes()
 
 	return app
