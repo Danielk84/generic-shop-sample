@@ -8,7 +8,7 @@ const SearchBox = defineAsyncComponent(() => import('@/components/common/SearchB
 </script>
 
 <template>
-  <nav class="base">
+  <nav class="nav-top">
     <RouterLink to="/" class="item">
       <span>Shopping card</span>
       <BaseIcon :icon="icons.shopping" />
@@ -27,16 +27,17 @@ const SearchBox = defineAsyncComponent(() => import('@/components/common/SearchB
 <style scoped>
 @reference "@/styles/index.css";
 
-.base {
+.nav-top {
   @apply flex flex-row items-center justify-evenly
-        border-b border-navigation-bar
-        w-full h-24 p-2;
+    z-50 fixed top-0 backdrop-blur-md
+    border-b border-navigation-bar
+    w-full h-24 p-2;
 }
 
-.item {
+.nav-top .item {
   @apply flex flex-row items-center justify-evenly
-        shadow-shadown-hover
-        hover:shadow-xs p-3 gap-2 rounded-xl
-        transition delay-150 ease-in;
+    shadow-shadown-hover
+    hover:shadow-xs p-3 gap-2 rounded-xl
+    transition delay-150 ease-in;
 }
 </style>

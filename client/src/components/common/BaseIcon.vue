@@ -21,7 +21,7 @@ const fillColor = props.fillColor == "none" ? "none" : `var(${props.fillColor})`
 </script>
 
 <template>
-  <div>
+  <div class="base-icon">
     <icon :style="{
       width: props.size,
       height: props.size,
@@ -32,7 +32,7 @@ const fillColor = props.fillColor == "none" ? "none" : `var(${props.fillColor})`
 <style scoped>
 @reference "@/styles/index.css";
 
-svg * {
+.base-icon svg * {
   stroke: v-bind("strokeColor");
   fill: v-bind("fillColor");
 }

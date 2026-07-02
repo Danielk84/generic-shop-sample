@@ -6,7 +6,7 @@ const Home = defineAsyncComponent(() => import('@/components/pages/HomePage.vue'
 </script>
 
 <template>
-  <div>
+  <div class="app">
     <NavigationBar />
     <RouterView>
       <Home />
@@ -16,4 +16,9 @@ const Home = defineAsyncComponent(() => import('@/components/pages/HomePage.vue'
 
 <style scoped>
 @reference "@/styles/index.css";
+
+.app {
+  @apply bg-base-bg z-10 pt-28
+    w-fit min-w-screen h-fit min-h-screen;
+}
 </style>

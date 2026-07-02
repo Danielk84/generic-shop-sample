@@ -23,8 +23,10 @@
   --color-aurora-5: #b48ead;
 
   /* light theme */
+  --color-base-bg: var(--color-snow-storm-2);
   --color-primary-color: var(--color-aurora-1);
   --color-navigation-bar: var(--color-snow-storm-1);
   --color-shadown-hover: var(--color-polar-night-3);
   --color-base-icon: var(--color-polar-night-2);
+  --color-btn-text-1: var(--color-snow-storm-2);
 }
