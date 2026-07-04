@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from 'vue'
 
-import icons from "@/utils/icons-list"
+import icons from '@/utils/icons-list'
 
 const BaseIcon = defineAsyncComponent(() => import('@/components/common/BaseIcon.vue'))
 const SearchBox = defineAsyncComponent(() => import('@/components/common/SearchBox.vue'))

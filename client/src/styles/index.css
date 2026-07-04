@@ -24,6 +24,7 @@
 
   /* light theme */
   --color-base-bg: var(--color-snow-storm-2);
+  --color-landing-banner-bg: var(--color-polar-night-1);
   --color-primary-color: var(--color-aurora-1);
   --color-navigation-bar: var(--color-snow-storm-1);
   --color-shadown-hover: var(--color-polar-night-3);
