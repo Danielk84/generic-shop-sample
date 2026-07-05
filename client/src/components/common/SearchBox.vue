@@ -1,33 +1,29 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from 'vue'
 
-import icons from "@/utils/icons-list"
+import icons from '@/utils/icons-list'
 
 const BaseIcon = defineAsyncComponent(() => import('@/components/common/BaseIcon.vue'))
 </script>
 
 <template>
-  <div class="search-box">
-    <button>
-      <BaseIcon :icon="icons.search"
-        fill-color="none"
-        stroke-color="--color-primary-color"/>
-    </button>
-    <input type="text" id="search" placeholder="search" class="search-box-input" />
-  </div>
+  <button class="c-flex-all-center search-box" @click="() => {}">
+    <BaseIcon :icon="icons.search" fill-color="none" stroke-color="--color-primary-theme" />
+    <input type="search" id="search" placeholder="search" class="search-box-input" />
+  </button>
 </template>
 
 <style scoped>
 @reference "@/styles/index.css";
 
 .search-box {
-  @apply flex flex-row items-center justify-center gap-2
+  @apply flex-row gap-2
     min-w-xl h-fit p-2 rounded-xl relative
-    border border-navigation-bar;
+    border border-baseline bg-default-bg;
 }
 
 .search-box input::placeholder {
-  color: var(--color-primary-color);
+  color: var(--color-primary-theme);
 }
 
 .search-box-input {

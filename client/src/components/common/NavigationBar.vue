@@ -8,36 +8,42 @@ const SearchBox = defineAsyncComponent(() => import('@/components/common/SearchB
 </script>
 
 <template>
-  <nav class="nav-top">
-    <RouterLink to="/" class="item">
-      <span>Shopping card</span>
-      <BaseIcon :icon="icons.shopping" />
-    </RouterLink>
-    <RouterLink to="/" class="item">
-      <span>Login | Sing Up</span>
-      <BaseIcon :icon="icons.login" />
-    </RouterLink>
-    <div>
-      <SearchBox />
-    </div>
-    <RouterLink to="/" class=""> logo </RouterLink>
+  <nav class="top-nav">
+    <nav class="sub-nav c-flex-all-center">
+      <RouterLink to="/" class="right-separator px-5">
+        <BaseIcon :icon="icons.shopping" />
+      </RouterLink>
+      <RouterLink to="/login" class="item">
+        <span>Login | Sing Up</span>
+        <BaseIcon :icon="icons.login" />
+      </RouterLink>
+    </nav>
+    <nav class="sub-nav c-flex-all-center">
+      <div>
+        <SearchBox />
+      </div>
+      <RouterLink to="/" class=""> logo </RouterLink>
+    </nav>
   </nav>
 </template>
 
 <style scoped>
 @reference "@/styles/index.css";
 
-.nav-top {
-  @apply flex flex-row items-center justify-evenly
+.top-nav {
+  @apply flex flex-row items-center justify-between
     z-50 fixed top-0 backdrop-blur-md
-    border-b border-navigation-bar
-    w-full h-24 p-2;
+    border-b border-baseline
+    w-full h-20 p-2 bg-default-bg/92;
 }
 
-.nav-top .item {
+.top-nav .sub-nav {
+  @apply gap-5;
+}
+
+.top-nav .item {
   @apply flex flex-row items-center justify-evenly
-    shadow-shadown-hover
-    hover:shadow-xs p-3 gap-2 rounded-xl
-    transition delay-150 ease-in;
+    border p-2 bg-default-bg
+    p-3 gap-2 rounded-xl;
 }
 </style>
