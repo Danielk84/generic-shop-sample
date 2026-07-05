@@ -1,31 +1,33 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue';
+import { defineAsyncComponent, computed } from 'vue'
+
+import type { BaseIcon } from '@/types/icons';
+import { getCssVar } from '@/utils/css-utils';
 
 const props = withDefaults(
-  defineProps<{
-    icon: string
-    size?: string
-    strokeColor?: string
-    fillColor?: string
-  }>(),
+  defineProps<BaseIcon>(),
   {
     size: '24px',
-    strokeColor: "--color-base-icon",
-    fillColor: "--color-base-icon",
+    strokeColor: '--color-default-icon',
+    fillColor: '--color-default-icon',
   },
 )
 const icon = defineAsyncComponent(() => import(`../../assets/icons/${props.icon}`))
 
-const strokeColor = props.strokeColor == "none" ? "none" : `var(${props.strokeColor})`
-const fillColor = props.fillColor == "none" ? "none" : `var(${props.fillColor})`
+const style = computed(() => ({
+  strokeColor: getCssVar(props.strokeColor),
+  fillColor: getCssVar(props.fillColor),
+}))
 </script>
 
 <template>
   <div class="base-icon">
-    <icon :style="{
-      width: props.size,
-      height: props.size,
-    }" />
+    <icon
+      :style="{
+        width: props.size,
+        height: props.size,
+      }"
+    />
   </div>
 </template>
 
@@ -33,7 +35,7 @@ const fillColor = props.fillColor == "none" ? "none" : `var(${props.fillColor})`
 @reference "@/styles/index.css";
 
 .base-icon svg * {
-  stroke: v-bind("strokeColor");
-  fill: v-bind("fillColor");
+  stroke: v-bind('style.strokeColor');
+  fill: v-bind('style.fillColor');
 }
 </style>
