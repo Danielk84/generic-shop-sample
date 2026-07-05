@@ -1,0 +1,35 @@
+@theme {
+  --font-default-font: 'Ubuntu-Regular';
+
+  /* base color schemes */
+  --color-polar-night-1: #2e3440;
+  --color-polar-night-2: #3b4252;
+  --color-polar-night-3: #434c5e;
+  --color-polar-night-4: #4c566a;
+
+  --color-snow-storm-1: #d8dee9;
+  --color-snow-storm-2: #e5e9f0;
+  --color-snow-storm-3: #eceff4;
+
+  --color-frost-1: #8fbcbb;
+  --color-frost-2: #88c0d0;
+  --color-frost-3: #81a1c1;
+  --color-frost-4: #5e81ac;
+
+  --color-aurora-1: #bf616a;
+  --color-aurora-2: #d08770;
+  --color-aurora-3: #ebcb8b;
+  --color-aurora-4: #a3be8c;
+  --color-aurora-5: #b48ead;
+
+  /* light theme */
+  --color-default-bg: var(--color-snow-storm-2);
+  --color-default-banner: var(--color-polar-night-1);
+  --color-primary-theme: var(--color-aurora-1);
+  --color-secondary-theme: var(--color-aurora-3);
+  --color-baseline: var(--color-polar-night-4);
+  --color-shadown-hover: var(--color-polar-night-3);
+  --color-default-icon: var(--color-polar-night-2);
+  --color-primary-text: var(--color-polar-night-1);
+  --color-secondary-text: var(--color-snow-storm-3);
+}

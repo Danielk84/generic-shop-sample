@@ -1,0 +1,8 @@
+@layer components {
+  .c-flex-all-center {
+    @apply flex justify-center items-center;
+  }
+  .right-separator {
+    @apply border-r border-baseline rounded-none;
+  }
+}
