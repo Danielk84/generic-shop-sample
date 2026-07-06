@@ -1,21 +1,23 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from "vue";
+import { defineAsyncComponent, computed, type StyleValue } from 'vue'
 
-const OfferBookmarkSVG = defineAsyncComponent(() => import("@/assets/images/offer-bookmark.svg"))
+import type { PriceOfferFrame } from '@/types/cards';
+import { getCssUrl } from '@/utils/css-helper';
 
-const props = defineProps<{
-  to: string,
-  category: string,
-  percent: string,
-}>()
+const OfferBookmarkSVG = defineAsyncComponent(() => import('@/assets/images/offer-bookmark.svg'))
 
+const props = defineProps<PriceOfferFrame>()
+
+const style = computed<StyleValue>(() => ({
+  backgroundImage: getCssUrl(props.backgroundImage),
+}))
 </script>
 
 <template>
-  <RouterLink :to="props.to" class="price-offer-frame">
+  <RouterLink :to="props.to" class="price-offer-frame default-banner-bg" :style="style">
     <OfferBookmarkSVG class="offer-bookmark" />
-    <div class="percent">
-      <span>{{ props.percent + "%" }}</span>
+    <div class="percent c-flex-all-center">
+      <span>{{ props.percent + '%' }}</span>
       <span>off</span>
     </div>
     <div class="content">
@@ -28,22 +30,22 @@ const props = defineProps<{
 @reference "@/styles/index.css";
 
 .price-offer-frame {
-  @apply rounded-2xl w-60 h-60 bg-landing-banner-bg;
+  @apply rounded-2xl w-60 h-60;
 }
 
 .price-offer-frame .offer-bookmark {
   @apply z-0 w-32 h-43 relative -top-8 left-26
-    stroke-secondary-color fill-primary-color;
+    stroke-secondary-theme fill-primary-theme;
 }
 
 .price-offer-frame .percent {
-  @apply flex flex-col justify-center items-center
+  @apply flex-col
     z-10 text-xl font-bold relative bottom-40 left-12.5
-    text-btn-text-1;
+    text-secondary-text;
 }
 
 .price-offer-frame .content {
   @apply z-10 w-50 relative bottom-12 left-5 text-2xl
-    text-btn-text-1 font-bold text-ellipsis;
+    text-secondary-text font-bold text-ellipsis;
 }
 </style>

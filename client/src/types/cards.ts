@@ -5,3 +5,10 @@ export interface Seller {
   followers: number
   backgroundImage?: string
 }
+
+export interface PriceOfferFrame {
+  to: string
+  category: string
+  percent: number
+  backgroundImage?: string
+}
