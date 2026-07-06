@@ -1,1 +1,0 @@
-export const getCssVar = (cssVar: string) => (cssVar === "none" ? "none" : `var(${cssVar})`)
