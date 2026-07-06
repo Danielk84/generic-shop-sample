@@ -32,4 +32,6 @@
   --color-default-icon: var(--color-polar-night-2);
   --color-primary-text: var(--color-polar-night-1);
   --color-secondary-text: var(--color-snow-storm-3);
+  --color-tab-1: var(--color-frost-1);
+  --color-tab-2: var(--color-frost-2);
 }

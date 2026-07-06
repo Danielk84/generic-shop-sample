@@ -13,7 +13,7 @@ const SearchBox = defineAsyncComponent(() => import('@/components/common/SearchB
       <RouterLink to="/" class="right-separator px-5">
         <BaseIcon :icon="icons.shopping" />
       </RouterLink>
-      <RouterLink to="/login" class="item">
+      <RouterLink v-if="$route.name !== 'auth'" :to="{ name: 'auth' }" class="item">
         <span>Login | Sing Up</span>
         <BaseIcon :icon="icons.login" />
       </RouterLink>
@@ -43,7 +43,7 @@ const SearchBox = defineAsyncComponent(() => import('@/components/common/SearchB
 
 .top-nav .item {
   @apply flex flex-row items-center justify-evenly
-    border p-2 bg-default-bg
+    border bg-default-bg
     p-3 gap-2 rounded-xl;
 }
 </style>

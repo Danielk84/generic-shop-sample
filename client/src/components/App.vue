@@ -16,7 +16,6 @@ const NavigationBar = defineAsyncComponent(() => import('@/components/common/Nav
 
 .app {
   @apply bg-default-bg font-default-font
-    z-10 pt-28
-    w-fit min-w-screen h-fit min-h-screen;
+    z-10 pt-28 max-w-screen min-h-screen;
 }
 </style>
