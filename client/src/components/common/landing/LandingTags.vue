@@ -1,40 +1,31 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from 'vue'
 
-import icons from '@/utils/icons-list'
+import { type LandingTags } from '@/types/landing';
 
-const BaseIcon = defineAsyncComponent(() => import("@/components/common/BaseIcon.vue"))
+const BaseBtn = defineAsyncComponent(() => import("@/components/common/button/BaseBtn.vue"))
+const BaseIcon = defineAsyncComponent(() => import('@/components/common/BaseIcon.vue'))
 
-const tags: Array<{
-  tag: string
-  isBtn?: boolean
-  icon?: string
-}> = [
-  { tag: "Make it you'r self", isBtn: true, icon: icons.draw_1 },
-  { tag: "School & Office" },
-  { tag: "Home appliances" },
-  { tag: "Phone case" },
-  { tag: "Cards and posters" },
-  { tag: "Parties" },
-  { tag: "Clothing" },
-] 
+const props = defineProps<{
+  tags: Array<LandingTags>
+}>()
 </script>
 
 <template>
   <div class="landing-tags">
-    <div v-for="item of tags" :key="item.tag">
-        <RouterLink to="/">
-        <div v-if="item.isBtn" class="btn">
-          <span>{{ item.tag }}</span>
-          <BaseIcon v-if="item.icon"
-            :icon="item.icon"
-            stroke-color="--color-btn-text-1"  />
+    <div v-for="item of props.tags" :key="item.tag">
+      <RouterLink to="/">
+        <div v-if="item.isBtn"  class="base-btn-size">
+          <BaseBtn>
+            <span>{{ item.tag }}</span>
+            <BaseIcon v-if="item.icon" :icon="item.icon" stroke-color="--color-secondary-text" fill-color="--color-primary-theme" />
+          </BaseBtn>
         </div>
         <div v-else>
           {{ item.tag }}
         </div>
       </RouterLink>
-      </div>
+    </div>
   </div>
 </template>
 
@@ -43,12 +34,5 @@ const tags: Array<{
 
 .landing-tags {
   @apply h-full flex items-center justify-evenly gap-32;
-}
-
-.landing-tags .btn {
-  @apply flex flex-row gap-1
-    p-4 rounded-xl 
-    text-btn-text-1 bg-primary-color
-    transition delay-150 ease-out;
 }
 </style>

@@ -5,4 +5,7 @@
   .right-separator {
     @apply border-r border-baseline rounded-none;
   }
+  .base-btn-size {
+    @apply w-55 h-16;
+  }
 }

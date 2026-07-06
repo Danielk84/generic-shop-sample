@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue';
+import { defineAsyncComponent } from 'vue'
 
-import icons from '@/utils/icons-list';
+import icons from '@/utils/icons-list'
 
-const BaseIcon = defineAsyncComponent(() => import("@/components/common/BaseIcon.vue"))
+const BaseBtn = defineAsyncComponent(() => import('@/components/common/button/BaseBtn.vue'))
+const BaseIcon = defineAsyncComponent(() => import('@/components/common/BaseIcon.vue'))
 </script>
 
 <template>
@@ -16,16 +17,21 @@ const BaseIcon = defineAsyncComponent(() => import("@/components/common/BaseIcon
       </p>
     </div>
     <div class="btn-box">
-      <RouterLink to="/">
-        <div class="base-btn btn-1">
+      <RouterLink to="/" class="base-btn-size">
+        <BaseBtn :click="() => {}" :style="{
+          backgroundColor: 'none',
+          outlineColor: '--color-secondary-text',
+          outlineWidth: '2px',
+          color: '--color-secondary-text', 
+        }">
           <span>See all products</span>
-        </div>
+        </BaseBtn>
       </RouterLink>
-      <RouterLink to="/">
-        <div class="base-btn btn-2">
+      <RouterLink to="/" class="base-btn-size">
+        <BaseBtn>
           <span>Sell you'r products</span>
-          <BaseIcon :icon="icons.draw_2" fill-color="--color-btn-text-1"/>
-        </div>
+          <BaseIcon :icon="icons.draw_2" fill-color="--color-secondary-text" />
+        </BaseBtn>
       </RouterLink>
     </div>
   </div>
@@ -36,14 +42,14 @@ const BaseIcon = defineAsyncComponent(() => import("@/components/common/BaseIcon
 
 .landing-banner {
   @apply flex flex-row items-center justify-evenly gap-5
-  bg-landing-banner-bg
+    bg-default-banner
     bg-[url(@/assets/images/landing-banner.png)]
     rounded-2xl w-9/12 min-h-120;
 }
 
 .landing-banner .message {
   @apply text-pretty flex flex-col gap-10 justify-center items-center
-    max-w-120 text-btn-text-1;
+    max-w-120 text-secondary-text;
 }
 
 .landing-banner .message h1 {
@@ -56,21 +62,5 @@ const BaseIcon = defineAsyncComponent(() => import("@/components/common/BaseIcon
 
 .landing-banner .btn-box {
   @apply flex flex-col items-center justify-center gap-10;
-}
-
-.landing-banner .base-btn {
-  @apply flex flex-row gap-1 items-center justify-center p-4 rounded-xl
-    outline-2 w-60 font-bold
-    transition delay-250 hover:ring-4 hover:brightness-125;
-}
-
-.landing-banner .btn-1 {
-  @apply outline-btn-text-1 text-btn-text-1
-    ring-btn-text-1;
-}
-
-.landing-banner .btn-2 {
-  @apply outline-primary-color bg-primary-color text-btn-text-1
-    ring-primary-color;
 }
 </style>

@@ -38,6 +38,8 @@ const style = computed<StyleValue>(() => ({
 @reference "@/styles/index.css";
 
 .base-btn {
-  @apply rounded-2xl p-2 text-nowrap font-bold;
+  @apply rounded-2xl text-nowrap font-bold hover:brightness-125
+    transition delay-150 ease-out
+    w-full h-full cursor-pointer outline-solid;
 }
 </style>
