@@ -1,30 +1,26 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from 'vue';
 
-import icons from '@/utils/icons-list';
-
-const BaseIcon = defineAsyncComponent(() => import("@/components/common/BaseIcon.vue"))
+const BaseIcon = defineAsyncComponent(() => import('@/components/common/BaseIcon.vue'))
 
 const props = defineProps<{
-  msg: string
-  seeAlsoLink?: string
+  icon?: string,
+  to?: string
 }>()
 </script>
 
 <template>
   <div class="section-title">
     <h2 class="title">
-      <BaseIcon :icon="icons.medalRibbonsStar" size="50px" />
+      <BaseIcon v-if="props.icon" :icon="props.icon" size="50px" />
       <span>
-        {{ props.msg }}
+        <slot>Empty!</slot>
       </span>
     </h2>
     <div class="gap-line"></div>
-    <div v-if="props.seeAlsoLink">
-      <RouterLink :to="props.seeAlsoLink">
-        <span class="see-more">
-          See more
-        </span>
+    <div v-if="props.to">
+      <RouterLink :to="props.to">
+        <span class="see-more"> See more </span>
       </RouterLink>
     </div>
   </div>
@@ -44,11 +40,10 @@ const props = defineProps<{
 }
 
 .section-title .gap-line {
-  @apply h-5/10 w-full border-b border-navigation-bar;
+  @apply h-5/10 w-full border-b border-baseline;
 }
 
 .section-title .see-more {
-  @apply text-primary-color text-nowrap;
+  @apply text-primary-theme text-nowrap font-bold;
 }
-
 </style>
