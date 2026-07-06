@@ -1,5 +1,5 @@
-export interface LandingTags {
-  tag: string,
+export interface Tag {
+  name: string,
   isBtn?: boolean,
   icon?: string,
 }

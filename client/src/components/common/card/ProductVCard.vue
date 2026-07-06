@@ -1,19 +1,23 @@
 <script setup lang="ts">
+import { computed, type StyleValue } from "vue";
+
+import { getCssUrl } from "@/utils/css-helper";
+
 const props = defineProps<{
-  to: string,
-  name: string,
-  price: string,
+  to: string
+  backgroundImage?: string
 }>()
+
+const style = computed<StyleValue>(() => ({
+  backgroundImage: getCssUrl(props.backgroundImage),
+}))
 </script>
 
 <template>
   <RouterLink :to="props.to">
-    <div class="product-v-card">
-      <div class="banner"></div>
-      <div class="content">
-        <h3>{{ props.name }}</h3>
-        <span>{{ props.price }}</span>
-      </div>
+    <div class="product-v-card default-shadow-hover">
+      <div class="banner default-banner-bg" :style="style"></div>
+      <slot>No Content!</slot>
     </div>
   </RouterLink>
 </template>
@@ -23,20 +27,11 @@ const props = defineProps<{
 
 .product-v-card {
   @apply flex flex-col items-center gap-6 p-3 rounded-2xl
-    border border-navigation-bar
-    hover:shadow-[0px_0px_8px] shadow-navigation-bar
+    border border-baseline
     w-95 h-145;
 }
 
 .product-v-card .banner {
-  @apply w-98/100 h-9/12 bg-landing-banner-bg rounded-lg;
-}
-
-.product-v-card .content {
-  @apply flex flex-col items-start justify-between;
-}
-
-.product-v-card .content h3 {
-  @apply text-2xl font-bold;
+  @apply w-98/100 h-9/12 rounded-lg;
 }
 </style>

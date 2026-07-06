@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { defineAsyncComponent, computed } from 'vue'
 
-import type { BaseIcon } from '@/types/icons';
-import { getCssVar } from '@/utils/css-utils';
+import type { Icon } from '@/types/icons';
+import { getCssVar } from '@/utils/css-helper';
 
 const props = withDefaults(
-  defineProps<BaseIcon>(),
+  defineProps<Icon>(),
   {
     size: '24px',
     strokeColor: '--color-default-icon',

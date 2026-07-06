@@ -1,4 +1,4 @@
-export interface BaseIcon {
+export interface Icon {
   icon: string
   size?: string
   strokeColor?: string

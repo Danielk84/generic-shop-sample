@@ -17,7 +17,7 @@ const BaseIcon = defineAsyncComponent(() => import('@/components/common/BaseIcon
       </p>
     </div>
     <div class="btn-box">
-      <RouterLink to="/" class="base-btn-size">
+      <RouterLink to="/" class="default-btn-size">
         <BaseBtn :click="() => {}" :style="{
           backgroundColor: 'none',
           outlineColor: '--color-secondary-text',
@@ -27,7 +27,7 @@ const BaseIcon = defineAsyncComponent(() => import('@/components/common/BaseIcon
           <span>See all products</span>
         </BaseBtn>
       </RouterLink>
-      <RouterLink to="/" class="base-btn-size">
+      <RouterLink to="/" class="default-btn-size">
         <BaseBtn>
           <span>Sell you'r products</span>
           <BaseIcon :icon="icons.draw_2" fill-color="--color-secondary-text" />

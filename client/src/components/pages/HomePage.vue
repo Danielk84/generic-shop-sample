@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from "vue";
 
+import type { Tag } from "@/types/landing";
+import type { Category, OfferCategory } from "@/types/api/categories";
+import type { Product } from "@/types/api/products";
+import type { OverviewProfile } from "@/types/api/profile";
+import icons from "@/utils/icons-list";
+
 const LandingTags = defineAsyncComponent(() => import("@/components/common/landing/LandingTags.vue"))
 const LandingBanner = defineAsyncComponent(() => import("@/components/common/landing/LandingBanner.vue"))
 const SectionTitle = defineAsyncComponent(() => import("@/components/common/SectionTitle.vue"))
@@ -8,89 +14,92 @@ const CategoryCard = defineAsyncComponent(() => import("@/components/common/card
 const ProductVCard = defineAsyncComponent(() => import("@/components/common/card/ProductVCard.vue"))
 const PriceOfferFrameCard = defineAsyncComponent(() => import("@/components/common/card/PriceOfferFrameCard.vue"))
 const SellerCard = defineAsyncComponent(() => import("@/components/common/card/SellerCard.vue"))
+
+const tags: Array<Tag> = [
+  { name: "Make it you'r self", isBtn: true, icon: icons.draw_1 },
+  { name: 'School & Office' },
+  { name: 'Home appliances' },
+  { name: 'Phone case' },
+  { name: 'Cards and posters' },
+  { name: 'Parties' },
+  { name: 'Clothing' },
+]
+
+const categories: Array<Category> = []
+const bestSales: Array<Product> = []
+const specialSales: Array<OfferCategory> = []
+const popularSellers: Array<OverviewProfile> = []
+const newSales: Array<Product> = []
 </script>
 
 <template>
   <div class="base-home home">
     <header class="base-home">
-        <LandingTags />
+        <LandingTags :tags="tags" />
         <LandingBanner />
     </header>
     <main>
       <!-- Categories -->
-      <section class="base-section">
-        <SectionTitle
-          msg="Categories" />
+      <section v-if="categories.length !== 0" class="base-section">
+        <SectionTitle :icon="icons.medalRibbonsStar">
+          Categories
+        </SectionTitle>
         <nav class="categories">
-          <CategoryCard />
-          <CategoryCard />
-          <CategoryCard />
-          <CategoryCard />
-          <CategoryCard />
-          <CategoryCard />
+          <CategoryCard v-for="item of categories" :key="item.tag" :background-image="item.backgroundImage">
+            {{ item.tag }}
+          </CategoryCard>
         </nav>
       </section>
 
       <!-- Best sales -->
-      <section class="base-section">
-        <SectionTitle
-          msg="Best sales"
-          see-also-link="/" />
+      <section v-if="bestSales.length !== 0" class="base-section">
+        <SectionTitle :icon="icons.medalRibbonsStar" to="/">
+          Best sales
+        </SectionTitle>
         <nav class="best-sales">
-          <ProductVCard to="/" name="Products" price="100.00"/>
-          <ProductVCard to="/" name="Products" price="100.00"/>
-          <ProductVCard to="/" name="Products" price="100.00"/>
-          <ProductVCard to="/" name="Products" price="100.00"/>
-          <ProductVCard to="/" name="Products" price="100.00"/>
-          <ProductVCard to="/" name="Products" price="100.00"/>
-          <ProductVCard to="/" name="Products" price="100.00"/>
-          <ProductVCard to="/" name="Products" price="100.00"/>
+          <ProductVCard v-for="item of bestSales" :key="item.to"
+            :to="item.to" :background-image="item.backgroundImage">
+            <span>{{ item.name }}</span>
+            <span>{{ "Price: " + item.price }}</span>
+          </ProductVCard>
         </nav>
       </section>
 
       <!-- Special sales -->
-      <section class="base-section">
-        <SectionTitle
-        msg="Special sales" />
+      <section v-if="specialSales.length !== 0" class="base-section">
+        <SectionTitle :icon="icons.star">
+          Special sales
+        </SectionTitle>
         <nav class="special-sales">
-          <PriceOfferFrameCard to="/" category="Spetial" percent=20 />
-          <PriceOfferFrameCard to="/" category="Spetial" percent=20 />
-          <PriceOfferFrameCard to="/" category="Spetial" percent=20 />
-          <PriceOfferFrameCard to="/" category="Spetial" percent=20 />
-          <PriceOfferFrameCard to="/" category="Spetial" percent=20 />
+          <PriceOfferFrameCard v-for="item of specialSales" :key="item.tag"
+            to="/" :background-image="item.backgroundImage"
+            :category="item.tag" :percent="item.percent" />
         </nav>
       </section>
 
       <!-- Popular sellers -->
-      <section class="base-section">
-        <SectionTitle
-          msg="Popular sellers" />
+      <section v-if="popularSellers.length !== 0" class="base-section">
+        <SectionTitle :icon="icons.userAvatar">
+          Popular sellers
+        </SectionTitle>
         <nav class="popular-sellers">
-          <SellerCard name="dk" to="/" total-sells="400" followers="240"/>
-          <SellerCard name="dk" to="/" total-sells="400" followers="240"/>
-          <SellerCard name="dk" to="/" total-sells="400" followers="240"/>
-          <SellerCard name="dk" to="/" total-sells="400" followers="240"/>
-          <SellerCard name="dk" to="/" total-sells="400" followers="240"/>
-          <SellerCard name="dk" to="/" total-sells="400" followers="240"/>
-          <SellerCard name="dk" to="/" total-sells="400" followers="240"/>
-          <SellerCard name="dk" to="/" total-sells="400" followers="240"/>
+          <SellerCard v-for="item of popularSellers" :key="item.username"
+            to="/" :background-image="item.backgroundImage"
+            :username="item.username" :total-sells="item.totalSells" :followers="item.followers"/>
         </nav>
       </section>
 
       <!-- New products -->
-      <section class="base-section">
-        <SectionTitle
-          msg="New products"
-          see-also-link="/" />
+      <section v-if="newSales.length !== 0" class="base-section">
+        <SectionTitle :icon="icons.newProduct" to="/">
+          New sales
+        </SectionTitle>
         <nav class="best-sales">
-          <ProductVCard to="/" name="Products" price="100.00"/>
-          <ProductVCard to="/" name="Products" price="100.00"/>
-          <ProductVCard to="/" name="Products" price="100.00"/>
-          <ProductVCard to="/" name="Products" price="100.00"/>
-          <ProductVCard to="/" name="Products" price="100.00"/>
-          <ProductVCard to="/" name="Products" price="100.00"/>
-          <ProductVCard to="/" name="Products" price="100.00"/>
-          <ProductVCard to="/" name="Products" price="100.00"/>
+          <ProductVCard v-for="item of newSales" :key="item.to"
+            :to="item.to" :background-image="item.backgroundImage">
+            <span>{{ item.name }}</span>
+            <span>{{ "Price: " + item.price }}</span>
+          </ProductVCard>
         </nav>
       </section>
     </main>

@@ -1,28 +1,28 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from 'vue'
 
-import { type LandingTags } from '@/types/landing';
+import type { Tag } from '@/types/landing';
 
 const BaseBtn = defineAsyncComponent(() => import("@/components/common/button/BaseBtn.vue"))
 const BaseIcon = defineAsyncComponent(() => import('@/components/common/BaseIcon.vue'))
 
 const props = defineProps<{
-  tags: Array<LandingTags>
+  tags: Array<Tag>
 }>()
 </script>
 
 <template>
   <div class="landing-tags">
-    <div v-for="item of props.tags" :key="item.tag">
+    <div v-for="item of props.tags" :key="item.name">
       <RouterLink to="/">
-        <div v-if="item.isBtn"  class="base-btn-size">
+        <div v-if="item.isBtn"  class="default-btn-size">
           <BaseBtn>
-            <span>{{ item.tag }}</span>
+            <span>{{ item.name }}</span>
             <BaseIcon v-if="item.icon" :icon="item.icon" stroke-color="--color-secondary-text" fill-color="--color-primary-theme" />
           </BaseBtn>
         </div>
         <div v-else>
-          {{ item.tag }}
+          {{ item.name }}
         </div>
       </RouterLink>
     </div>

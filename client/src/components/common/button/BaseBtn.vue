@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { type StyleValue, computed } from 'vue';
 
-import { type BaseBtn } from "@/types/btn";
-import { getCssVar } from '@/utils/css-utils';
+import type { Btn } from "@/types/btn";
+import { getCssVar } from '@/utils/css-helper';
 
 const props = withDefaults(
-  defineProps<BaseBtn>(),
+  defineProps<Btn>(),
   {
     click: () => {},
     style: () => ({

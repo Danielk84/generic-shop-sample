@@ -8,6 +8,8 @@ const icons = {
     userAvatar: "user-avatar-icon.svg",
     userFollow: "user-follow-icon.svg",
     userFollowing: "user-following-icon.svg",
+    star: "star-icon.svg",
+    newProduct: "new-product-icon.svg",
 }
 
 export default icons
