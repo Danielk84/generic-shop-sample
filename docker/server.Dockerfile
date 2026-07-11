@@ -8,13 +8,14 @@ RUN apk add --no-cache \
 RUN go install -tags "pgx5" github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 ENV PATH="/go/bin:${PATH}"
 
-COPY go.mod go.sum ./
+COPY ./server/go.mod ./server/go.sum ./
 RUN go mod download
 
-COPY . .
+COPY ./server .
 
-RUN go build -o dist/shop ./main.go
+RUN go build -o dist/shop ./cmd/server/main.go
 
+COPY ./docker/scripts/server-entrypoint.sh ./docker/scripts/server-entrypoint.sh
 ENTRYPOINT ["docker/scripts/server-entrypoint.sh"]
 
 STOPSIGNAL SIGINT
