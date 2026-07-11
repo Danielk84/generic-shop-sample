@@ -10,6 +10,8 @@ const icons = {
     userFollowing: "user-following-icon.svg",
     star: "star-icon.svg",
     newProduct: "new-product-icon.svg",
+    fullScreen: "full-screen-icon.svg",
+    exitfullScreen: "exit-full-screen-icon.svg",
 }
 
 export default icons
