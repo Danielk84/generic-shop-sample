@@ -2,22 +2,19 @@
 import { defineAsyncComponent } from 'vue';
 
 import type { ImageFrame } from '@/types/cards';
+import type { DestroyEmits } from '@/types/btn';
 import icons from '@/utils/icons-list';
 
-const BaseIcon = defineAsyncComponent(() => import("@/components/common/BaseIcon.vue"))
+const CloseBtn = defineAsyncComponent(() => import("@/components/common/button/CloseBtn.vue"))
 
 const props = defineProps<ImageFrame>()
-const emits = defineEmits<{
-  (e: "destroy"): void
-}>()
+const emits = defineEmits<DestroyEmits>()
 </script>
 
 <template>
   <div class="full-screen-image-frame">
     <div class="nav-bar">
-      <button class="btn" @click="emits('destroy')">
-        <BaseIcon :icon="icons.exitfullScreen" />
-      </button>
+      <CloseBtn @destroy="emits('destroy')" :icon="icons.exitfullScreen" />
     </div>
     <div class="image-frame c-flex-all-center">
       <img :src="props.src" :alt="props.alt">
@@ -29,7 +26,7 @@ const emits = defineEmits<{
 @reference "@/styles/index.css";
 
 .full-screen-image-frame {
-  @apply absolute inset-0 z-50 w-full h-full overflow-hidden backdrop-blur-2xl;
+  @apply absolute inset-0 z-50 w-full h-full overflow-hidden backdrop-blur-lg;
 }
 
 .full-screen-image-frame .nav-bar {

@@ -12,6 +12,7 @@ const icons = {
     newProduct: "new-product-icon.svg",
     fullScreen: "full-screen-icon.svg",
     exitfullScreen: "exit-full-screen-icon.svg",
+    closeCircle: "close-circle-icon.svg"
 }
 
 export default icons

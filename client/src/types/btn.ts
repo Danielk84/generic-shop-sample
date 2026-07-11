@@ -6,3 +6,7 @@ export interface Btn {
     color?: string
   }
 }
+
+export interface DestroyEmits {
+  (e: "destroy"): void
+}
