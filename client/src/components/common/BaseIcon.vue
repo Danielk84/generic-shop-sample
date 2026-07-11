@@ -12,7 +12,7 @@ const props = withDefaults(
     fillColor: '--color-default-icon',
   },
 )
-const icon = defineAsyncComponent(() => import(`../../assets/icons/${props.icon}`))
+const icon = defineAsyncComponent(() => import( /* @vite-ignore */  `../../assets/icons/${props.icon}`))
 
 const style = computed(() => ({
   strokeColor: getCssVar(props.strokeColor),

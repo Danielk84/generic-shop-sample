@@ -7,7 +7,6 @@ import { getCssVar } from '@/utils/css-helper';
 const props = withDefaults(
   defineProps<Btn>(),
   {
-    click: () => {},
     style: () => ({
       backgroundColor: "--color-primary-theme",
       outlineColor: "none",
@@ -16,6 +15,9 @@ const props = withDefaults(
     }),
   }
 )
+const emits = defineEmits<{
+  (e: 'click', event: MouseEvent): void,
+}>()
 
 const style = computed<StyleValue>(() => ({
   backgroundColor: getCssVar(props.style.backgroundColor as string),
@@ -28,7 +30,7 @@ const style = computed<StyleValue>(() => ({
 <template>
   <button
     class="base-btn c-flex-all-center"
-    @click="props.click($event)"
+    @click="emits('click', $event)"
     :style="style">
       <slot>empty!</slot>
   </button>
@@ -38,7 +40,7 @@ const style = computed<StyleValue>(() => ({
 @reference "@/styles/index.css";
 
 .base-btn {
-  @apply rounded-2xl text-nowrap font-bold hover:brightness-125
+  @apply rounded-lg text-nowrap font-bold hover:brightness-125
     transition delay-150 ease-out
     w-full h-full cursor-pointer outline-solid;
 }

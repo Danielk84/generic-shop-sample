@@ -45,6 +45,6 @@ const BaseBtn = defineAsyncComponent(() => import("@/components/common/button/Ba
 
 .login .item input {
   @apply rounded-lg outline-4 text-xl py-2 px-4
-    outline-tab-1 bg-default-icon;
+    outline-tab-1 bg-default-icon focus:brightness-125;
 }
 </style>

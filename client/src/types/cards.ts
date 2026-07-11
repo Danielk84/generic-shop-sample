@@ -12,3 +12,8 @@ export interface PriceOfferFrame {
   percent: number
   backgroundImage?: string
 }
+
+export type ImageFrame = {
+  src: string
+  alt?: string
+}
