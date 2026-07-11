@@ -1,0 +1,47 @@
+<script setup lang="ts">
+import { defineAsyncComponent } from 'vue';
+
+import type { ImageFrame } from '@/types/cards';
+import icons from '@/utils/icons-list';
+
+const BaseIcon = defineAsyncComponent(() => import("@/components/common/BaseIcon.vue"))
+
+const props = defineProps<ImageFrame>()
+const emits = defineEmits<{
+  (e: "destroy"): void
+}>()
+</script>
+
+<template>
+  <div class="full-screen-image-frame">
+    <div class="nav-bar">
+      <button class="btn" @click="emits('destroy')">
+        <BaseIcon :icon="icons.exitfullScreen" />
+      </button>
+    </div>
+    <div class="image-frame c-flex-all-center">
+      <img :src="props.src" :alt="props.alt">
+    </div>
+  </div>
+</template>
+
+<style scoped>
+@reference "@/styles/index.css";
+
+.full-screen-image-frame {
+  @apply absolute inset-0 z-50 w-full h-full overflow-hidden backdrop-blur-2xl;
+}
+
+.full-screen-image-frame .nav-bar {
+  @apply w-full h-fit flex items-center justify-end
+    border-b border-baseline p-2;
+}
+
+.full-screen-image-frame .image-frame {
+  @apply w-full h-full;
+}
+
+.full-screen-image-frame .image-frame img {
+  @apply max-w-full max-h-full object-contain p-2;
+}
+</style>
