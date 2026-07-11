@@ -17,3 +17,8 @@ export type ImageFrame = {
   src: string
   alt?: string
 }
+
+export interface Comment {
+  title: string,
+  content: string,
+}
