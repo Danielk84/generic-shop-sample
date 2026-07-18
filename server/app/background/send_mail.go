@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	mailChannel = "mailmessage"
+	mailChannel = "mail-message-channel"
 )
 
 type MailMessage struct {
@@ -59,8 +59,8 @@ func (b *emailBroker) send(to string, msg []byte) {
 	}
 }
 
-func SendMail(ctx context.Context, cache cache.CacheClient, mail *MailMessage) error {
-	msg, err := json.Marshal(&mail)
+func SendMail(ctx context.Context, cache cache.CacheClient, mail MailMessage) error {
+	msg, err := json.Marshal(mail)
 	if err != nil {
 		return fmt.Errorf("failed to encode MailMessage, %s", err)
 	}
