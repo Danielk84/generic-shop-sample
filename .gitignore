@@ -46,3 +46,5 @@ client/__screenshots__/
 
 # Vite
 client/*.timestamp-*-*.mjs
+
+postgres-language-server.jsonc
