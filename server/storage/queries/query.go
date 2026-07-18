@@ -2,7 +2,7 @@ package queries
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"generic-shop-sample/storage/database"
 	"reflect"
 
@@ -10,7 +10,8 @@ import (
 )
 
 var (
-	ErrFullCapacity = fmt.Errorf("error full capacity")
+	ErrFullCapacity = errors.New("error full capacity")
+	ErrNotFound     = errors.New("error item not found")
 )
 
 func getOffsetFromPageNum(pagination, page int) int {

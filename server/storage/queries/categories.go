@@ -33,7 +33,7 @@ func NewCategoryStore(session database.Session, log logger.Logger) CategoryStore
 }
 
 func (c *CategoryRepository) Create(ctx context.Context, tag string) (err error) {
-	const q = `INSERT INTO categories(tag) VALUES ($1)`
+	const q = `INSERT INTO product_s.categories(tag) VALUES ($1)`
 	if err = execOne(ctx, c.session, q, tag); err != nil {
 		c.log.Debug("CategoryRepository.Create", "error", err)
 	}
@@ -41,7 +41,7 @@ func (c *CategoryRepository) Create(ctx context.Context, tag string) (err error)
 }
 
 func (c *CategoryRepository) List(ctx context.Context) (items []Category, err error) {
-	const q = `SELECT id, tag FROM categories`
+	const q = `SELECT id, tag FROM product_s.categories`
 	items, err = list[Category](ctx, c.session, q)
 	if err != nil {
 		c.log.Debug("CategoryRepository.List", "error", err)
@@ -50,7 +50,7 @@ func (c *CategoryRepository) List(ctx context.Context) (items []Category, err er
 }
 
 func (c *CategoryRepository) Delete(ctx context.Context, id int32) (err error) {
-	const q = `DELETE FROM categories WHERE id = $1`
+	const q = `DELETE FROM product_s.categories WHERE id = $1`
 	if err = execOne(ctx, c.session, q, id); err != nil {
 		c.log.Debug("CategoryRepository.Delete", "error", err)
 	}
@@ -72,18 +72,19 @@ func NewPCStore(session database.Session, log logger.Logger) PCStore {
 }
 
 func (p *PCRepository) SetTags(ctx context.Context, product_id string, tags []string) (err error) {
-	const q = `DELETE FROM products_categories WHERE product_id = $1::UUID`
+	const q = `DELETE FROM product_s.products_categories
+		WHERE product_id = '$1'::UUID`
 
 	tagsLen := len(tags)
 	if tagsLen == 0 {
-		return nil
+		return
 	}
 	err = pgx.BeginFunc(ctx, p.session, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, q, product_id); err != nil {
 			return err
 		}
 		_, err := tx.CopyFrom(ctx,
-			pgx.Identifier{"products_categories"},
+			pgx.Identifier{"product_s.products_categories"},
 			[]string{"product_id", "tag"},
 			pgx.CopyFromSlice(tagsLen, func(i int) ([]any, error) {
 				return []any{product_id, tags[i]}, nil
@@ -92,13 +93,13 @@ func (p *PCRepository) SetTags(ctx context.Context, product_id string, tags []st
 		return err
 	})
 	if err != nil {
+		p.log.Debug("PCRepository.SetTags", "error", err)
 	}
-	p.log.Debug("PCRepository.SetTags", "error", err)
 	return
 }
 
 func (p *PCRepository) List(ctx context.Context, id string) (items []string, err error) {
-	const q = `SELECT tag FROM products_categories WHERE product_id = $1::UUID`
+	const q = `SELECT tag FROM product_s.products_categories WHERE product_id = '$1'::UUID`
 	items, err = list[string](ctx, p.session, q, id)
 	if err != nil {
 		p.log.Debug("PCRepository.List", "error", err)

@@ -17,8 +17,8 @@ const (
 	BlockUser
 )
 
-type ValidUserRquest struct {
-	ID             int32
+type ValidUserRequest struct {
+	ID             string
 	Username       string
 	PermissionType PermissionType
 }
@@ -47,7 +47,7 @@ type CreateUserRequest struct {
 }
 
 type UserResponse struct {
-	ID             int32  `json:"id"`
+	ID             string `json:"id"`
 	Username       string `json:"username"`
 	Password       string `json:"-"`
 	PermissionType int32  `json:"permission_type"`
@@ -75,17 +75,17 @@ type UserRepository struct {
 
 type UserStore interface {
 	IsUsernameExists(ctx context.Context, username string) bool
-	IsValidUser(ctx context.Context, user *ValidUserRquest) bool
+	IsValidUser(ctx context.Context, user *ValidUserRequest) bool
 	Create(ctx context.Context, user *CreateUserRequest) error
 	List(ctx context.Context, pagination, page int) ([]UserResponse, error)
 	Get(ctx context.Context, username string) (UserResponse, error)
 	GetDetails(ctx context.Context, username string) (UserDetailsResponse, error)
-	UpdatePermission(ctx context.Context, id int32, user *UserPermissionRequest) error
-	Delete(ctx context.Context, id int32, username string) error
-	SetEmail(ctx context.Context, id int32, email *EmailAddrRequest) error
-	VerifyEmail(ctx context.Context, id int32, isVerified bool) error
-	SetPhoneNumber(ctx context.Context, id int32, phoneNumber *PhoneNumberRequest) error
-	VerifyPhoneNumber(ctx context.Context, id int32, isVerified bool) error
+	UpdatePermission(ctx context.Context, id string, user *UserPermissionRequest) error
+	Delete(ctx context.Context, id string, username string) error
+	SetEmail(ctx context.Context, id string, email *EmailAddrRequest) error
+	VerifyEmail(ctx context.Context, id string, isVerified bool) error
+	SetPhoneNumber(ctx context.Context, id string, phoneNumber *PhoneNumberRequest) error
+	VerifyPhoneNumber(ctx context.Context, id string, isVerified bool) error
 }
 
 func NewUserStore(session database.Session, log logger.Logger) UserStore {
@@ -93,7 +93,7 @@ func NewUserStore(session database.Session, log logger.Logger) UserStore {
 }
 
 func (u *UserRepository) IsUsernameExists(ctx context.Context, username string) bool {
-	const q = "SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)"
+	const q = "SELECT EXISTS(SELECT 1 FROM user_s.users WHERE username = $1)"
 	var isExists bool
 	if err := u.session.QueryRow(ctx, q, username).Scan(&isExists); err != nil || isExists {
 		if err != nil {
@@ -104,8 +104,11 @@ func (u *UserRepository) IsUsernameExists(ctx context.Context, username string) 
 	return false
 }
 
-func (u *UserRepository) IsValidUser(ctx context.Context, user *ValidUserRquest) bool {
-	const q = `SELECT EXISTS(SELECT 1 FROM users WHERE id = @ID AND username = @Username AND permission_type = @PermissionType AND is_active = true)`
+func (u *UserRepository) IsValidUser(ctx context.Context, user *ValidUserRequest) bool {
+	const q = `SELECT EXISTS(
+		SELECT 1
+		FROM user_s.users
+		WHERE id = '@ID'::UUID AND username = @Username AND permission_type = @PermissionType AND is_active = true)`
 	args := pgx.NamedArgs{
 		"ID":             user.ID,
 		"Username":       user.Username,
@@ -123,11 +126,12 @@ func (u *UserRepository) IsValidUser(ctx context.Context, user *ValidUserRquest)
 
 func (u *UserRepository) Create(ctx context.Context, user *CreateUserRequest) (err error) {
 	const q = `WITH create_user_cte AS (
-		INSERT INTO users (username, password, permission_type, is_active)
+		INSERT INTO user_s.users (username, password, permission_type, is_active)
 			VALUES (@Username, @Password, @PermissionType, @IsActive)
 			RETURNING id
-	)
-	INSERT INTO user_profile(user_id) SELECT c.id FROM create_user_cte c`
+		)
+		INSERT INTO user_s.user_profile(user_id)
+			SELECT c.id FROM create_user_cte c`
 	args := pgx.NamedArgs{
 		"Username":       user.Username,
 		"Password":       user.Password,
@@ -143,10 +147,15 @@ func (u *UserRepository) Create(ctx context.Context, user *CreateUserRequest) (e
 }
 
 func (u *UserRepository) List(ctx context.Context, pagination, page int) (items []UserResponse, err error) {
-	const q = `SELECT id, COALESCE(username, '') AS username, '' as password, permission_type, is_active FROM users
-	ORDER BY is_active DESC, username NULLS LAST
-	LIMIT $1
-	OFFSET $2`
+	const q = `SELECT
+			id,
+			COALESCE(username, '') AS username,
+			'' as password,
+			permission_type, is_active
+		FROM user_s.users
+		ORDER BY is_active DESC, username NULLS LAST
+		LIMIT $1
+		OFFSET $2`
 	items, err = list[UserResponse](ctx, u.session, q, pagination, getOffsetFromPageNum(pagination, page))
 	if err != nil {
 		u.log.Debug("UserRepository.List", "error", err)
@@ -155,9 +164,10 @@ func (u *UserRepository) List(ctx context.Context, pagination, page int) (items 
 }
 
 func (u *UserRepository) Get(ctx context.Context, username string) (item UserResponse, err error) {
-	const q = `SELECT id, username, password, permission_type, is_active FROM users
-	WHERE username = $1
-	LIMIT 1`
+	const q = `SELECT id, username, password, permission_type, is_active
+		FROM user_s.users
+		WHERE username = $1
+		LIMIT 1`
 	item, err = get[UserResponse](ctx, u.session, q, username)
 	if err != nil {
 		u.log.Debug("UserRepository.Get", "error", err)
@@ -170,12 +180,15 @@ func (u *UserRepository) GetDetails(ctx context.Context, username string) (item 
 		err = pgx.ErrNoRows
 		return
 	}
-	const q = `SELECT u.id, u.username, COALESCE(u.email, '') as email, u.is_v_email, '' as password,
-			u.permission_type, u.is_active, COALESCE(u.phone_number, '') as phone_number, u.is_v_phone_number,
-			COALESCE(up.img_path, '') as img_path, COALESCE(up.birthday::TEXT, '') as birthday, COALESCE(up.bio, '') as bio
-		FROM users AS u LEFT JOIN user_profile AS up ON u.id = up.user_id
-			WHERE username = $1
-			LIMIT 1`
+	const q = `SELECT
+			u.id, u.username,
+			COALESCE(u.email, '') as email, u.is_v_email, '' as password,
+			    u.permission_type, u.is_active, COALESCE(u.phone_number, '') as phone_number,
+			u.is_v_phone_number, COALESCE(up.img_path, '') as img_path,
+			COALESCE(up.birthday::TEXT, '') as birthday, COALESCE(up.bio, '') as bio
+		FROM user_s.users AS u LEFT JOIN user_s.user_profile AS up ON u.id = up.user_id
+		WHERE username = $1
+		LIMIT 1`
 	item, err = get[UserDetailsResponse](ctx, u.session, q, username)
 	if err != nil {
 		u.log.Debug("UserRepository.GetDetails", "error", err)
@@ -183,10 +196,10 @@ func (u *UserRepository) GetDetails(ctx context.Context, username string) (item 
 	return
 }
 
-func (u *UserRepository) UpdatePermission(ctx context.Context, id int32, user *UserPermissionRequest) (err error) {
-	const q = `UPDATE users
+func (u *UserRepository) UpdatePermission(ctx context.Context, id string, user *UserPermissionRequest) (err error) {
+	const q = `UPDATE user_s.users
 		SET permission_type = @PermissionType, is_active = @IsActive
-		WHERE id = @ID`
+		WHERE id = '@ID'::UUID`
 	args := pgx.NamedArgs{
 		"PermissionType": user.PermissionType,
 		"IsActive":       user.IsActive,
@@ -198,54 +211,67 @@ func (u *UserRepository) UpdatePermission(ctx context.Context, id int32, user *U
 	return
 }
 
-func (u *UserRepository) Delete(ctx context.Context, id int32, username string) (err error) {
+func (u *UserRepository) Delete(ctx context.Context, id string, username string) (err error) {
 	const q = `WITH remove_products AS (
-			DELETE FROM products WHERE user_id = $1
+			DELETE FROM product_s.products WHERE user_id = $1
 		), remove_user_profile AS (
-			DELETE FROM user_profile WHERE user_id = $1
+			DELETE FROM user_s.user_profile WHERE user_id = $1
 		), delete_related_comments_username AS (
-			UPDATE comments SET username = NULL WHERE username = $2
+			UPDATE user_s.comments SET username = NULL WHERE username = $2
 		)
-		UPDATE users SET username = NULL, password = NULL, is_active = FALSE WHERE id = $1`
+		UPDATE user_s.users
+        SET username = NULL, password = NULL, is_active = FALSE
+        WHERE id = '$1'::UUID`
 	if err = execOne(ctx, u.session, q, id, username); err != nil {
 		u.log.Warn("UserRepository.Delete", "error", err)
 	}
 	return
 }
 
-func (u *UserRepository) SetEmail(ctx context.Context, id int32, email *EmailAddrRequest) (err error) {
+func (u *UserRepository) SetEmail(ctx context.Context, id string, email *EmailAddrRequest) (err error) {
 	const q = `WITH remove_not_used_email AS (
-			UPDATE users SET email = NULL, is_v_email = FALSE WHERE email = $1 AND username IS NULL
+			UPDATE user_s.users
+			SET
+				email = NULL,
+				is_v_email = FALSE
+				WHERE email = $1 AND username IS NULL
 		)
-		UPDATE users SET email = $1 WHERE id = $2`
+		UPDATE user_s.users
+		SET email = $1 WHERE id = '$2'::UUID`
 	if err = execOne(ctx, u.session, q, email.Email, id); err != nil {
 		u.log.Debug("UserRepository.SetEmail", "error", err)
 	}
 	return
 }
 
-func (u *UserRepository) VerifyEmail(ctx context.Context, id int32, isVerified bool) (err error) {
-	const q = `UPDATE users SET is_v_email = $1 WHERE id = $2`
+func (u *UserRepository) VerifyEmail(ctx context.Context, id string, isVerified bool) (err error) {
+	const q = `UPDATE user_s.users SET is_v_email = $1 WHERE id = '$2'::UUID`
 	if err = execOne(ctx, u.session, q, isVerified, id); err != nil {
 		u.log.Warn("UserRepository.VerifyEmail", "error", err)
 	}
 	return
 }
 
-func (u *UserRepository) SetPhoneNumber(ctx context.Context, userID int32, phoneNumber *PhoneNumberRequest) (err error) {
+func (u *UserRepository) SetPhoneNumber(ctx context.Context, id string, phoneNumber *PhoneNumberRequest) (err error) {
 	const q = `WITH remove_not_used_phone_number AS (
-			UPDATE users SET phone_number = NULL, is_v_phone_number = FALSE WHERE phone_number = $1 AND username IS NULL
+			UPDATE user_s.users
+			SET
+				phone_number = NULL,
+				is_v_phone_number = FALSE
+				WHERE phone_number = $1 AND username IS NULL
 		)
-		UPDATE users SET phone_number = $1 WHERE id = $2`
-	if err = execOne(ctx, u.session, q, phoneNumber.PhoneNumber, userID); err != nil {
+		UPDATE user_s.users SET phone_number = $1 WHERE id = '$2'::UUID`
+	if err = execOne(ctx, u.session, q, phoneNumber.PhoneNumber, id); err != nil {
 		u.log.Debug("UserRepository.SetPhoneNumber", "error", err)
 	}
 	return
 }
 
-func (u *UserRepository) VerifyPhoneNumber(ctx context.Context, userID int32, isVerified bool) (err error) {
-	const q = `UPDATE users SET is_v_phone_number = $1 WHERE id = $2 AND username IS NOT NULL`
-	if err = execOne(ctx, u.session, q, isVerified, userID); err != nil {
+func (u *UserRepository) VerifyPhoneNumber(ctx context.Context, id string, isVerified bool) (err error) {
+	const q = `UPDATE user_s.users
+		SET is_v_phone_number = $1
+		WHERE id = $2 AND username IS NOT NULL`
+	if err = execOne(ctx, u.session, q, isVerified, id); err != nil {
 		u.log.Debug("UserRepository.VerifyPhoneNumber", "error", err)
 	}
 	return
@@ -262,18 +288,19 @@ type UserProfileRepository struct {
 }
 
 type UserProfileStore interface {
-	Upsert(ctx context.Context, userID int32, userProfile *UserProfileRequest) error
-	GetImgPath(ctx context.Context, userID int32) (string, error)
-	SetImgPath(ctx context.Context, userID int32, imgPath string) error
-	DeleteImgPath(ctx context.Context, userID int32) (string, error)
+	Upsert(ctx context.Context, userID string, userProfile *UserProfileRequest) error
+	GetImgPath(ctx context.Context, userID string) (string, error)
+	SetImgPath(ctx context.Context, userID string, imgPath string) error
+	DeleteImgPath(ctx context.Context, userID string) (string, error)
 }
 
 func NewUserProfileStore(session database.Session, log logger.Logger) UserProfileStore {
 	return &UserProfileRepository{session, log}
 }
 
-func (u *UserProfileRepository) Upsert(ctx context.Context, userID int32, userProfile *UserProfileRequest) (err error) {
-	const q = `INSERT INTO user_profile(user_id, birthday, bio) VALUES (@UserID, @Birthday::DATE, @Bio)
+func (u *UserProfileRepository) Upsert(ctx context.Context, userID string, userProfile *UserProfileRequest) (err error) {
+	const q = `INSERT INTO user_s.user_profile(user_id, birthday, bio)
+        VALUES ('@UserID'::UUID, '@Birthday'::DATE, @Bio)
 		ON CONFLICT(user_id)
 		DO UPDATE SET birthday = @Birthday::DATE, bio = @Bio`
 	args := pgx.NamedArgs{
@@ -287,24 +314,30 @@ func (u *UserProfileRepository) Upsert(ctx context.Context, userID int32, userPr
 	return
 }
 
-func (u *UserProfileRepository) GetImgPath(ctx context.Context, userID int32) (imgPath string, err error) {
-	const q = `SELECT COALESCE(img_path, '') AS img_path FROM user_profile WHERE user_id = $1`
+func (u *UserProfileRepository) GetImgPath(ctx context.Context, userID string) (imgPath string, err error) {
+	const q = `SELECT COALESCE(img_path, '') AS img_path
+		FROM user_s.user_profile
+		WHERE user_id = '$1'::UUID`
 	if err = u.session.QueryRow(ctx, q, userID).Scan(&imgPath); err != nil {
 		u.log.Debug("UserProfileRepository.GetImgPath", "error", err)
 	}
 	return
 }
 
-func (u *UserProfileRepository) SetImgPath(ctx context.Context, userID int32, imgPath string) (err error) {
-	const q = `UPDATE user_profile SET img_path = NULLIF($1, '') WHERE user_id = $2`
+func (u *UserProfileRepository) SetImgPath(ctx context.Context, userID string, imgPath string) (err error) {
+	const q = `UPDATE user_s.user_profile
+		SET img_path = NULLIF($1, '')
+		WHERE user_id = '$2'::UUID`
 	if err = execOne(ctx, u.session, q, imgPath, userID); err != nil {
 		u.log.Debug("UserProfileRepository.SetImgPath", "error", err, "imgPath", imgPath)
 	}
 	return
 }
 
-func (u *UserProfileRepository) DeleteImgPath(ctx context.Context, UserID int32) (imgPath string, err error) {
-	const q = `UPDATE user_profile SET img_path = null WHERE user_id = $1
+func (u *UserProfileRepository) DeleteImgPath(ctx context.Context, UserID string) (imgPath string, err error) {
+	const q = `UPDATE user_s.user_profile
+		SET img_path = null
+		WHERE user_id = '$1'::UUID
 		RETURNING OLD.img_path AS img_path`
 	if err = u.session.QueryRow(ctx, q, UserID).Scan(&imgPath); err != nil {
 		u.log.Error("UserProfileRepository.DeleteImgPath", "error", err)
