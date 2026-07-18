@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS comments;
+DROP TABLE IF EXISTS user_s.comments;

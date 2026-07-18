@@ -1,3 +1,5 @@
-DROP TABLE IF EXISTS user_profile;
+DROP TABLE IF EXISTS user_s.user_profile;
 
-DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS user_s.users CASCADE;
+
+DROP SCHEMA IF EXISTS user_s;

@@ -1,5 +1,5 @@
-CREATE TABLE comments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+CREATE TABLE user_s.comments (
+    id UUID PRIMARY KEY DEFAULT uuidv7(),
     username VARCHAR(128) NOT NULL,
     pub_date TIMESTAMP NOT NULL DEFAULT now(),
     parent UUID DEFAULT NULL,
