@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/auth"
+	"generic-shop-sample/internal/config"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/queries"
@@ -65,13 +65,13 @@ func GetPage(c *gin.Context) int {
 
 type FileUploaderFunc func(file *multipart.FileHeader, claims *auth.AuthClaims, group, dst string) (string, error)
 
-func GetFileUploader(config *internal.Config, log logger.Logger) FileUploaderFunc {
+func GetFileUploader(config config.Config, log logger.Logger) FileUploaderFunc {
 	uf := uploadFile{config, log}
 	return uf.local
 }
 
 type uploadFile struct {
-	config *internal.Config
+	config config.Config
 	log    logger.Logger
 }
 
@@ -94,11 +94,11 @@ func (u *uploadFile) local(file *multipart.FileHeader, claims *auth.AuthClaims, 
 		return "", ErrOperationFailed
 	}
 	mtype := mimetype.Detect(buf[:n])
-	if mtypeStr := mtype.String(); !mimetype.EqualsAny(mtypeStr, u.config.Opt.AllowedImgMimetype...) {
+	if mtypeStr := mtype.String(); !mimetype.EqualsAny(mtypeStr, u.config.FileUpload.AllowedImgMimetype...) {
 		u.log.Debug("uploadFile.local",
 			"step", "mimetype.Detect",
 			"mimeType", mtypeStr,
-			"expected", u.config.Opt.AllowedImgMimetype)
+			"expected", u.config.FileUpload.AllowedImgMimetype)
 		return "", ErrInvalidMimeType
 	}
 
@@ -106,7 +106,7 @@ func (u *uploadFile) local(file *multipart.FileHeader, claims *auth.AuthClaims, 
 		y, m, d := time.Now().Date()
 		dst = fmt.Sprintf("%s/%d/%d/%d/%s-%d%s", group, y, m, d, claims.Username, time.Now().UnixNano(), mtype.Extension())
 	}
-	path := fmt.Sprintf("%s/%s", u.config.Opt.UploadPath, dst)
+	path := fmt.Sprintf("%s/%s", u.config.FileUpload.UploadPath, dst)
 	u.log.Debug("uploadFile.local", "path", path)
 	if err = os.MkdirAll(filepath.Dir(path), 0750); err != nil {
 		u.log.Error("uploadFile.local", "step", "os.MkdirAll", "error", err)

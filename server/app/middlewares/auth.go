@@ -2,9 +2,9 @@ package middlewares
 
 import (
 	"context"
+	"generic-shop-sample/app"
 	"generic-shop-sample/internal/auth"
 	"generic-shop-sample/internal/logger"
-	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
 	"net/http"
 	"strings"
@@ -16,7 +16,8 @@ type userContextKey struct{}
 
 var userKey = userContextKey{}
 
-func AuthMiddleware(log logger.Logger) gin.HandlerFunc {
+func AuthMiddleware(deps *app.ServiceDeps, log logger.Logger) gin.HandlerFunc {
+	jwtToken := auth.JWTToken{JWTSecretKey: []byte(deps.Config.JWTSecretKey)}
 	return func(c *gin.Context) {
 		var tokenString string
 		if cookie, err := c.Cookie("__Host-auth-token"); err == nil {
@@ -31,15 +32,15 @@ func AuthMiddleware(log logger.Logger) gin.HandlerFunc {
 				return
 			}
 		}
-		claims, err := auth.TokenDecoder(tokenString)
+		claims, err := jwtToken.Decoder(tokenString)
 		if err != nil {
 			log.Debug("AuthMiddleware:invalid token", "token", tokenString)
 			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}
-		store := queries.NewUserStore(database.GetSession(), log)
+		store := queries.NewUserStore(deps.DB.GetSession(), log)
 		ctx := c.Request.Context()
-		if !store.IsValidUser(ctx, &queries.ValidUserRquest{ID: claims.ID, Username: claims.Username, PermissionType: claims.PermissionType}) {
+		if !store.IsValidUser(ctx, &queries.ValidUserRequest{ID: claims.ID, Username: claims.Username, PermissionType: claims.PermissionType}) {
 			c.AbortWithStatus(http.StatusNotFound)
 			log.Debug("AuthMiddleware:invalid user", "username", claims.Username)
 			return

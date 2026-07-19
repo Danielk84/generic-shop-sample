@@ -2,11 +2,10 @@ package api
 
 import (
 	"fmt"
+	"generic-shop-sample/app"
 	md "generic-shop-sample/app/middlewares"
-	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
-	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
 	"net/http"
 	"net/url"
@@ -15,21 +14,20 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func CommentsRouter(router *gin.RouterGroup) {
+func CommentsRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
-	config := internal.GetConfig()
 	ch := commentsHandler{
-		store:           queries.NewCommentStore(database.GetSession(), log),
-		cache:           cache.GetCache(cache.PublicCache),
+		store:           queries.NewCommentStore(deps.DB.GetSession(), log),
+		cache:           deps.Cache.GetCache(cache.PublicCache),
 		baseCacheKey:    "comments",
 		cacheExpiration: 1 * time.Hour,
 		log:             log,
-		pagination:      config.Opt.Pagination,
+		pagination:      deps.Config.Pagination,
 	}
 
 	router.GET("/", ch.list)
 
-	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(log)}, []RouteSpec{
+	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(deps, log)}, []RouteSpec{
 		{http.MethodPost, "/", []gin.HandlerFunc{ch.create}},
 		{http.MethodGet, "/full", []gin.HandlerFunc{ch.fullList}},
 		{http.MethodGet, "/overview/:id", []gin.HandlerFunc{ch.get}},

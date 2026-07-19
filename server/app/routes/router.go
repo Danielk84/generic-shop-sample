@@ -1,27 +1,27 @@
 package routes
 
 import (
-	"context"
+	"generic-shop-sample/app"
 	"generic-shop-sample/app/routes/api"
-	"generic-shop-sample/internal"
+	"generic-shop-sample/internal/config"
 
 	"github.com/gin-gonic/gin"
 )
 
-func APIRouter(ctx context.Context, router *gin.RouterGroup) {
-	api.LoginRouter(ctx, router.Group("/auth"))
-	api.UserProfileRouter(router.Group("/users/profile"))
-	api.UsersRouter(router.Group("/users"))
-	api.ProductImagesRouter(router.Group("/products/images"))
-	api.ProductsRouter(router.Group("/products"))
-	api.PCRouter(router.Group("categories/pc"))
-	api.CategoriesRouter(router.Group("/categories"))
-	api.CommentsRouter(router.Group("/comments"))
-	api.OrderItemsRouter(router.Group("/orders/items"))
-	api.OrderRouter(router.Group("/orders"))
-	api.PaymentRouter(ctx, router.Group("/payment"))
+func APIRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
+	api.LoginRouter(deps, router.Group("/auth"))
+	api.UserProfileRouter(deps, router.Group("/users/profile"))
+	api.UsersRouter(deps, router.Group("/users"))
+	api.ProductImagesRouter(deps, router.Group("/products/images"))
+	api.ProductsRouter(deps, router.Group("/products"))
+	api.PCRouter(deps, router.Group("categories/pc"))
+	api.CategoriesRouter(deps, router.Group("/categories"))
+	api.CommentsRouter(deps, router.Group("/comments"))
+	api.OrderItemsRouter(deps, router.Group("/orders/items"))
+	api.OrderRouter(deps, router.Group("/orders"))
+	api.PaymentRouter(deps, router.Group("/payment"))
 }
 
-func StaticRouter(config *internal.Config, router *gin.RouterGroup) {
-	router.Static("/upload", config.Opt.UploadPath)
+func StaticRouter(config config.Config, router *gin.RouterGroup) {
+	router.Static("/upload", config.FileUpload.UploadPath)
 }

@@ -2,7 +2,7 @@ package queries
 
 import (
 	"context"
-	"generic-shop-sample/internal"
+	"generic-shop-sample/internal/config"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/database"
 	"reflect"
@@ -269,6 +269,7 @@ type ProductImageResponse struct {
 type ProductImagesRepository struct {
 	session database.Session
 	log     logger.Logger
+	config  config.ProductImageConfig
 }
 
 type ProductImagesStore interface {
@@ -277,8 +278,8 @@ type ProductImagesStore interface {
 	Delete(ctx context.Context, id string) (string, error)
 }
 
-func NewProductImagesStore(session database.Session, logger logger.Logger) ProductImagesStore {
-	return &ProductImagesRepository{session, logger}
+func NewProductImagesStore(session database.Session, logger logger.Logger, config config.ProductImageConfig) ProductImagesStore {
+	return &ProductImagesRepository{session, logger, config}
 }
 
 func (p *ProductImagesRepository) Create(ctx context.Context, productID, imgPath string) (err error) {
@@ -290,8 +291,7 @@ func (p *ProductImagesRepository) Create(ctx context.Context, productID, imgPath
 		p.log.Debug("ProductImagesRepository.Create", "error", err)
 		return
 	}
-	config := internal.GetConfig()
-	if count >= config.Opt.MaxProductImagesAmount {
+	if count >= p.config.MaxProductImagesAmount {
 		return ErrFullCapacity
 	}
 

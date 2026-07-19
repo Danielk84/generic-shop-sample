@@ -1,29 +1,26 @@
 package api
 
 import (
+	"generic-shop-sample/app"
 	md "generic-shop-sample/app/middlewares"
-	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/logger"
-	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-func OrderRouter(router *gin.RouterGroup) {
+func OrderRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
-	config := internal.GetConfig()
 	h := orderHandler{
-		store:      queries.NewOrderStore(database.GetSession(), log),
+		store:      queries.NewOrderStore(deps.DB.GetSession(), log),
 		log:        log,
-		pagination: config.Opt.Pagination,
+		pagination: deps.Config.Pagination,
 	}
 
-	router.Use(md.AuthMiddleware(log))
+	router.Use(md.AuthMiddleware(deps, log))
 	router.POST("/", h.create)
 	router.GET("/customer", h.customerList)
-	router.GET("/vendor", h.vendorList)
 	router.PUT("/set-user-info/:id", h.setUserInfo)
 	router.PUT("/verify/:id", h.verifyUserInfo)
 	router.GET("/:id", h.get)
@@ -66,21 +63,6 @@ func (h *orderHandler) customerList(c *gin.Context) {
 	c.JSON(http.StatusOK, output)
 }
 
-func (h *orderHandler) vendorList(c *gin.Context) {
-	claims := md.GetUserClaims(c)
-	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
-		return
-	}
-
-	page := GetPage(c)
-	output, err := h.store.VendorList(c.Request.Context(), claims.ID, h.pagination, page)
-	if err != nil {
-		NotFound(c, "")
-		return
-	}
-	c.JSON(http.StatusOK, output)
-}
-
 func (h *orderHandler) get(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if HasPermissions(nil, claims.PermissionType, queries.BlockUser) {
@@ -89,7 +71,10 @@ func (h *orderHandler) get(c *gin.Context) {
 	}
 
 	id := c.Param("id")
-	output, err := h.store.Get(c.Request.Context(), id, claims.ID)
+	output, err := h.store.Get(c.Request.Context(), queries.OrderID{
+		ID:     id,
+		UserID: claims.ID,
+	})
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -104,7 +89,7 @@ func (h *orderHandler) setUserInfo(c *gin.Context) {
 		return
 	}
 
-	var input queries.OrderUserInfoRequest
+	var input queries.OrderUserInfo
 	if err := c.ShouldBindJSON(&input); err != nil {
 		h.log.Debug("orderHandler.setUserInfo", "error", err)
 		BadRequest(c, "")
@@ -112,7 +97,11 @@ func (h *orderHandler) setUserInfo(c *gin.Context) {
 	}
 
 	id := c.Param("id")
-	if err := h.store.SetUserInfo(c.Request.Context(), id, claims.ID, &input); err != nil {
+	err := h.store.SetUserInfo(c.Request.Context(), queries.OrderID{
+		ID:     id,
+		UserID: claims.ID,
+	}, input)
+	if err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -133,30 +122,31 @@ func (h *orderHandler) verifyUserInfo(c *gin.Context) {
 		return
 	}
 	id := c.Param("id")
-	if err := h.store.VerifyUserInfo(c.Request.Context(), id, claims.ID, input.Accepted); err != nil {
+	err := h.store.VerifyUserInfo(c.Request.Context(), queries.OrderID{
+		ID:     id,
+		UserID: claims.ID,
+	}, input.Accepted)
+	if err != nil {
 		NotFound(c, "")
 		return
 	}
 	Accepted(c, "")
 }
 
-func OrderItemsRouter(router *gin.RouterGroup) {
+func OrderItemsRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
-	config := internal.GetConfig()
 	h := orderItemsHandler{
-		store:      queries.NewOrderItemsStore(database.GetSession(), log),
+		store:      queries.NewOrderItemsStore(deps.DB.GetSession(), log),
 		log:        log,
-		pagination: config.Opt.Pagination,
+		pagination: deps.Config.Pagination,
 	}
 
-	router.Use(md.AuthMiddleware(log))
+	router.Use(md.AuthMiddleware(deps, log))
 	router.POST("/", h.create)
 	router.DELETE("/", h.delete)
 	router.GET("/customer/:id", h.customerList)
-	router.GET("/vendor/:id", h.vendorList)
 	router.GET("/full/:id", h.fullList)
 	router.PUT("/set-items-total/:total", h.setItemsTotal)
-	router.PUT("/set-packed", h.setPacked)
 }
 
 type ItemsTotal struct {
@@ -182,7 +172,7 @@ func (h *orderItemsHandler) create(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	if err := h.store.Create(c.Request.Context(), claims.ID, &input); err != nil {
+	if err := h.store.Create(c.Request.Context(), claims.ID, input); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -198,23 +188,10 @@ func (h *orderItemsHandler) customerList(c *gin.Context) {
 
 	id := c.Param("id")
 	page := GetPage(c)
-	output, err := h.store.CustomerList(c.Request.Context(), id, claims.ID, h.pagination, page)
-	if err != nil {
-		NotFound(c, "")
-		return
-	}
-	c.JSON(http.StatusOK, output)
-}
-
-func (h *orderItemsHandler) vendorList(c *gin.Context) {
-	claims := md.GetUserClaims(c)
-	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
-		return
-	}
-
-	id := c.Param("id")
-	page := GetPage(c)
-	output, err := h.store.VendorList(c.Request.Context(), id, claims.ID, h.pagination, page)
+	output, err := h.store.CustomerList(c.Request.Context(), queries.OrderID{
+		ID:     id,
+		UserID: claims.ID,
+	}, h.pagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -245,13 +222,17 @@ func (h *orderItemsHandler) delete(c *gin.Context) {
 		return
 	}
 
-	var input queries.BaseOrderItemRequest
+	var input queries.OrderItem
 	if err := c.ShouldBindJSON(&input); err != nil {
 		h.log.Debug("orderItemsHandler.delete", "error", err)
 		BadRequest(c, "")
 		return
 	}
-	if err := h.store.Delete(c.Request.Context(), claims.ID, &input); err != nil {
+	err := h.store.Delete(c.Request.Context(), queries.OrderItemID{
+		OrderItem: input,
+		UserID:    claims.ID,
+	})
+	if err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -271,32 +252,17 @@ func (h *orderItemsHandler) setItemsTotal(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	var input queries.BaseOrderItemRequest
+	var input queries.OrderItem
 	if err := c.ShouldBindJSON(&input); err != nil {
 		h.log.Debug("orderItemsHandler.setItemsTotal", "step", "bindJSON", "error", err)
 		BadRequest(c, "")
 		return
 	}
-	if err := h.store.SetItemsTotal(c.Request.Context(), claims.ID, url.Total, &input); err != nil {
-		NotFound(c, "")
-		return
-	}
-	Accepted(c, "")
-}
-
-func (h *orderItemsHandler) setPacked(c *gin.Context) {
-	claims := md.GetUserClaims(c)
-	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
-		return
-	}
-
-	var input queries.OrderItemPackStatusRequest
-	if err := c.ShouldBindJSON(&input); err != nil {
-		h.log.Debug("orderItemsHandler.setPacked", "error", err)
-		BadRequest(c, "")
-		return
-	}
-	if err := h.store.SetPacked(c.Request.Context(), claims.ID, &input); err != nil {
+	err := h.store.SetItemsTotal(c.Request.Context(), queries.OrderItemID{
+		OrderItem: input,
+		UserID:    claims.ID,
+	}, url.Total)
+	if err != nil {
 		NotFound(c, "")
 		return
 	}

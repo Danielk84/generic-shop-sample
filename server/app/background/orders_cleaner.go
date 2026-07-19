@@ -7,12 +7,12 @@ import (
 	"time"
 )
 
-type expiredOrdersCleaner struct {
-	store queries.OrderStore
-	log   logger.Logger
+type ExpiredOrdersCleaner struct {
+	Store queries.OrderStore
+	Log   logger.Logger
 }
 
-func (b *expiredOrdersCleaner) start(ctx context.Context) {
+func (b *ExpiredOrdersCleaner) Start(ctx context.Context) {
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
 
@@ -21,9 +21,11 @@ func (b *expiredOrdersCleaner) start(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if err := b.store.DeleteExpiredOrders(ctx); err != nil {
+			if err := b.Store.DeleteExpiredOrders(ctx); err != nil {
 				logger.GetLogger().Error("failed to delete expired orders", "error", err)
 			}
 		}
 	}
 }
+
+var _ BackgroundTask = (*ExpiredOrdersCleaner)(nil)

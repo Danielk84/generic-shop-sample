@@ -4,12 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"generic-shop-sample/app"
 	md "generic-shop-sample/app/middlewares"
-	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/internal/payment"
 	"generic-shop-sample/storage/cache"
-	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
 	"net/http"
 	"slices"
@@ -18,34 +17,32 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func PaymentRouter(ctx context.Context, router *gin.RouterGroup) {
-	config := internal.GetConfig()
-
+func PaymentRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	addr := payment.ZPSandboxAddr
-	if config.Opt.Mode == gin.ReleaseMode {
+	if deps.Config.App.Mode == gin.ReleaseMode {
 		addr = payment.ZPGatewayAddr
 	}
 
-	session := database.GetSession()
+	session := deps.DB.GetSession()
 	log := logger.GetLogger()
 	ph := paymentHandler{
-		cache:       cache.GetCache(cache.PaymentCache),
+		cache:       deps.Cache.GetCache(cache.PaymentCache),
 		userStore:   queries.NewUserStore(session, log),
 		orderStore:  queries.NewOrderStore(session, log),
 		zpGateway:   payment.NewZarinPalGateway(addr, &http.Client{Timeout: 10 * time.Second}),
-		merchandID:  config.Opt.ZPMerchantID,
-		callbackURL: config.Opt.PaymentCallbackURL,
+		merchandID:  deps.Config.Payment.ZPMerchantID,
+		callbackURL: deps.Config.Payment.PaymentCallbackURL,
 		log:         log,
 	}
 
-	rl := md.NewRateLimiter(ctx, 10, 30*time.Minute, 60*time.Second)
+	rl := md.NewRateLimiter(deps.Ctx, 10, 30*time.Minute, 60*time.Second)
 	router.Use(rl.RateLimiterMiddleware())
 	router.GET("/callback", ph.callback)
-	router.POST("/:id", md.AuthMiddleware(log), ph.init)
+	router.POST("/:id", md.AuthMiddleware(deps, log), ph.init)
 }
 
 type UserPayment struct {
-	UserID  int32  `json:"user_id"`
+	UserID  string `json:"user_id"`
 	OrderID string `json:"order_id"`
 	Amount  int64  `json:"Amount"`
 }
@@ -69,7 +66,10 @@ func (h *paymentHandler) init(c *gin.Context) {
 
 	id := c.Param("id")
 	ctx := c.Request.Context()
-	order, err := h.orderStore.Get(ctx, id, claims.ID)
+	order, err := h.orderStore.Get(ctx, queries.OrderID{
+		ID:     id,
+		UserID: claims.ID,
+	})
 	if err != nil {
 		NotFound(c, "Order not found")
 		return
@@ -165,7 +165,7 @@ func (h *paymentHandler) callback(c *gin.Context) {
 		return
 	}
 
-	status := &queries.PaymentStatus{}
+	status := queries.PaymentStatus{}
 	output, err := json.Marshal(verfiedPayment)
 	if err != nil {
 		h.log.Warn("failed to encode internal.payment.ZPVerifyRequest", "error", err)
@@ -176,7 +176,11 @@ func (h *paymentHandler) callback(c *gin.Context) {
 	if slices.Contains([]int{100, 101}, verfiedPayment.Data.Code) {
 		status.IsPaid = true
 	}
-	if err := h.orderStore.SetPaymentStatus(c.Request.Context(), up.OrderID, up.UserID, status); err != nil {
+	err = h.orderStore.SetPaymentStatus(c.Request.Context(), queries.OrderID{
+		ID:     up.OrderID,
+		UserID: up.UserID,
+	}, status)
+	if err != nil {
 		h.reverseWithLog(ctx, "failed to set payment summary", err, reverse)
 		NotFound(c, "Order not found")
 		return

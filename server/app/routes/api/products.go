@@ -2,11 +2,10 @@ package api
 
 import (
 	"fmt"
+	"generic-shop-sample/app"
 	md "generic-shop-sample/app/middlewares"
-	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
-	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
 	"net/http"
 	"os"
@@ -15,28 +14,24 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func ProductsRouter(router *gin.RouterGroup) {
+func ProductsRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
-	config := internal.GetConfig()
 	h := productsHandler{
-		store:           queries.NewProductStore(database.GetSession(), log),
-		cache:           cache.GetCache(cache.ProductsCache),
+		store:           queries.NewProductStore(deps.DB.GetSession(), log),
+		cache:           deps.Cache.GetCache(cache.ProductsCache),
 		baseCacheKey:    "products",
 		cacheExpiration: 1 * time.Hour,
 		log:             log,
-		pagination:      config.Opt.Pagination,
+		pagination:      deps.Config.Pagination,
 	}
 
 	router.GET("/", h.list)
-	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(log)}, []RouteSpec{
+	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(deps, log)}, []RouteSpec{
 		{http.MethodPost, "/", []gin.HandlerFunc{h.create}},
 		{http.MethodPut, "/", []gin.HandlerFunc{h.update}},
 		{http.MethodDelete, "/:id", []gin.HandlerFunc{h.delete}},
 		{http.MethodGet, "/full", []gin.HandlerFunc{h.fullList}},
 		{http.MethodGet, "/overview/:id", []gin.HandlerFunc{h.get}},
-		{http.MethodPut, "/incr/:id", []gin.HandlerFunc{h.incrBy}},
-		{http.MethodPut, "/decr/:id", []gin.HandlerFunc{h.decrBy}},
-		{http.MethodPut, "set-available/:id", []gin.HandlerFunc{h.setAvailable}},
 		{http.MethodPut, "set-active/:id", []gin.HandlerFunc{h.setActive}},
 	})
 	router.GET("/:id", h.get)
@@ -57,7 +52,7 @@ type productsHandler struct {
 
 func (h *productsHandler) create(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
 		return
 	}
 
@@ -68,7 +63,7 @@ func (h *productsHandler) create(c *gin.Context) {
 		return
 	}
 
-	if err := h.store.Create(c.Request.Context(), claims.ID, &input); err != nil {
+	if err := h.store.Create(c.Request.Context(), input); err != nil {
 		BadRequest(c, "")
 		return
 	}
@@ -97,22 +92,17 @@ func (h *productsHandler) list(c *gin.Context) {
 
 func (h *productsHandler) fullList(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
 		return
-	}
-
-	id := claims.ID
-	if HasPermissions(nil, claims.PermissionType, queries.Admin) {
-		id = 0
 	}
 	ctx := c.Request.Context()
 	page := GetPage(c)
-	cacheKey := fmt.Sprintf("%s:full:%d:%d", h.baseCacheKey, id, page)
+	cacheKey := fmt.Sprintf("%s:full:%d", h.baseCacheKey, page)
 	var output []queries.ProductStatusResponse
 	if err := GetJSONCache(ctx, h.cache, cacheKey, &output); err != nil {
 		LogCacheErr("HGetAll", cacheKey, err)
 
-		output, err = h.store.FullList(ctx, id, h.pagination, page)
+		output, err = h.store.AdminList(ctx, h.pagination, page)
 		if err != nil {
 			NotFound(c, "")
 			return
@@ -130,7 +120,7 @@ func (h *productsHandler) get(c *gin.Context) {
 	id := c.Param("id")
 
 	cacheKey := fmt.Sprintf("%s:%s", h.baseCacheKey, id)
-	var output queries.OwnedProductResponse
+	var output queries.ProductResponse
 	if err := GetJSONCache(ctx, h.cache, cacheKey, &output); err != nil {
 		LogCacheErr("HGetALl", h.baseCacheKey, err)
 
@@ -149,7 +139,7 @@ func (h *productsHandler) get(c *gin.Context) {
 			Unauthorized(c, "")
 			return
 		}
-		if claims.ID != output.UserID && !HasPermissions(nil, claims.PermissionType, queries.Admin) {
+		if !HasPermissions(nil, claims.PermissionType, queries.Admin) {
 			Forbidden(c, "")
 			return
 		}
@@ -158,7 +148,6 @@ func (h *productsHandler) get(c *gin.Context) {
 }
 
 func (h *productsHandler) update(c *gin.Context) {
-	claims := md.GetUserClaims(c)
 	var input queries.UpdateProductRequest
 	if err := c.ShouldBindJSON(&input); err != nil {
 		h.log.Debug("productsHandler.update", "error", err)
@@ -166,7 +155,7 @@ func (h *productsHandler) update(c *gin.Context) {
 		return
 	}
 	ctx := c.Request.Context()
-	if err := h.store.Update(ctx, claims.ID, &input); err != nil {
+	if err := h.store.Update(ctx, input); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -180,13 +169,13 @@ func (h *productsHandler) update(c *gin.Context) {
 
 func (h *productsHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
 		return
 	}
 
 	id := c.Param("id")
 	ctx := c.Request.Context()
-	if err := h.store.Delete(ctx, id, claims.ID); err != nil {
+	if err := h.store.Delete(ctx, id); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -196,63 +185,6 @@ func (h *productsHandler) delete(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
-}
-
-func (h *productsHandler) incrBy(c *gin.Context) {
-	claims := md.GetUserClaims(c)
-	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
-		return
-	}
-
-	var input AvailableQuantity
-	if err := c.ShouldBindJSON(&input); err != nil {
-		h.log.Debug("productsHandler.incrBy", "error", err)
-		BadRequest(c, "")
-		return
-	}
-	id := c.Param("id")
-	if err := h.store.IncrBy(c.Request.Context(), id, claims.ID, input.Num); err != nil {
-		NotFound(c, "")
-		return
-	}
-	Accepted(c, "")
-}
-
-func (h *productsHandler) decrBy(c *gin.Context) {
-	claims := md.GetUserClaims(c)
-	var input AvailableQuantity
-	if err := c.ShouldBindJSON(&input); err != nil {
-		h.log.Debug("productsHandler.decrBy", "error", err)
-		BadRequest(c, "")
-		return
-	}
-	id := c.Param("id")
-	if err := h.store.DecrBy(c.Request.Context(), id, claims.ID, input.Num); err != nil {
-		NotFound(c, "")
-		return
-	}
-	Accepted(c, "")
-}
-
-func (h *productsHandler) setAvailable(c *gin.Context) {
-	claims := md.GetUserClaims(c)
-	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
-		return
-	}
-
-	var input SetFlag
-	if err := c.ShouldBindJSON(&input); err != nil {
-		h.log.Debug("productsHandler.setAvailable", "error", err)
-		BadRequest(c, "")
-		return
-	}
-
-	id := c.Param("id")
-	if err := h.store.SetAvailable(c.Request.Context(), id, input.Accepted); err != nil {
-		NotFound(c, "")
-		return
-	}
-	Accepted(c, "")
 }
 
 func (h *productsHandler) setActive(c *gin.Context) {
@@ -276,24 +208,23 @@ func (h *productsHandler) setActive(c *gin.Context) {
 	Accepted(c, "")
 }
 
-func ProductImagesRouter(router *gin.RouterGroup) {
-	config := internal.GetConfig()
-	session := database.GetSession()
+func ProductImagesRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
+	session := deps.DB.GetSession()
 	log := logger.GetLogger()
 	h := productImagesHandler{
 		productStore:    queries.NewProductStore(session, log),
-		imagesStore:     queries.NewProductImagesStore(session, log),
-		cache:           cache.GetCache(cache.ProductsCache),
+		imagesStore:     queries.NewProductImagesStore(session, log, deps.Config.ProductImage),
+		cache:           deps.Cache.GetCache(cache.ProductsCache),
 		baseCacheKey:    "images",
 		cacheExpiration: 1 * time.Hour,
-		uploadPath:      config.Opt.UploadPath,
-		fileUploader:    GetFileUploader(config, log),
+		uploadPath:      deps.Config.FileUpload.UploadPath,
+		fileUploader:    GetFileUploader(deps.Config, log),
 		log:             log,
 	}
 
 	router.GET("/:productID", h.list)
 
-	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(log)}, []RouteSpec{
+	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(deps, log)}, []RouteSpec{
 		{http.MethodPost, "/:productID", []gin.HandlerFunc{h.create}},
 		{http.MethodDelete, "/:productID/:id", []gin.HandlerFunc{h.delete}},
 	})
@@ -312,22 +243,12 @@ type productImagesHandler struct {
 
 func (h *productImagesHandler) create(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
 		return
 	}
 
 	productID := c.Param("productID")
 	ctx := c.Request.Context()
-	output, err := h.productStore.Get(ctx, productID)
-	if err != nil {
-		NotFound(c, "")
-		return
-	}
-	if output.UserID != claims.ID {
-		Forbidden(c, "")
-		return
-	}
-
 	file, err := c.FormFile("file")
 	if err != nil {
 		h.log.Debug("productImagesHandler.create:c.FormFile", "error", err)
@@ -373,21 +294,12 @@ func (h *productImagesHandler) list(c *gin.Context) {
 
 func (h *productImagesHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
 		return
 	}
 
 	productID := c.Param("productID")
 	ctx := c.Request.Context()
-	output, err := h.productStore.Get(ctx, productID)
-	if err != nil {
-		NotFound(c, "")
-		return
-	}
-	if output.UserID != claims.ID {
-		Forbidden(c, "")
-		return
-	}
 	id := c.Param("id")
 	imgPath, err := h.imagesStore.Delete(ctx, id)
 	if err != nil {

@@ -13,6 +13,7 @@ const (
 	PublicCache int = iota
 	UsersCache
 	ProductsCache
+	OrdersCache
 	PaymentCache
 )
 
@@ -20,6 +21,7 @@ type CacheClient = *redis.Client
 
 type CacheManager interface {
 	Close()
+	GetCache(db int) CacheClient
 }
 
 type Cache struct {
@@ -27,9 +29,7 @@ type Cache struct {
 	mu      sync.RWMutex
 }
 
-var defaultCache *Cache
-
-func NewCache(ctx context.Context, addr string, dbs []int) (*Cache, error) {
+func New(ctx context.Context, addr string, dbs []int) (CacheManager, error) {
 	if addr == "" {
 		return nil, fmt.Errorf("empty cache storage address")
 	}
@@ -63,29 +63,22 @@ func NewCache(ctx context.Context, addr string, dbs []int) (*Cache, error) {
 	return &Cache{clients: clients}, nil
 }
 
-func (ce *Cache) Close() {
-	ce.mu.Lock()
-	defer ce.mu.Unlock()
+func (c *Cache) Close() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	for _, client := range ce.clients {
+	for _, client := range c.clients {
 		_ = client.Close()
 	}
 }
 
-func New(ctx context.Context, addr string, dbs []int) (CacheManager, error) {
-	var err error
-	if defaultCache == nil {
-		defaultCache, err = NewCache(ctx, addr, dbs)
-	}
-	return defaultCache, err
-}
+func (c *Cache) GetCache(db int) CacheClient {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
-func GetCache(db int) CacheClient {
-	if defaultCache == nil {
-		panic("not initiated cache engine")
+	cache, ok := c.clients[db]
+	if ok {
+		return cache
 	}
-	defaultCache.mu.RLock()
-	defer defaultCache.mu.RUnlock()
-
-	return defaultCache.clients[db]
+	panic("undefined cache engine")
 }

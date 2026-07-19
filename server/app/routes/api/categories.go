@@ -2,10 +2,10 @@ package api
 
 import (
 	"fmt"
+	"generic-shop-sample/app"
 	md "generic-shop-sample/app/middlewares"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
-	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
 	"net/http"
 	"strconv"
@@ -14,18 +14,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func CategoriesRouter(router *gin.RouterGroup) {
+func CategoriesRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
 	h := categoriesHandler{
-		store:        queries.NewCategoryStore(database.GetSession(), log),
-		cache:        cache.GetCache(cache.ProductsCache),
+		store:        queries.NewCategoryStore(deps.DB.GetSession(), log),
+		cache:        deps.Cache.GetCache(cache.ProductsCache),
 		baseCacheKey: "categories",
 		log:          log,
 	}
 
 	router.GET("/", h.list)
 
-	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(log)}, []RouteSpec{
+	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(deps, log)}, []RouteSpec{
 		{http.MethodPost, "/", []gin.HandlerFunc{h.create}},
 		{http.MethodDelete, "/:id", []gin.HandlerFunc{h.delete}},
 	})
@@ -101,19 +101,19 @@ func (h *categoriesHandler) delete(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func PCRouter(router *gin.RouterGroup) {
+func PCRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
-	session := database.GetSession()
+	session := deps.DB.GetSession()
 	h := pcHandler{
 		pcStore:      queries.NewPCStore(session, log),
 		productStore: queries.NewProductStore(session, log),
-		cache:        cache.GetCache(cache.ProductsCache),
+		cache:        deps.Cache.GetCache(cache.ProductsCache),
 		baseCacheKey: "pc",
 		log:          log,
 	}
 
 	router.GET("/:id", h.list)
-	router.POST("/set-tags/:id", md.AuthMiddleware(log), h.setTags)
+	router.POST("/set-tags/:id", md.AuthMiddleware(deps, log), h.setTags)
 }
 
 type PC struct {
@@ -130,7 +130,7 @@ type pcHandler struct {
 
 func (h *pcHandler) setTags(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
 		return
 	}
 	var input PC
@@ -146,10 +146,6 @@ func (h *pcHandler) setTags(c *gin.Context) {
 	if err != nil {
 		h.log.Debug("pcHandler.setTags", "error", err)
 		NotFound(c, "Related product not found")
-		return
-	}
-	if product.UserID != claims.ID && !HasPermissions(nil, claims.PermissionType, queries.Admin) {
-		Forbidden(c, "")
 		return
 	}
 

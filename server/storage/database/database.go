@@ -12,15 +12,14 @@ type Session = *pgxpool.Pool
 
 type DBManager interface {
 	Close()
+	GetSession() Session
 }
 
 type DB struct {
 	session Session
 }
 
-var defaultDB *DB
-
-func NewDB(ctx context.Context, addr string) (*DB, error) {
+func New(ctx context.Context, addr string) (DBManager, error) {
 	if addr == "" {
 		return nil, fmt.Errorf("empty database address")
 	}
@@ -40,23 +39,15 @@ func NewDB(ctx context.Context, addr string) (*DB, error) {
 	return &DB{session}, nil
 }
 
-func (db *DB) Close() {
-	if db.session != nil {
-		db.session.Close()
+func (d *DB) Close() {
+	if d.session != nil {
+		d.session.Close()
 	}
 }
 
-func New(ctx context.Context, addr string) (DBManager, error) {
-	var err error
-	if defaultDB == nil {
-		defaultDB, err = NewDB(ctx, addr)
+func (d *DB) GetSession() Session {
+	if d.session != nil {
+		return d.session
 	}
-	return defaultDB, err
-}
-
-func GetSession() Session {
-	if defaultDB == nil {
-		panic("database not initiated")
-	}
-	return defaultDB.session
+	panic("undefined db session")
 }

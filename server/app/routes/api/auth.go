@@ -1,14 +1,12 @@
 package api
 
 import (
-	"context"
 	"fmt"
+	"generic-shop-sample/app"
 	md "generic-shop-sample/app/middlewares"
-	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/auth"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
-	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
 	"net/http"
 	"time"
@@ -17,30 +15,31 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-func LoginRouter(ctx context.Context, router *gin.RouterGroup) {
-	config := internal.GetConfig()
+func LoginRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
 	h := authHandler{
-		queries.NewUserStore(database.GetSession(), log),
-		cache.GetCache(cache.UsersCache),
+		queries.NewUserStore(deps.DB.GetSession(), log),
+		deps.Cache.GetCache(cache.UsersCache),
 		log,
-		time.Duration(config.Opt.AuthExpiration),
+		time.Duration(deps.Config.Auth.AuthExpiration),
+		auth.JWTToken{JWTSecretKey: []byte(deps.Config.JWTSecretKey)},
 	}
 
-	rl := md.NewRateLimiter(ctx, 10, 30*time.Minute, 60*time.Second)
+	rl := md.NewRateLimiter(deps.Ctx, 10, 30*time.Minute, 60*time.Second)
 	RegisterRoutesWith(router, []gin.HandlerFunc{rl.RateLimiterMiddleware()}, []RouteSpec{
 		{http.MethodPost, "/login", []gin.HandlerFunc{h.login}},
 	})
-	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(log)}, []RouteSpec{
+	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(deps, log)}, []RouteSpec{
 		{http.MethodGet, "/ping", []gin.HandlerFunc{h.ping}},
 	})
 }
 
 type authHandler struct {
-	us             queries.UserStore
+	store          queries.UserStore
 	cache          cache.CacheClient
 	log            logger.Logger
 	authExpiration time.Duration
+	jwtToken       auth.JWTToken
 }
 
 func (h *authHandler) login(c *gin.Context) {
@@ -52,7 +51,7 @@ func (h *authHandler) login(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	user, err := h.us.Get(ctx, input.Username)
+	user, err := h.store.Get(ctx, input.Username)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -62,7 +61,7 @@ func (h *authHandler) login(c *gin.Context) {
 		return
 	}
 
-	cacheKey := fmt.Sprintf("login:%d", user.ID)
+	cacheKey := fmt.Sprintf("login:%s", user.ID)
 	var maxAge time.Duration
 	var output string
 	if err := h.cache.Get(c.Request.Context(), cacheKey).Scan(&output); err != nil {
@@ -80,7 +79,7 @@ func (h *authHandler) login(c *gin.Context) {
 				NotBefore: jwt.NewNumericDate(time.Now()),
 			},
 		}
-		output, err = auth.TokenEncoder(claims)
+		output, err = h.jwtToken.Encoder(claims)
 		if err != nil {
 			BadRequest(c, "")
 			return

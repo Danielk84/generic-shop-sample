@@ -29,12 +29,12 @@ type logWriteCloser struct {
 	closer io.Closer
 }
 
-func (lwc *logWriteCloser) Write(p []byte) (int, error) {
-	return lwc.writer.Write(p)
+func (l *logWriteCloser) Write(p []byte) (int, error) {
+	return l.writer.Write(p)
 }
 
-func (lwc *logWriteCloser) Close() error {
-	return lwc.closer.Close()
+func (l *logWriteCloser) Close() error {
+	return l.closer.Close()
 }
 
 func CreateLogFile(fp string) io.WriteCloser {

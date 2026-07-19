@@ -7,9 +7,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"generic-shop-sample/app"
 	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/auth"
+	"generic-shop-sample/internal/config"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/database"
@@ -18,75 +18,24 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type (
-	dbContextKey    struct{}
-	cacheContextKey struct{}
-)
-
-var (
-	dbKey    = dbContextKey{}
-	cacheKey = cacheContextKey{}
-)
-
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
+	m := manager{}
 	rootCmd := &cobra.Command{
 		Use:                "cmd",
 		Short:              "app manager cli",
 		Example:            `cmd -c="path/to/file" [commands]`,
-		PersistentPreRunE:  persistentPreRunE,
-		PersistentPostRunE: persistentPostRunE,
+		PersistentPreRunE:  m.persistentPreRunE,
+		PersistentPostRunE: m.persistentPostRunE,
 	}
-	setSubCommands(rootCmd)
 
-	if err := rootCmd.ExecuteContext(ctx); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-}
-
-func persistentPreRunE(cmd *cobra.Command, args []string) error {
-	configFile, err := cmd.Flags().GetString("config")
-	if err != nil {
-		return err
-	}
-	config := internal.NewConfig(configFile)
-
-	internal.SetCustomValidators()
-
-	ctx := cmd.Context()
-	db, err := database.New(ctx, config.Opt.DatabaseURL)
-	if err != nil {
-		return fmt.Errorf("invalid DATABASE_URL opt variable, %s", err)
-	}
-	ctx = context.WithValue(ctx, dbKey, db)
-	cmd.SetContext(ctx)
-
-	return nil
-}
-
-func persistentPostRunE(cmd *cobra.Command, args []string) error {
-	ctx := cmd.Context()
-
-	db, ok := ctx.Value(dbKey).(database.DB)
-	if ok {
-		db.Close()
-	}
-	cache, ok := ctx.Value(cacheKey).(cache.CacheManager)
-	if ok {
-		cache.Close()
-	}
-	return nil
-}
-
-func setSubCommands(rootCmd *cobra.Command) {
 	newAdminCmd := &cobra.Command{
 		Use:     "new-admin",
 		Short:   "add new admin user",
 		Example: `cmd -c="path/to/file" new-admin --username="username" --password="password"`,
-		RunE:    newAdmin,
+		RunE:    m.newAdmin,
 	}
 	newAdminCmd.PersistentFlags().StringP("username", "u", "", "admin username")
 	newAdminCmd.PersistentFlags().StringP("password", "p", "", "admin password")
@@ -94,16 +43,54 @@ func setSubCommands(rootCmd *cobra.Command) {
 	runCmd := &cobra.Command{
 		Use:   "run",
 		Short: "run server",
-		RunE:  run,
+		RunE:  m.run,
 	}
 
 	rootCmd.AddCommand(newAdminCmd)
 	rootCmd.AddCommand(runCmd)
 
 	rootCmd.PersistentFlags().StringP("config", "c", "", "absolute path to yaml config file")
+
+	if err := rootCmd.ExecuteContext(ctx); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }
 
-func newAdmin(cmd *cobra.Command, args []string) error {
+type manager struct {
+	config config.Config
+	db     database.DBManager
+	cache  cache.CacheManager
+}
+
+func (m *manager) persistentPreRunE(cmd *cobra.Command, args []string) error {
+	configFile, err := cmd.Flags().GetString("config")
+	if err != nil {
+		return err
+	}
+	m.config = config.NewConfig(configFile)
+
+	internal.SetCustomValidators()
+
+	ctx := cmd.Context()
+	m.db, err = database.New(ctx, m.config.DatabaseURL)
+	if err != nil {
+		return fmt.Errorf("invalid DATABASE_URL opt variable, %s", err)
+	}
+	return nil
+}
+
+func (m *manager) persistentPostRunE(cmd *cobra.Command, args []string) error {
+	if m.db != nil {
+		m.db.Close()
+	}
+	if m.cache != nil {
+		m.cache.Close()
+	}
+	return nil
+}
+
+func (m *manager) newAdmin(cmd *cobra.Command, args []string) error {
 	var err error
 	username, err := cmd.PersistentFlags().GetString("username")
 	if err != nil {
@@ -113,7 +100,7 @@ func newAdmin(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	store := queries.NewUserStore(database.GetSession(), logger.GetLogger())
+	store := queries.NewUserStore(m.db.GetSession(), logger.GetLogger())
 	user := queries.CreateUserRequest{
 		LoginRequest: queries.LoginRequest{
 			Username: username,
@@ -141,19 +128,16 @@ func newAdmin(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func run(cmd *cobra.Command, args []string) error {
-	config := internal.GetConfig()
+func (m *manager) run(cmd *cobra.Command, args []string) (err error) {
 	ctx := cmd.Context()
 
 	cacheDBs := []int{cache.PublicCache, cache.UsersCache, cache.ProductsCache, cache.PaymentCache}
-	cache, err := cache.New(ctx, config.Opt.CacheURL, cacheDBs)
+	m.cache, err = cache.New(ctx, m.config.CacheURL, cacheDBs)
 	if err != nil {
-		return err
+		return
 	}
-	ctx = context.WithValue(ctx, cacheKey, cache)
-	cmd.SetContext(ctx)
 
-	server := app.NewApp(ctx, config)
-	server.Run()
-	return nil
+	sv := newServer(ctx, m.config, m.db, m.cache)
+	sv.run()
+	return
 }

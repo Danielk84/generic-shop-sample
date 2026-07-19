@@ -3,13 +3,12 @@ package api
 import (
 	"context"
 	"fmt"
+	"generic-shop-sample/app"
 	"generic-shop-sample/app/background"
 	md "generic-shop-sample/app/middlewares"
-	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/auth"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
-	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
 	"net/http"
 	"os"
@@ -19,19 +18,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func UsersRouter(router *gin.RouterGroup) {
+func UsersRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
-	config := internal.GetConfig()
 	h := usersHandler{
-		store:      queries.NewUserStore(database.GetSession(), log),
-		cache:      cache.GetCache(cache.UsersCache),
+		store:      queries.NewUserStore(deps.DB.GetSession(), log),
+		cache:      deps.Cache.GetCache(cache.UsersCache),
 		log:        log,
-		pagination: config.Opt.Pagination,
+		pagination: deps.Config.Pagination,
 	}
 
 	router.GET("/:username", h.get)
 
-	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(log)}, []RouteSpec{
+	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(deps, log)}, []RouteSpec{
 		{http.MethodGet, "/", []gin.HandlerFunc{h.list}},
 		{http.MethodPost, "/", []gin.HandlerFunc{h.createUserByAdmin}},
 		{http.MethodDelete, "/", []gin.HandlerFunc{h.delete}},
@@ -113,11 +111,7 @@ func (h *usersHandler) updateUserPermission(c *gin.Context) {
 	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
 		return
 	}
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		BadRequest(c, "invalid id")
-		return
-	}
+	id := c.Param("id")
 	var input queries.UserPermissionRequest
 	if err := c.ShouldBindJSON(&input); err != nil {
 		h.log.Debug("usersHandler.updateUserPermission", "err", err)
@@ -125,11 +119,11 @@ func (h *usersHandler) updateUserPermission(c *gin.Context) {
 		return
 	}
 
-	if err := h.store.UpdatePermission(c.Request.Context(), int32(id), &input); err != nil {
+	if err := h.store.UpdatePermission(c.Request.Context(), id, &input); err != nil {
 		NotFound(c, "")
 		return
 	}
-	cacheKey := fmt.Sprintf("login:%d", claims.ID)
+	cacheKey := fmt.Sprintf("login:%s", claims.ID)
 	if _, err := h.cache.Del(c.Request.Context(), cacheKey).Result(); err != nil {
 		LogCacheErr("Del", cacheKey, err)
 	}
@@ -171,7 +165,7 @@ func (h *usersHandler) setEmail(c *gin.Context) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		if err := background.SendMail(ctx, h.cache, &background.MailMessage{
+		if err := background.SendMail(ctx, h.cache, background.MailMessage{
 			To:  input.Email,
 			Msg: []byte(strconv.Itoa(randKey)),
 		}); err != nil {
@@ -224,17 +218,16 @@ func (h *usersHandler) setPhoneNumber(c *gin.Context) {
 	Accepted(c, "")
 }
 
-func UserProfileRouter(router *gin.RouterGroup) {
-	config := internal.GetConfig()
+func UserProfileRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
 	h := userProfileHandler{
-		store:        queries.NewUserProfileStore(database.GetSession(), log),
-		uploadPath:   config.Opt.UploadPath,
+		store:        queries.NewUserProfileStore(deps.DB.GetSession(), log),
+		uploadPath:   deps.Config.FileUpload.UploadPath,
 		log:          log,
-		fileUploader: GetFileUploader(config, log),
+		fileUploader: GetFileUploader(deps.Config, log),
 	}
 
-	router.Use(md.AuthMiddleware(log))
+	router.Use(md.AuthMiddleware(deps, log))
 	router.POST("/", h.upsert)
 	router.POST("/upload", h.uploadProfileImg)
 	router.DELETE("/", h.deleteImgPath)
