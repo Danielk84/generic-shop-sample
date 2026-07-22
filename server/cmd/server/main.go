@@ -7,12 +7,14 @@ import (
 	"os/signal"
 	"syscall"
 
+	"generic-shop-sample/app"
 	"generic-shop-sample/internal"
 	"generic-shop-sample/internal/auth"
 	"generic-shop-sample/internal/config"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/database"
+	"generic-shop-sample/storage/file_storage"
 	"generic-shop-sample/storage/queries"
 
 	"github.com/spf13/cobra"
@@ -121,7 +123,7 @@ func (m *manager) newAdmin(cmd *cobra.Command, args []string) error {
 	if user.Password, err = auth.PasswordHash(password); err != nil {
 		return fmt.Errorf("failed to hash password, %s", err)
 	}
-	if err = store.Create(cmd.Context(), &user); err != nil {
+	if err = store.Create(cmd.Context(), user); err != nil {
 		return fmt.Errorf("failed to create admin, %s", err)
 
 	}
@@ -137,7 +139,17 @@ func (m *manager) run(cmd *cobra.Command, args []string) (err error) {
 		return
 	}
 
-	sv := newServer(ctx, m.config, m.db, m.cache)
+	fileStore, err := file_storage.NewFileStoreClient(ctx, m.config.FileStore.AwsS3)
+	if err != nil {
+		return
+	}
+	deps := &app.ServiceDeps{
+		DB:        m.db,
+		Cache:     m.cache,
+		Config:    m.config,
+		FileStore: fileStore,
+	}
+	sv := newServer(ctx, deps)
 	sv.run()
 	return
 }

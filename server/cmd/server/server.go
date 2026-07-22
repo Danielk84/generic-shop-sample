@@ -6,11 +6,9 @@ import (
 	bg "generic-shop-sample/app/background"
 	md "generic-shop-sample/app/middlewares"
 	"generic-shop-sample/app/routes"
-	"generic-shop-sample/internal/config"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/cache_query"
-	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
 	"net/http"
 	"time"
@@ -19,20 +17,16 @@ import (
 )
 
 type server struct {
-	ctx    context.Context
-	app    *app.App
-	config config.Config
-	db     database.DBManager
-	cache  cache.CacheManager
+	ctx  context.Context
+	app  *app.App
+	deps *app.ServiceDeps
 }
 
-func newServer(ctx context.Context, config config.Config, db database.DBManager, cache cache.CacheManager) *server {
+func newServer(ctx context.Context, deps *app.ServiceDeps) *server {
 	sv := &server{
-		ctx:    ctx,
-		app:    app.NewApp(ctx, config.App),
-		config: config,
-		db:     db,
-		cache:  cache,
+		ctx:  ctx,
+		app:  app.NewApp(ctx, deps.Config.App),
+		deps: deps,
 	}
 	sv.setMiddlewares()
 	sv.setRoutes()
@@ -46,64 +40,49 @@ func (s *server) run() {
 }
 
 func (s *server) setMiddlewares() {
-	rlogWriter := logger.CreateLogFile(s.config.RequestLoggerFilepath)
+	rlogWriter := logger.CreateLogFile(s.deps.Config.RequestLoggerFilepath)
 	s.app.OpenWriter = append(s.app.OpenWriter, rlogWriter)
-
-	corsConfig := &md.CorsConfig{
-		Origins:     s.config.Origins,
-		Credentials: true,
-		Methods:     []string{http.MethodGet, http.MethodHead, http.MethodPost, http.MethodOptions, http.MethodPut, http.MethodDelete},
-	}
-
 	rl := md.NewRateLimiter(s.ctx, 500, 10*time.Minute, 30*time.Minute)
 
 	s.app.Router.Use(
 		md.RequestLoggerMiddleware(rlogWriter),
 		gin.Recovery(),
-		md.SecurityHeadersMiddleware(),
 		rl.RateLimiterMiddleware(),
-		md.CorsMiddleware(corsConfig),
 	)
 }
 
 func (s *server) setRoutes() {
-	deps := &app.ServiceDeps{
-		Ctx:    s.ctx,
-		DB:     s.db,
-		Cache:  s.cache,
-		Config: s.config,
-	}
-	routes.APIRouter(deps, s.app.Router.Group("/api"))
-	routes.StaticRouter(s.config, s.app.Router.Group("/static"))
+	routes.APIRouter(s.deps, s.app.Router.Group("/api"))
+	routes.StaticRouter(s.deps, s.app.Router.Group("/static"))
 }
 
 func (s *server) setBackgroundTask() {
 	log := logger.GetLogger()
-	session := s.db.GetSession()
+	session := s.deps.DB.GetSession()
 	tasks := []bg.BackgroundTask{
 		&bg.ExpiredOrdersCleaner{
 			Store: queries.NewOrderStore(session, log),
 			Log:   log,
 		},
 		&bg.EmailBroker{
-			Cache:    s.cache.GetCache(cache.UsersCache),
-			From:     s.config.EmailBroker.FromEmail,
-			Host:     s.config.EmailBroker.SMTPHost,
-			Port:     s.config.EmailBroker.SMTPPort,
-			Password: s.config.EmailBroker.SMTPPassword,
+			Cache:    s.deps.Cache.GetCache(cache.UsersCache),
+			From:     s.deps.Config.EmailBroker.FromEmail,
+			Host:     s.deps.Config.EmailBroker.SMTPHost,
+			Port:     s.deps.Config.EmailBroker.SMTPPort,
+			Password: s.deps.Config.EmailBroker.SMTPPassword,
 		},
 		&bg.OrdersProcess{
-			Cache:          s.cache.GetCache(cache.OrdersCache),
+			Cache:          s.deps.Cache.GetCache(cache.OrdersCache),
 			Log:            log,
 			OrderStore:     queries.NewOrderStore(session, log),
 			OrderItemStore: queries.NewOrderItemsStore(session, log),
 			ProductStore:   queries.NewProductStore(session, log),
 			VendorStore:    queries.NewVendorOrderStore(session, log),
 			VendorCacheStore: cache_query.NewVendorCacheStore(
-				s.cache.GetCache(cache.OrdersCache),
+				s.deps.Cache.GetCache(cache.OrdersCache),
 				log,
 				queries.NewProductStore(session, log)),
-			Pagination: s.config.Pagination,
+			Pagination: s.deps.Config.Pagination,
 		},
 	}
 	for _, t := range tasks {

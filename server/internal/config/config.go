@@ -15,7 +15,7 @@ type Config struct {
 	EmailBroker  EmailBrokerConfig  `yaml:"email_broker"`
 	ProductImage ProductImageConfig `yaml:"product_image"`
 	Payment      PaymentConfig      `yaml:"payment"`
-	FileUpload   FileUploadConfig   `yaml:"file_upload"`
+	FileStore    FileStorageConfig  `yaml:"file_upload"`
 
 	RequestLoggerFilepath string   `yaml:"request_logger_filepath" binding:"required,filepath"`
 	Origins               []string `yaml:"origins" binding:"required,dive,required,origin"`
@@ -56,9 +56,16 @@ type PaymentConfig struct {
 	PaymentCallbackURL string `yaml:"payment_callback_url" binding:"required,http_url"`
 }
 
-type FileUploadConfig struct {
-	UploadPath         string   `yaml:"upload_path" binding:"required,dirpath"`
-	AllowedImgMimetype []string `yaml:"allowed_image_mimetype" binding:"required,dive,required"`
+type FileStorageConfig struct {
+	AllowedImgMimetype []string    `yaml:"allowed_image_mimetype" binding:"required,dive,required"`
+	AwsS3              AwsS3Config `yaml:"aws_s3" binding:"required,dive"`
+}
+
+type AwsS3Config struct {
+	Key      string `yaml:"key" binding:"required"`
+	Secret   string `yaml:"secret" binding:"required"`
+	Region   string `yaml:"region" binding:"required"`
+	Endpoint string `yaml:"endpoint" binding:"required,http_url"`
 }
 
 func (c *Config) ReadFile(fp string) error {

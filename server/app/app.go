@@ -7,6 +7,7 @@ import (
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/database"
+	"generic-shop-sample/storage/file_storage"
 	"io"
 	"net/http"
 	"os"
@@ -78,8 +79,9 @@ func (a *App) Close() {
 }
 
 type ServiceDeps struct {
-	Ctx    context.Context
-	DB     database.DBManager
-	Cache  cache.CacheManager
-	Config config.Config
+	Ctx       context.Context
+	DB        database.DBManager
+	Cache     cache.CacheManager
+	Config    config.Config
+	FileStore file_storage.FileStoreClient
 }
