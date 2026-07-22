@@ -145,7 +145,7 @@ func OrderItemsRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	router.POST("/", h.create)
 	router.DELETE("/", h.delete)
 	router.GET("/customer/:id", h.customerList)
-	router.GET("/full/:id", h.fullList)
+	router.GET("/admin/:id", h.adminList)
 	router.PUT("/set-items-total/:total", h.setItemsTotal)
 }
 
@@ -199,7 +199,7 @@ func (h *orderItemsHandler) customerList(c *gin.Context) {
 	c.JSON(http.StatusOK, output)
 }
 
-func (h *orderItemsHandler) fullList(c *gin.Context) {
+func (h *orderItemsHandler) adminList(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
 		return
@@ -207,7 +207,7 @@ func (h *orderItemsHandler) fullList(c *gin.Context) {
 
 	id := c.Param("id")
 	page := GetPage(c)
-	output, err := h.store.FullList(c.Request.Context(), id, h.pagination, page)
+	output, err := h.store.AdminList(c.Request.Context(), id, h.pagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return

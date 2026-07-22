@@ -30,7 +30,7 @@ type OrdersProcess struct {
 
 func (o *OrdersProcess) Start(ctx context.Context) {
 	sub := o.Cache.Subscribe(ctx, ordersProcessingChannel)
-	defer sub.Close()
+	defer func() { _ = sub.Close() }()
 
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
@@ -72,7 +72,7 @@ OuterLoop:
 						continue InnerLoop
 					}
 				}
-				page += 1
+				page++
 			}
 		}
 	}
@@ -120,9 +120,10 @@ func (o *OrdersProcess) process(ctx context.Context, id queries.OrderID) error {
 				if err != nil {
 					return err
 				}
-				err = o.ProductStore.SetVendor(ctx, i.ProductID, i.Property, queries.ProductVendor{
-					UserID:   vendor,
-					Quantity: quantity - orderable,
+				err = o.ProductStore.SetVendor(ctx, queries.UpdateProductVendor{
+					ProductIDRequest:       queries.ProductIDRequest{ID: i.ProductID},
+					ProductVendor:          queries.ProductVendor{UserID: vendor, Quantity: quantity - orderable},
+					ProductPropertyRequest: queries.ProductPropertyRequest{Property: i.Property},
 				})
 				if err != nil {
 					return err
@@ -149,7 +150,7 @@ func (o *OrdersProcess) process(ctx context.Context, id queries.OrderID) error {
 				return err
 			}
 		}
-		page += 1
+		page++
 	}
 	return nil
 }

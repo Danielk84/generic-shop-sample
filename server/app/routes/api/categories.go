@@ -56,7 +56,7 @@ func (h *categoriesHandler) create(c *gin.Context) {
 		return
 	}
 	if _, err := h.cache.Del(ctx, h.baseCacheKey).Result(); err != nil {
-		LogCacheErr("Del", h.baseCacheKey, err)
+		LogCacheErr("Del", "categoriesHandler.create", err)
 	}
 	Created(c, "")
 }
@@ -65,7 +65,7 @@ func (h *categoriesHandler) list(c *gin.Context) {
 	ctx := c.Request.Context()
 	var output []queries.Category
 	if err := GetJSONCache(ctx, h.cache, h.baseCacheKey, &output); err != nil {
-		LogCacheErr("HGetAll", h.baseCacheKey, err)
+		LogCacheErr("GetJSONCache", "categoriesHandler.list", err)
 
 		output, err = h.store.List(ctx)
 		if err != nil {
@@ -73,7 +73,7 @@ func (h *categoriesHandler) list(c *gin.Context) {
 			return
 		}
 		if err = SetJSONCacheEx(ctx, h.cache, h.baseCacheKey, 24*time.Hour, output); err != nil {
-			LogCacheErr("SetHCacheEx", h.baseCacheKey, err)
+			LogCacheErr("SetJSONCache", "categoriesHandler.list", err)
 		}
 	}
 	c.JSON(http.StatusOK, output)
@@ -96,7 +96,7 @@ func (h *categoriesHandler) delete(c *gin.Context) {
 		return
 	}
 	if _, err := h.cache.Del(ctx, h.baseCacheKey).Result(); err != nil {
-		LogCacheErr("Del", h.baseCacheKey, err)
+		LogCacheErr("Del", "categoriesHandler.delete", err)
 	}
 	c.Status(http.StatusNoContent)
 }
@@ -154,7 +154,7 @@ func (h *pcHandler) setTags(c *gin.Context) {
 		return
 	}
 	if _, err := h.cache.Del(ctx, fmt.Sprintf("%s:%s", h.baseCacheKey, product.ID)).Result(); err != nil {
-		LogCacheErr("Del", h.baseCacheKey, err)
+		LogCacheErr("Del", "pcHandler.setTags", err)
 	}
 	Accepted(c, "")
 }
@@ -165,7 +165,7 @@ func (h *pcHandler) list(c *gin.Context) {
 	cacheKey := fmt.Sprintf("%s:%s", h.baseCacheKey, id)
 	var output []string
 	if err := GetJSONCache(ctx, h.cache, cacheKey, &output); err != nil {
-		LogCacheErr("HGetAll", cacheKey, err)
+		LogCacheErr("GetJSONCache", "pcHandler.list", err)
 
 		output, err = h.pcStore.List(ctx, id)
 		if err != nil {
@@ -173,7 +173,7 @@ func (h *pcHandler) list(c *gin.Context) {
 			return
 		}
 		if err := SetJSONCacheEx(ctx, h.cache, cacheKey, 12*time.Hour, output); err != nil {
-			LogCacheErr("SetHCacheEx", cacheKey, err)
+			LogCacheErr("SetJSONCacheEx", "pcHandler.list", err)
 		}
 	}
 	c.JSON(http.StatusOK, output)

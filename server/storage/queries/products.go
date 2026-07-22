@@ -16,11 +16,15 @@ type ProductProperty = map[string]string
 type CreateProductRequest struct {
 	Name         string          `json:"name" binding:"required,min=4,max=256"`
 	Description  string          `json:"description" binding:"required"`
-	CommonDetail ProductProperty `json:"common_detail" binding:"json"`
+	CommonDetail ProductProperty `json:"common_detail" binding:"required,min=0,dive,keys,required,min=1,endkeys,required,min=1"`
+}
+
+type ProductIDRequest struct {
+	ID string `json:"id" binding:"required,uuid"`
 }
 
 type UpdateProductRequest struct {
-	ID string `json:"id" binding:"uuid"`
+	ProductIDRequest
 	CreateProductRequest
 }
 
@@ -39,14 +43,24 @@ type ProductStatusResponse struct {
 }
 
 type ProductVendor struct {
-	UserID   string `json:"id" binding:"required,uuid"`
+	UserID   string `json:"user_id" binding:"required,uuid"`
 	Quantity int32  `json:"quantity" binding:"required,min=0"`
 }
 
+type ProductPropertyRequest struct {
+	Property ProductProperty `json:"property" binding:"required,min=0,dive,keys,required,min=1,endkeys,required,min=1"`
+}
+
 type ProductVariantDetail struct {
-	Property ProductProperty `json:"property"`
-	Price    int64           `json:"price"`
-	Vendors  []ProductVendor `json:"vendors" binding:"required,json"`
+	ProductPropertyRequest
+	Price   int64           `json:"price" binding:"required,min=0"`
+	Vendors []ProductVendor `json:"vendors" binding:"required,min=0,dive"`
+}
+
+type UpdateProductVendor struct {
+	ProductIDRequest
+	ProductVendor
+	ProductPropertyRequest
 }
 
 type ProductResponse struct {
@@ -69,10 +83,10 @@ type ProductStore interface {
 	Update(ctx context.Context, product UpdateProductRequest) error
 	Delete(ctx context.Context, id string) error
 	SetVariantDetail(ctx context.Context, id string, variantDetail []ProductVariantDetail) error
-	SetVendor(ctx context.Context, id string, property ProductProperty, vendor ProductVendor) error
+	SetVendor(ctx context.Context, vendor UpdateProductVendor) error
 	SetActive(ctx context.Context, id string, isActive bool) error
-	GetVendors(ctx context.Context, productID string, property ProductProperty) ([]string, error)
-	GetQuantity(ctx context.Context, productID string, property ProductProperty, userID string) (int32, error)
+	GetVendors(ctx context.Context, id string, property ProductProperty) ([]string, error)
+	GetQuantity(ctx context.Context, id string, property ProductProperty, userID string) (int32, error)
 }
 
 func NewProductStore(session database.Session, log logger.Logger) ProductStore {
@@ -187,9 +201,9 @@ func (p *ProductRepository) SetVariantDetail(ctx context.Context, id string, var
 	return
 }
 
-func (p *ProductRepository) SetVendor(ctx context.Context, id string, property ProductProperty, vendor ProductVendor) (err error) {
+func (p *ProductRepository) SetVendor(ctx context.Context, vendor UpdateProductVendor) (err error) {
 	var product ProductResponse
-	if product, err = p.Get(ctx, id); err != nil {
+	if product, err = p.Get(ctx, vendor.ID); err != nil {
 		p.log.Debug("ProductRepository.SetQuantity", "error", err)
 		return
 	}
@@ -197,7 +211,7 @@ func (p *ProductRepository) SetVendor(ctx context.Context, id string, property P
 	propertyFound := false
 OuterLoop:
 	for i, item := range product.VariantDetail {
-		if reflect.DeepEqual(item.Property, property) {
+		if reflect.DeepEqual(item.Property, vendor.Property) {
 			propertyFound = true
 			vendorFound := false
 		InnerLoop:
@@ -209,7 +223,7 @@ OuterLoop:
 				}
 			}
 			if !vendorFound {
-				product.VariantDetail[i].Vendors = append(product.VariantDetail[i].Vendors, vendor)
+				product.VariantDetail[i].Vendors = append(product.VariantDetail[i].Vendors, vendor.ProductVendor)
 			}
 			break OuterLoop
 		}
@@ -220,7 +234,7 @@ OuterLoop:
 		return
 	}
 
-	if err = p.SetVariantDetail(ctx, id, product.VariantDetail); err != nil {
+	if err = p.SetVariantDetail(ctx, vendor.ID, product.VariantDetail); err != nil {
 		p.log.Debug("ProductRepository.SetVendor", "error", err)
 	}
 	return
@@ -234,11 +248,11 @@ func (p *ProductRepository) SetActive(ctx context.Context, id string, isActive b
 	return
 }
 
-func (p *ProductRepository) GetVendors(ctx context.Context, productID string, property ProductProperty) (items []string, err error) {
+func (p *ProductRepository) GetVendors(ctx context.Context, id string, property ProductProperty) (items []string, err error) {
 	const q = `SELECT unnest
 		FROM unnest(product_s.get_vendors('@ProductID'::UUID, '@Property'::JSONB))`
 	args := pgx.NamedArgs{
-		"ProductID": productID,
+		"ProductID": id,
 		"Property":  property,
 	}
 	if items, err = list[string](ctx, p.session, q, args); err != nil {
@@ -248,10 +262,10 @@ func (p *ProductRepository) GetVendors(ctx context.Context, productID string, pr
 	return
 }
 
-func (p *ProductRepository) GetQuantity(ctx context.Context, productID string, property ProductProperty, userID string) (item int32, err error) {
+func (p *ProductRepository) GetQuantity(ctx context.Context, id string, property ProductProperty, userID string) (item int32, err error) {
 	const q = `SELECT product_s.get_quantity('@ProductID'::UUID, '@Property'::JSONB, @UserID)`
 	args := pgx.NamedArgs{
-		"ProductID": productID,
+		"ProductID": id,
 		"Property":  property,
 		"UserID":    userID,
 	}

@@ -9,9 +9,9 @@ import (
 	"generic-shop-sample/internal/auth"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
+	"generic-shop-sample/storage/file_storage"
 	"generic-shop-sample/storage/queries"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
@@ -75,7 +75,7 @@ func (h *usersHandler) createUserByAdmin(c *gin.Context) {
 		BadRequest(c, "invalid password string")
 		return
 	}
-	if err = h.store.Create(ctx, &input); err != nil {
+	if err = h.store.Create(ctx, input); err != nil {
 		BadRequest(c, "")
 		return
 	}
@@ -119,13 +119,13 @@ func (h *usersHandler) updateUserPermission(c *gin.Context) {
 		return
 	}
 
-	if err := h.store.UpdatePermission(c.Request.Context(), id, &input); err != nil {
+	if err := h.store.UpdatePermission(c.Request.Context(), id, input); err != nil {
 		NotFound(c, "")
 		return
 	}
 	cacheKey := fmt.Sprintf("login:%s", claims.ID)
 	if _, err := h.cache.Del(c.Request.Context(), cacheKey).Result(); err != nil {
-		LogCacheErr("Del", cacheKey, err)
+		LogCacheErr("Del", "usersHandler.updateUserPermission", err)
 	}
 	Accepted(c, "")
 }
@@ -149,7 +149,7 @@ func (h *usersHandler) setEmail(c *gin.Context) {
 	}
 	claims := md.GetUserClaims(c)
 	ctx := c.Request.Context()
-	if err := h.store.SetEmail(ctx, claims.ID, &input); err != nil {
+	if err := h.store.SetEmail(ctx, claims.ID, input); err != nil {
 		BadRequest(c, "email already exists")
 		return
 	}
@@ -157,7 +157,7 @@ func (h *usersHandler) setEmail(c *gin.Context) {
 	randKey := RandVerifyNum()
 	cacheKey := fmt.Sprintf("verify:email:%s", claims.Username)
 	if _, err := h.cache.Set(ctx, cacheKey, randKey, 2*time.Minute).Result(); err != nil {
-		LogCacheErr("Set", cacheKey, err)
+		LogCacheErr("Set", "usersHandler.setEmail", err)
 		Unprocessable(c, "Failed to set verifier key")
 		return
 	}
@@ -169,7 +169,7 @@ func (h *usersHandler) setEmail(c *gin.Context) {
 			To:  input.Email,
 			Msg: []byte(strconv.Itoa(randKey)),
 		}); err != nil {
-			LogCacheErr("SendMail", "send mail", err)
+			LogCacheErr("SendMail", "usersHandler.setEmail", err)
 		}
 	}()
 	Accepted(c, "")
@@ -188,7 +188,7 @@ func (h *usersHandler) verifyEmail(c *gin.Context) {
 	cacheKey := fmt.Sprintf("verify:email:%s", claims.Username)
 	key, err := h.cache.GetDel(ctx, cacheKey).Result()
 	if err != nil {
-		LogCacheErr("GetDel", cacheKey, err)
+		LogCacheErr("GetDel", "usersHandler.verifyEmail", err)
 		NotFound(c, "Verfier key not found")
 		return
 	}
@@ -211,7 +211,7 @@ func (h *usersHandler) setPhoneNumber(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	if err := h.store.SetPhoneNumber(c.Request.Context(), claims.ID, &json); err != nil {
+	if err := h.store.SetPhoneNumber(c.Request.Context(), claims.ID, json); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -221,10 +221,9 @@ func (h *usersHandler) setPhoneNumber(c *gin.Context) {
 func UserProfileRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
 	h := userProfileHandler{
-		store:        queries.NewUserProfileStore(deps.DB.GetSession(), log),
-		uploadPath:   deps.Config.FileUpload.UploadPath,
-		log:          log,
-		fileUploader: GetFileUploader(deps.Config, log),
+		store:     queries.NewUserProfileStore(deps.DB.GetSession(), log),
+		log:       log,
+		fileStore: file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, "user_profile"),
 	}
 
 	router.Use(md.AuthMiddleware(deps, log))
@@ -234,10 +233,9 @@ func UserProfileRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 }
 
 type userProfileHandler struct {
-	store        queries.UserProfileStore
-	uploadPath   string
-	log          logger.Logger
-	fileUploader FileUploaderFunc
+	store     queries.UserProfileStore
+	log       logger.Logger
+	fileStore file_storage.FileStore
 }
 
 func (h *userProfileHandler) upsert(c *gin.Context) {
@@ -248,7 +246,7 @@ func (h *userProfileHandler) upsert(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	if err := h.store.Upsert(c.Request.Context(), claims.ID, &json); err != nil {
+	if err := h.store.Upsert(c.Request.Context(), claims.ID, json); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -262,18 +260,21 @@ func (h *userProfileHandler) uploadProfileImg(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	var dst string
+
+	var fileKey string
 	ctx := c.Request.Context()
 	if fpath, err := h.store.GetImgPath(ctx, claims.ID); err == nil {
-		dst = fpath
+		fileKey = fpath
+	} else {
+		fileKey = GenFileKey(claims, claims.ID)
 	}
-	resultPath, err := h.fileUploader(file, claims, "user-profile", dst)
+	resultPath, err := h.fileStore.Upload(ctx, file, fileKey)
 	if err != nil {
 		h.log.Error("failed to upload file", "error", err)
 		BadRequest(c, "failed to process file")
 		return
 	}
-	if resultPath != dst {
+	if resultPath != fileKey {
 		if err := h.store.SetImgPath(ctx, claims.ID, resultPath); err != nil {
 			h.log.Error("failed to set img path", "error", err)
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "failed to save file"})
@@ -290,8 +291,9 @@ func (h *userProfileHandler) deleteImgPath(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
-	if err := os.Remove(fmt.Sprintf("%s/%s", h.uploadPath, imgPath)); err != nil {
-		h.log.Error("userProfileHandler.deleteImgPath", "imgPath", imgPath, "error", err)
+	if err := h.fileStore.Delete(c.Request.Context(), imgPath); err != nil {
+		Forbidden(c, "")
+		return
 	}
 	c.Status(http.StatusNoContent)
 }

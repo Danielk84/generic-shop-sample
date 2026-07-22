@@ -6,9 +6,9 @@ import (
 	md "generic-shop-sample/app/middlewares"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
+	"generic-shop-sample/storage/file_storage"
 	"generic-shop-sample/storage/queries"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -29,8 +29,10 @@ func ProductsRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(deps, log)}, []RouteSpec{
 		{http.MethodPost, "/", []gin.HandlerFunc{h.create}},
 		{http.MethodPut, "/", []gin.HandlerFunc{h.update}},
+		{http.MethodPut, "/set-vendor", []gin.HandlerFunc{h.setVendor}},
+		{http.MethodPut, "/set-variant-detail/:id", []gin.HandlerFunc{h.setVariantDetail}},
 		{http.MethodDelete, "/:id", []gin.HandlerFunc{h.delete}},
-		{http.MethodGet, "/full", []gin.HandlerFunc{h.fullList}},
+		{http.MethodGet, "/admin", []gin.HandlerFunc{h.adminList}},
 		{http.MethodGet, "/overview/:id", []gin.HandlerFunc{h.get}},
 		{http.MethodPut, "set-active/:id", []gin.HandlerFunc{h.setActive}},
 	})
@@ -76,7 +78,7 @@ func (h *productsHandler) list(c *gin.Context) {
 	cacheKey := fmt.Sprintf("%s:list:%d", h.baseCacheKey, page)
 	var output []queries.ProductSummaryResponse
 	if err := GetJSONCache(ctx, h.cache, cacheKey, &output); err != nil {
-		LogCacheErr("HGetAll", cacheKey, err)
+		LogCacheErr("GetJSONCache", "productsHandler.list", err)
 
 		output, err = h.store.List(ctx, h.pagination, page)
 		if err != nil {
@@ -84,13 +86,13 @@ func (h *productsHandler) list(c *gin.Context) {
 			return
 		}
 		if err := SetJSONCacheEx(ctx, h.cache, cacheKey, h.cacheExpiration, output); err != nil {
-			LogCacheErr("SetCacheEx", cacheKey, err)
+			LogCacheErr("SetJSONCacheEx", "productsHandler.list", err)
 		}
 	}
 	c.JSON(http.StatusOK, output)
 }
 
-func (h *productsHandler) fullList(c *gin.Context) {
+func (h *productsHandler) adminList(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
 		return
@@ -100,7 +102,7 @@ func (h *productsHandler) fullList(c *gin.Context) {
 	cacheKey := fmt.Sprintf("%s:full:%d", h.baseCacheKey, page)
 	var output []queries.ProductStatusResponse
 	if err := GetJSONCache(ctx, h.cache, cacheKey, &output); err != nil {
-		LogCacheErr("HGetAll", cacheKey, err)
+		LogCacheErr("GetJSONCache", "productsHandler.adminList", err)
 
 		output, err = h.store.AdminList(ctx, h.pagination, page)
 		if err != nil {
@@ -108,7 +110,7 @@ func (h *productsHandler) fullList(c *gin.Context) {
 			return
 		}
 		if err := SetJSONCacheEx(ctx, h.cache, cacheKey, h.cacheExpiration, output); err != nil {
-			LogCacheErr("SetCacheEx", cacheKey, err)
+			LogCacheErr("SetJSONCacheEx", "productsHandler.adminList", err)
 		}
 	}
 	c.JSON(http.StatusOK, output)
@@ -122,7 +124,7 @@ func (h *productsHandler) get(c *gin.Context) {
 	cacheKey := fmt.Sprintf("%s:%s", h.baseCacheKey, id)
 	var output queries.ProductResponse
 	if err := GetJSONCache(ctx, h.cache, cacheKey, &output); err != nil {
-		LogCacheErr("HGetALl", h.baseCacheKey, err)
+		LogCacheErr("GetJSONCache", "productsHandler.get", err)
 
 		output, err = h.store.Get(ctx, id)
 		if err != nil {
@@ -130,7 +132,7 @@ func (h *productsHandler) get(c *gin.Context) {
 			return
 		}
 		if err := SetJSONCacheEx(ctx, h.cache, cacheKey, h.cacheExpiration, output); err != nil {
-			LogCacheErr("SetHCacheEx", h.baseCacheKey, err)
+			LogCacheErr("SetJSONCacheEx", "productsHandler.get", err)
 		}
 	}
 
@@ -161,7 +163,64 @@ func (h *productsHandler) update(c *gin.Context) {
 	}
 	cacheKey := fmt.Sprintf("%s:%s", h.baseCacheKey, input.ID)
 	if _, err := h.cache.Del(ctx, cacheKey).Result(); err != nil {
-		LogCacheErr("Del", cacheKey, err)
+		LogCacheErr("Del", "productsHandler.update", err)
+	}
+
+	Accepted(c, "")
+}
+
+func (h *productsHandler) setVendor(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
+		return
+	}
+
+	var input queries.UpdateProductVendor
+	if err := c.ShouldBindJSON(&input); err != nil {
+		h.log.Debug("productsHandler.setVendor", "error", err)
+		BadRequest(c, "")
+		return
+	}
+	if claims.ID != input.UserID {
+		Forbidden(c, "")
+		return
+	}
+	ctx := c.Request.Context()
+	if err := h.store.SetVendor(ctx, input); err != nil {
+		NotFound(c, "")
+		return
+	}
+	cacheKey := fmt.Sprintf("%s:%s", h.baseCacheKey, input.ID)
+	if _, err := h.cache.Del(ctx, cacheKey).Result(); err != nil {
+		LogCacheErr("Del", "productsHandler.setVendor", err)
+	}
+
+	Accepted(c, "")
+}
+
+func (h *productsHandler) setVariantDetail(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
+		return
+	}
+
+	var input struct {
+		Items []queries.ProductVariantDetail `json:"items" binding:"required,min=1,dive"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		h.log.Debug("productsHandler.setVariantDetail", "error", err)
+		BadRequest(c, "")
+		return
+	}
+	id := c.Param("id")
+	ctx := c.Request.Context()
+	if err := h.store.SetVariantDetail(ctx, id, input.Items); err != nil {
+		NotFound(c, "")
+		return
+	}
+	cacheKey := fmt.Sprintf("%s:%s", h.baseCacheKey, id)
+	if _, err := h.cache.Del(ctx, cacheKey).Result(); err != nil {
+		LogCacheErr("Del", "productsHandler.setVariantDetail", err)
 	}
 
 	Accepted(c, "")
@@ -181,7 +240,7 @@ func (h *productsHandler) delete(c *gin.Context) {
 	}
 	cacheKey := fmt.Sprintf("%s:%s", h.baseCacheKey, id)
 	if _, err := h.cache.Del(ctx, cacheKey).Result(); err != nil {
-		LogCacheErr("Del", cacheKey, err)
+		LogCacheErr("Del", "productsHandler.delete", err)
 	}
 
 	c.Status(http.StatusNoContent)
@@ -217,8 +276,7 @@ func ProductImagesRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 		cache:           deps.Cache.GetCache(cache.ProductsCache),
 		baseCacheKey:    "images",
 		cacheExpiration: 1 * time.Hour,
-		uploadPath:      deps.Config.FileUpload.UploadPath,
-		fileUploader:    GetFileUploader(deps.Config, log),
+		fileStore:       file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, "product_images"),
 		log:             log,
 	}
 
@@ -236,8 +294,7 @@ type productImagesHandler struct {
 	cache           cache.CacheClient
 	baseCacheKey    string
 	cacheExpiration time.Duration
-	uploadPath      string
-	fileUploader    FileUploaderFunc
+	fileStore       file_storage.FileStore
 	log             logger.Logger
 }
 
@@ -255,9 +312,10 @@ func (h *productImagesHandler) create(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	resultPath, err := h.fileUploader(file, claims, "product-images", "")
+	fileKey := GenFileKey(claims, productID)
+	resultPath, err := h.fileStore.Upload(ctx, file, fileKey)
 	if err != nil {
-		h.log.Debug("productImagesHandler.create:h.fileUploader", "error", err)
+		h.log.Debug("productImagesHandler.create:h.fileStore.Upload", "error", err)
 		BadRequest(c, "")
 		return
 	}
@@ -267,7 +325,7 @@ func (h *productImagesHandler) create(c *gin.Context) {
 	}
 	cacheKey := fmt.Sprintf("%s:%s", h.baseCacheKey, productID)
 	if _, err := h.cache.Del(ctx, cacheKey).Result(); err != nil {
-		LogCacheErr("Del", cacheKey, err)
+		LogCacheErr("Del", "productImagesHandler.create", err)
 	}
 	Created(c, "")
 }
@@ -278,7 +336,7 @@ func (h *productImagesHandler) list(c *gin.Context) {
 	cacheKey := fmt.Sprintf("%s:%s", h.baseCacheKey, productID)
 	var output []queries.ProductImageResponse
 	if err := GetJSONCache(ctx, h.cache, cacheKey, &cacheKey); err != nil {
-		LogCacheErr("HGetAll", h.baseCacheKey, err)
+		LogCacheErr("GetJSONCache", "productImagesHandler.list", err)
 
 		output, err = h.imagesStore.List(ctx, productID)
 		if err != nil {
@@ -286,7 +344,7 @@ func (h *productImagesHandler) list(c *gin.Context) {
 			return
 		}
 		if err := SetJSONCacheEx(ctx, h.cache, cacheKey, h.cacheExpiration, output); err != nil {
-			LogCacheErr("SetHCacheEx", cacheKey, err)
+			LogCacheErr("SetJSONCacheEx", "productImagesHandler.list", err)
 		}
 	}
 	c.JSON(http.StatusOK, output)
@@ -306,16 +364,13 @@ func (h *productImagesHandler) delete(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
-	if err := os.Remove(fmt.Sprintf("%s/%s", h.uploadPath, imgPath)); err != nil {
-		if err != os.ErrNotExist {
-			Forbidden(c, "")
-			return
-		}
-		h.log.Error("productImagesHandler.delete ", "img_path", imgPath, "error", err)
+	if err := h.fileStore.Delete(ctx, imgPath); err != nil {
+		Forbidden(c, "")
+		return
 	}
 	cacheKey := fmt.Sprintf("%s:%s", h.baseCacheKey, productID)
 	if _, err := h.cache.Del(ctx, cacheKey).Result(); err != nil {
-		LogCacheErr("Del", cacheKey, err)
+		LogCacheErr("Del", "productImagesHandler.delete", err)
 	}
 
 	c.Status(http.StatusNoContent)

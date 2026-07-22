@@ -15,8 +15,8 @@ type OrderUserInfo struct {
 }
 
 type OrderID struct {
-	ID     string `json:"id"`
-	UserID string `json:"user_id"`
+	ID     string `json:"id" binding:"required,uuid"`
+	UserID string `json:"user_id" binding:"required,uuid"`
 }
 
 type OrderSummaryResponse struct {
@@ -114,7 +114,7 @@ func (o *OrderRepository) NotConfirmedList(ctx context.Context, pagination, page
 func (o *OrderRepository) FullList(ctx context.Context, pagination, page int) (items []OrderSummaryResponse, err error) {
 	const q = `SELECT id, user_id, started_at, is_paid, is_delivered
 		FROM order_s.orders
-		ORDER BY started_at DESC
+		ORDER BY started_at DESC, is_confirmed
 		LIMIT $1
 		OFFSET $2`
 	items, err = list[OrderSummaryResponse](ctx, o.session, q, pagination, getOffsetFromPageNum(pagination, page))

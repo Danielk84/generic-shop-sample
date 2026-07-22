@@ -9,17 +9,17 @@ import (
 )
 
 type VendorOrderDelivere struct {
-	UserID      string          `json:"user_id"`
-	OrderID     string          `json:"order_id"`
-	ProductID   string          `json:"product_id"`
-	Property    ProductProperty `json:"property"`
-	IsDelivered bool            `json:"is_delivered"`
+	UserID      string          `json:"user_id" binding:"required,uuid"`
+	OrderID     string          `json:"order_id" binding:"required,uuid"`
+	ProductID   string          `json:"product_id" binding:"required,uuid"`
+	Property    ProductProperty `json:"property" binding:"required,min=0,dive,keys,required,min=1,endkeys,required,min=1"`
+	IsDelivered bool            `json:"is_delivered" binding:"required"`
 }
 
 type VendorOrder struct {
 	VendorOrderDelivere
-	Quantity  int32 `json:"quantity"`
-	TotalBill int64 `json:"total_bill"`
+	Quantity  int32 `json:"quantity" binding:"required,min=0"`
+	TotalBill int64 `json:"total_bill" binding:"required,min=0"`
 }
 
 type VendorOrderRepository struct {
@@ -65,7 +65,7 @@ func (v *VendorOrderRepository) List(ctx context.Context, userID string, paginat
 			property, quantity, total_bill, is_delivered)
 		FROM order_s.vendors_order
 		WHERE order_id = '@UserID'::UUID
-		ORDER is_delivered DESC
+		ORDER is_delivered
 		LIMIT @Limit
 		OFFSET @Offset`
 	args := pgx.NamedArgs{

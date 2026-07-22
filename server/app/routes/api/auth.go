@@ -65,7 +65,7 @@ func (h *authHandler) login(c *gin.Context) {
 	var maxAge time.Duration
 	var output string
 	if err := h.cache.Get(c.Request.Context(), cacheKey).Scan(&output); err != nil {
-		LogCacheErr("Get", cacheKey, err)
+		LogCacheErr("Get", "authHandler.login", err)
 
 		authExpiration := time.Now().Add(h.authExpiration * time.Minute)
 		maxAge = time.Until(authExpiration)
@@ -85,12 +85,12 @@ func (h *authHandler) login(c *gin.Context) {
 			return
 		}
 		if err = h.cache.Set(ctx, cacheKey, output, maxAge).Err(); err != nil {
-			LogCacheErr("Set", cacheKey, err)
+			LogCacheErr("Set", "authHandler.login", err)
 		}
 	} else {
 		ttl := h.cache.TTL(ctx, cacheKey)
 		if err := ttl.Err(); err != nil {
-			LogCacheErr("TTL", cacheKey, err)
+			LogCacheErr("TTL", "authHandler.login", err)
 			maxAge = 0
 		} else {
 			maxAge = ttl.Val()

@@ -3,33 +3,19 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"generic-shop-sample/internal/auth"
-	"generic-shop-sample/internal/config"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/queries"
-	"io"
 	"math/rand"
-	"mime/multipart"
 	"net/http"
-	"os"
-	"path/filepath"
 	"slices"
 	"strconv"
 	"time"
 
-	"github.com/gabriel-vasile/mimetype"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
-)
-
-var (
-	ErrReadFile        = errors.New("failed to read file")
-	ErrOperationFailed = errors.New("operation failed")
-	ErrInvalidMimeType = errors.New("invalid mime type")
-	ErrUploadFile      = errors.New("failed to upload and save file")
 )
 
 type RouteSpec struct {
@@ -63,72 +49,14 @@ func GetPage(c *gin.Context) int {
 	return page
 }
 
-type FileUploaderFunc func(file *multipart.FileHeader, claims *auth.AuthClaims, group, dst string) (string, error)
-
-func GetFileUploader(config config.Config, log logger.Logger) FileUploaderFunc {
-	uf := uploadFile{config, log}
-	return uf.local
+func GenFileKey(claims *auth.AuthClaims, dst string) string {
+	y, m, d := time.Now().Date()
+	return fmt.Sprintf("%d/%d/%d/%s-%d", y, m, d, claims.Username, time.Now().UnixNano())
 }
 
-type uploadFile struct {
-	config config.Config
-	log    logger.Logger
-}
-
-func (u *uploadFile) local(file *multipart.FileHeader, claims *auth.AuthClaims, group, dst string) (string, error) {
-	src, err := file.Open()
-	if err != nil {
-		u.log.Warn("uploadFile.local", "step", "file.open", "error", err)
-		return "", ErrReadFile
-	}
-	defer func() { _ = src.Close() }()
-
-	buf := make([]byte, 512)
-	n, err := src.Read(buf)
-	if err != nil {
-		u.log.Error("uploadFile.local", "step", "src.Read", "error", err)
-		return "", ErrReadFile
-	}
-	if _, err = src.Seek(0, io.SeekStart); err != nil {
-		u.log.Error("uploadFile.local", "step", "src.Seek", "error", err)
-		return "", ErrOperationFailed
-	}
-	mtype := mimetype.Detect(buf[:n])
-	if mtypeStr := mtype.String(); !mimetype.EqualsAny(mtypeStr, u.config.FileUpload.AllowedImgMimetype...) {
-		u.log.Debug("uploadFile.local",
-			"step", "mimetype.Detect",
-			"mimeType", mtypeStr,
-			"expected", u.config.FileUpload.AllowedImgMimetype)
-		return "", ErrInvalidMimeType
-	}
-
-	if dst == "" {
-		y, m, d := time.Now().Date()
-		dst = fmt.Sprintf("%s/%d/%d/%d/%s-%d%s", group, y, m, d, claims.Username, time.Now().UnixNano(), mtype.Extension())
-	}
-	path := fmt.Sprintf("%s/%s", u.config.FileUpload.UploadPath, dst)
-	u.log.Debug("uploadFile.local", "path", path)
-	if err = os.MkdirAll(filepath.Dir(path), 0750); err != nil {
-		u.log.Error("uploadFile.local", "step", "os.MkdirAll", "error", err)
-		return "", ErrOperationFailed
-	}
-	out, err := os.Create(path)
-	if err != nil {
-		u.log.Error("uploadFile.local", "step", "os.Create", "error", err)
-		return "", ErrOperationFailed
-	}
-	defer func() { _ = out.Close() }()
-
-	if _, err := io.Copy(out, src); err != nil {
-		u.log.Error("uploadFile.local", "step", "io.Copy", "error", err)
-		return "", ErrUploadFile
-	}
-	return dst, nil
-}
-
-func JSONResponse(c *gin.Context, code int, msg, DefaultMsg string) {
+func JSONResponse(c *gin.Context, code int, msg, defaultMsg string) {
 	if msg == "" {
-		msg = DefaultMsg
+		msg = defaultMsg
 	}
 	c.JSON(code, gin.H{"msg": msg})
 }
@@ -170,9 +98,9 @@ func HasPermissions(c *gin.Context, userPermission queries.PermissionType, permi
 }
 
 func RandVerifyNum() int {
-	min := 100000
-	max := 999999
-	return rand.Intn(max-min) + min
+	minN := 100000
+	maxN := 999999
+	return rand.Intn(maxN-minN) + minN
 }
 
 func SetJSONCacheEx(ctx context.Context, cache cache.CacheClient, key string, expiration time.Duration, value any) error {

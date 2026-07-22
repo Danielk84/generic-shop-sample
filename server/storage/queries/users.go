@@ -75,16 +75,16 @@ type UserRepository struct {
 
 type UserStore interface {
 	IsUsernameExists(ctx context.Context, username string) bool
-	IsValidUser(ctx context.Context, user *ValidUserRequest) bool
-	Create(ctx context.Context, user *CreateUserRequest) error
+	IsValidUser(ctx context.Context, user ValidUserRequest) bool
+	Create(ctx context.Context, user CreateUserRequest) error
 	List(ctx context.Context, pagination, page int) ([]UserResponse, error)
 	Get(ctx context.Context, username string) (UserResponse, error)
 	GetDetails(ctx context.Context, username string) (UserDetailsResponse, error)
-	UpdatePermission(ctx context.Context, id string, user *UserPermissionRequest) error
+	UpdatePermission(ctx context.Context, id string, user UserPermissionRequest) error
 	Delete(ctx context.Context, id string, username string) error
-	SetEmail(ctx context.Context, id string, email *EmailAddrRequest) error
+	SetEmail(ctx context.Context, id string, email EmailAddrRequest) error
 	VerifyEmail(ctx context.Context, id string, isVerified bool) error
-	SetPhoneNumber(ctx context.Context, id string, phoneNumber *PhoneNumberRequest) error
+	SetPhoneNumber(ctx context.Context, id string, phoneNumber PhoneNumberRequest) error
 	VerifyPhoneNumber(ctx context.Context, id string, isVerified bool) error
 }
 
@@ -104,7 +104,7 @@ func (u *UserRepository) IsUsernameExists(ctx context.Context, username string) 
 	return false
 }
 
-func (u *UserRepository) IsValidUser(ctx context.Context, user *ValidUserRequest) bool {
+func (u *UserRepository) IsValidUser(ctx context.Context, user ValidUserRequest) bool {
 	const q = `SELECT EXISTS(
 		SELECT 1
 		FROM user_s.users
@@ -124,7 +124,7 @@ func (u *UserRepository) IsValidUser(ctx context.Context, user *ValidUserRequest
 	return true
 }
 
-func (u *UserRepository) Create(ctx context.Context, user *CreateUserRequest) (err error) {
+func (u *UserRepository) Create(ctx context.Context, user CreateUserRequest) (err error) {
 	const q = `WITH create_user_cte AS (
 		INSERT INTO user_s.users (username, password, permission_type, is_active)
 			VALUES (@Username, @Password, @PermissionType, @IsActive)
@@ -196,7 +196,7 @@ func (u *UserRepository) GetDetails(ctx context.Context, username string) (item 
 	return
 }
 
-func (u *UserRepository) UpdatePermission(ctx context.Context, id string, user *UserPermissionRequest) (err error) {
+func (u *UserRepository) UpdatePermission(ctx context.Context, id string, user UserPermissionRequest) (err error) {
 	const q = `UPDATE user_s.users
 		SET permission_type = @PermissionType, is_active = @IsActive
 		WHERE id = '@ID'::UUID`
@@ -228,7 +228,7 @@ func (u *UserRepository) Delete(ctx context.Context, id string, username string)
 	return
 }
 
-func (u *UserRepository) SetEmail(ctx context.Context, id string, email *EmailAddrRequest) (err error) {
+func (u *UserRepository) SetEmail(ctx context.Context, id string, email EmailAddrRequest) (err error) {
 	const q = `WITH remove_not_used_email AS (
 			UPDATE user_s.users
 			SET
@@ -252,7 +252,7 @@ func (u *UserRepository) VerifyEmail(ctx context.Context, id string, isVerified 
 	return
 }
 
-func (u *UserRepository) SetPhoneNumber(ctx context.Context, id string, phoneNumber *PhoneNumberRequest) (err error) {
+func (u *UserRepository) SetPhoneNumber(ctx context.Context, id string, phoneNumber PhoneNumberRequest) (err error) {
 	const q = `WITH remove_not_used_phone_number AS (
 			UPDATE user_s.users
 			SET
@@ -288,7 +288,7 @@ type UserProfileRepository struct {
 }
 
 type UserProfileStore interface {
-	Upsert(ctx context.Context, userID string, userProfile *UserProfileRequest) error
+	Upsert(ctx context.Context, userID string, userProfile UserProfileRequest) error
 	GetImgPath(ctx context.Context, userID string) (string, error)
 	SetImgPath(ctx context.Context, userID string, imgPath string) error
 	DeleteImgPath(ctx context.Context, userID string) (string, error)
@@ -298,7 +298,7 @@ func NewUserProfileStore(session database.Session, log logger.Logger) UserProfil
 	return &UserProfileRepository{session, log}
 }
 
-func (u *UserProfileRepository) Upsert(ctx context.Context, userID string, userProfile *UserProfileRequest) (err error) {
+func (u *UserProfileRepository) Upsert(ctx context.Context, userID string, userProfile UserProfileRequest) (err error) {
 	const q = `INSERT INTO user_s.user_profile(user_id, birthday, bio)
         VALUES ('@UserID'::UUID, '@Birthday'::DATE, @Bio)
 		ON CONFLICT(user_id)

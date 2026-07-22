@@ -98,7 +98,7 @@ func (h *commentsHandler) list(c *gin.Context) {
 	cacheKey := fmt.Sprintf("%s:list:%s:%s", h.baseCacheKey, input.Parent, input.Referrer)
 	var output []queries.CommentResponse
 	if err := GetJSONCache(ctx, h.cache, cacheKey, &output); err != nil {
-		LogCacheErr("HGetAll", cacheKey, err)
+		LogCacheErr("GetJSONCache", "commentsHandler.list", err)
 
 		output, err = h.store.List(ctx, input.Parent, url.QueryEscape(input.Referrer), h.pagination, GetPage(c))
 		if err != nil {
@@ -106,7 +106,7 @@ func (h *commentsHandler) list(c *gin.Context) {
 			return
 		}
 		if err := SetJSONCacheEx(ctx, h.cache, cacheKey, h.cacheExpiration, output); err != nil {
-			LogCacheErr("SetHCacheEx", cacheKey, err)
+			LogCacheErr("SetJSONCacheEx", "commentsHandler.list", err)
 		}
 	}
 	c.JSON(http.StatusOK, output)
@@ -122,13 +122,17 @@ func (h *commentsHandler) fullList(c *gin.Context) {
 	ctx := c.Request.Context()
 	cacheKey := fmt.Sprintf("%s:full:%s", h.baseCacheKey, username)
 	var output []queries.RelatedCommentResponse
-	if err := h.cache.HGetAll(ctx, cacheKey).Scan(&output); err != nil {
-		LogCacheErr("HGetAll", cacheKey, err)
+	if err := GetJSONCache(ctx, h.cache, cacheKey, &output); err != nil {
+		LogCacheErr("GetJSONCache", "commentsHandler.fullList", err)
 		output, err = h.store.FullList(ctx, username, h.pagination, GetPage(c))
 		if err != nil {
 			NotFound(c, "")
 			return
 		}
+		if err := SetJSONCacheEx(ctx, h.cache, cacheKey, h.cacheExpiration, output); err != nil {
+			LogCacheErr("SetJSONCacheEx", "commentsHandler.fullList", err)
+		}
+
 	}
 	c.JSON(http.StatusOK, output)
 }
@@ -144,7 +148,7 @@ func (h *commentsHandler) delete(c *gin.Context) {
 		return
 	}
 
-	if output.Username != claims.Username && !HasPermissions(nil, claims.PermissionType, queries.Admin) {
+	if !HasPermissions(nil, claims.PermissionType, queries.Admin) {
 		Forbidden(c, "")
 		return
 	}

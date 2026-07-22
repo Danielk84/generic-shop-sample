@@ -25,7 +25,7 @@ type CategoryRepository struct {
 type CategoryStore interface {
 	Create(ctx context.Context, tag string) error
 	List(ctx context.Context) ([]Category, error)
-	Delete(ctx context.Context, product_id int32) error
+	Delete(ctx context.Context, id int32) error
 }
 
 func NewCategoryStore(session database.Session, log logger.Logger) CategoryStore {
@@ -63,15 +63,15 @@ type PCRepository struct {
 }
 
 type PCStore interface {
-	SetTags(ctx context.Context, product_id string, tags []string) error
-	List(ctx context.Context, product_id string) ([]string, error)
+	SetTags(ctx context.Context, id string, tags []string) error
+	List(ctx context.Context, id string) ([]string, error)
 }
 
 func NewPCStore(session database.Session, log logger.Logger) PCStore {
 	return &PCRepository{session, log}
 }
 
-func (p *PCRepository) SetTags(ctx context.Context, product_id string, tags []string) (err error) {
+func (p *PCRepository) SetTags(ctx context.Context, id string, tags []string) (err error) {
 	const q = `DELETE FROM product_s.products_categories
 		WHERE product_id = '$1'::UUID`
 
@@ -80,14 +80,14 @@ func (p *PCRepository) SetTags(ctx context.Context, product_id string, tags []st
 		return
 	}
 	err = pgx.BeginFunc(ctx, p.session, func(tx pgx.Tx) error {
-		if _, err := tx.Exec(ctx, q, product_id); err != nil {
+		if _, err := tx.Exec(ctx, q, id); err != nil {
 			return err
 		}
 		_, err := tx.CopyFrom(ctx,
 			pgx.Identifier{"product_s.products_categories"},
 			[]string{"product_id", "tag"},
 			pgx.CopyFromSlice(tagsLen, func(i int) ([]any, error) {
-				return []any{product_id, tags[i]}, nil
+				return []any{id, tags[i]}, nil
 			}),
 		)
 		return err

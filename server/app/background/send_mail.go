@@ -30,7 +30,7 @@ type EmailBroker struct {
 
 func (b *EmailBroker) Start(ctx context.Context) {
 	sub := b.Cache.Subscribe(ctx, mailChannel)
-	defer sub.Close()
+	defer func() { _ = sub.Close() }()
 
 	ch := sub.Channel()
 	for {

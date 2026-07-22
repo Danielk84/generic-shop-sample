@@ -40,7 +40,7 @@ func AuthMiddleware(deps *app.ServiceDeps, log logger.Logger) gin.HandlerFunc {
 		}
 		store := queries.NewUserStore(deps.DB.GetSession(), log)
 		ctx := c.Request.Context()
-		if !store.IsValidUser(ctx, &queries.ValidUserRequest{ID: claims.ID, Username: claims.Username, PermissionType: claims.PermissionType}) {
+		if !store.IsValidUser(ctx, queries.ValidUserRequest{ID: claims.ID, Username: claims.Username, PermissionType: claims.PermissionType}) {
 			c.AbortWithStatus(http.StatusNotFound)
 			log.Debug("AuthMiddleware:invalid user", "username", claims.Username)
 			return

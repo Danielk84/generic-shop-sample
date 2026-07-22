@@ -3,7 +3,6 @@ package routes
 import (
 	"generic-shop-sample/app"
 	"generic-shop-sample/app/routes/api"
-	"generic-shop-sample/internal/config"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,6 +21,6 @@ func APIRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	api.PaymentRouter(deps, router.Group("/payment"))
 }
 
-func StaticRouter(config config.Config, router *gin.RouterGroup) {
-	router.Static("/upload", config.FileUpload.UploadPath)
+func StaticRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
+	api.FileRouter(deps, router.Group("/"))
 }
