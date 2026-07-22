@@ -17,12 +17,14 @@ import (
 func ProductsRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
 	h := productsHandler{
-		store:           queries.NewProductStore(deps.DB.GetSession(), log),
-		cache:           deps.Cache.GetCache(cache.ProductsCache),
-		baseCacheKey:    "products",
-		cacheExpiration: 1 * time.Hour,
-		log:             log,
-		pagination:      deps.Config.Pagination,
+		productStore:       queries.NewProductStore(deps.DB.GetSession(), log),
+		productImagesStore: queries.NewProductImagesStore(deps.DB.GetSession(), log, deps.Config.ProductImage),
+		cache:              deps.Cache.GetCache(cache.ProductsCache),
+		fileStore:          file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, "product_images"),
+		baseCacheKey:       "products",
+		cacheExpiration:    1 * time.Hour,
+		log:                log,
+		pagination:         deps.Config.Pagination,
 	}
 
 	router.GET("/", h.list)
@@ -44,12 +46,14 @@ type AvailableQuantity struct {
 }
 
 type productsHandler struct {
-	store           queries.ProductStore
-	cache           cache.CacheClient
-	baseCacheKey    string
-	cacheExpiration time.Duration
-	log             logger.Logger
-	pagination      int
+	productStore       queries.ProductStore
+	productImagesStore queries.ProductImagesStore
+	cache              cache.CacheClient
+	fileStore          file_storage.FileStore
+	baseCacheKey       string
+	cacheExpiration    time.Duration
+	log                logger.Logger
+	pagination         int
 }
 
 func (h *productsHandler) create(c *gin.Context) {
@@ -65,7 +69,7 @@ func (h *productsHandler) create(c *gin.Context) {
 		return
 	}
 
-	if err := h.store.Create(c.Request.Context(), input); err != nil {
+	if err := h.productStore.Create(c.Request.Context(), input); err != nil {
 		BadRequest(c, "")
 		return
 	}
@@ -80,7 +84,7 @@ func (h *productsHandler) list(c *gin.Context) {
 	if err := GetJSONCache(ctx, h.cache, cacheKey, &output); err != nil {
 		LogCacheErr("GetJSONCache", "productsHandler.list", err)
 
-		output, err = h.store.List(ctx, h.pagination, page)
+		output, err = h.productStore.List(ctx, h.pagination, page)
 		if err != nil {
 			NotFound(c, "")
 			return
@@ -104,7 +108,7 @@ func (h *productsHandler) adminList(c *gin.Context) {
 	if err := GetJSONCache(ctx, h.cache, cacheKey, &output); err != nil {
 		LogCacheErr("GetJSONCache", "productsHandler.adminList", err)
 
-		output, err = h.store.AdminList(ctx, h.pagination, page)
+		output, err = h.productStore.AdminList(ctx, h.pagination, page)
 		if err != nil {
 			NotFound(c, "")
 			return
@@ -126,7 +130,7 @@ func (h *productsHandler) get(c *gin.Context) {
 	if err := GetJSONCache(ctx, h.cache, cacheKey, &output); err != nil {
 		LogCacheErr("GetJSONCache", "productsHandler.get", err)
 
-		output, err = h.store.Get(ctx, id)
+		output, err = h.productStore.Get(ctx, id)
 		if err != nil {
 			NotFound(c, "")
 			return
@@ -157,7 +161,7 @@ func (h *productsHandler) update(c *gin.Context) {
 		return
 	}
 	ctx := c.Request.Context()
-	if err := h.store.Update(ctx, input); err != nil {
+	if err := h.productStore.Update(ctx, input); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -186,7 +190,7 @@ func (h *productsHandler) setVendor(c *gin.Context) {
 		return
 	}
 	ctx := c.Request.Context()
-	if err := h.store.SetVendor(ctx, input); err != nil {
+	if err := h.productStore.SetVendor(ctx, input); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -214,7 +218,7 @@ func (h *productsHandler) setVariantDetail(c *gin.Context) {
 	}
 	id := c.Param("id")
 	ctx := c.Request.Context()
-	if err := h.store.SetVariantDetail(ctx, id, input.Items); err != nil {
+	if err := h.productStore.SetVariantDetail(ctx, id, input.Items); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -234,7 +238,20 @@ func (h *productsHandler) delete(c *gin.Context) {
 
 	id := c.Param("id")
 	ctx := c.Request.Context()
-	if err := h.store.Delete(ctx, id); err != nil {
+	productImages, err := h.productImagesStore.List(ctx, id)
+	if err != nil {
+		NotFound(c, "")
+		return
+	}
+	imgs := make([]string, 0, len(productImages))
+	for _, p := range productImages {
+		imgs = append(imgs, p.ImgPath)
+	}
+	if err := h.fileStore.BulkDelete(ctx, imgs); err != nil {
+		Unprocessable(c, "")
+		return
+	}
+	if err := h.productStore.Delete(ctx, id); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -260,7 +277,7 @@ func (h *productsHandler) setActive(c *gin.Context) {
 	}
 
 	id := c.Param("id")
-	if err := h.store.SetActive(c.Request.Context(), id, input.Accepted); err != nil {
+	if err := h.productStore.SetActive(c.Request.Context(), id, input.Accepted); err != nil {
 		NotFound(c, "")
 		return
 	}

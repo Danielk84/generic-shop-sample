@@ -68,7 +68,7 @@ type UserDetailsResponse struct {
 	Bio      string `json:"bio"`
 }
 
-type UserRepository struct {
+type userRepository struct {
 	session database.Session
 	log     logger.Logger
 }
@@ -89,10 +89,10 @@ type UserStore interface {
 }
 
 func NewUserStore(session database.Session, log logger.Logger) UserStore {
-	return &UserRepository{session, log}
+	return &userRepository{session, log}
 }
 
-func (u *UserRepository) IsUsernameExists(ctx context.Context, username string) bool {
+func (u *userRepository) IsUsernameExists(ctx context.Context, username string) bool {
 	const q = "SELECT EXISTS(SELECT 1 FROM user_s.users WHERE username = $1)"
 	var isExists bool
 	if err := u.session.QueryRow(ctx, q, username).Scan(&isExists); err != nil || isExists {
@@ -104,7 +104,7 @@ func (u *UserRepository) IsUsernameExists(ctx context.Context, username string) 
 	return false
 }
 
-func (u *UserRepository) IsValidUser(ctx context.Context, user ValidUserRequest) bool {
+func (u *userRepository) IsValidUser(ctx context.Context, user ValidUserRequest) bool {
 	const q = `SELECT EXISTS(
 		SELECT 1
 		FROM user_s.users
@@ -124,7 +124,7 @@ func (u *UserRepository) IsValidUser(ctx context.Context, user ValidUserRequest)
 	return true
 }
 
-func (u *UserRepository) Create(ctx context.Context, user CreateUserRequest) (err error) {
+func (u *userRepository) Create(ctx context.Context, user CreateUserRequest) (err error) {
 	const q = `WITH create_user_cte AS (
 		INSERT INTO user_s.users (username, password, permission_type, is_active)
 			VALUES (@Username, @Password, @PermissionType, @IsActive)
@@ -146,7 +146,7 @@ func (u *UserRepository) Create(ctx context.Context, user CreateUserRequest) (er
 	return
 }
 
-func (u *UserRepository) List(ctx context.Context, pagination, page int) (items []UserResponse, err error) {
+func (u *userRepository) List(ctx context.Context, pagination, page int) (items []UserResponse, err error) {
 	const q = `SELECT
 			id,
 			COALESCE(username, '') AS username,
@@ -163,7 +163,7 @@ func (u *UserRepository) List(ctx context.Context, pagination, page int) (items 
 	return
 }
 
-func (u *UserRepository) Get(ctx context.Context, username string) (item UserResponse, err error) {
+func (u *userRepository) Get(ctx context.Context, username string) (item UserResponse, err error) {
 	const q = `SELECT id, username, password, permission_type, is_active
 		FROM user_s.users
 		WHERE username = $1
@@ -175,7 +175,7 @@ func (u *UserRepository) Get(ctx context.Context, username string) (item UserRes
 	return
 }
 
-func (u *UserRepository) GetDetails(ctx context.Context, username string) (item UserDetailsResponse, err error) {
+func (u *userRepository) GetDetails(ctx context.Context, username string) (item UserDetailsResponse, err error) {
 	if username == "" || username == "deleted" {
 		err = pgx.ErrNoRows
 		return
@@ -196,7 +196,7 @@ func (u *UserRepository) GetDetails(ctx context.Context, username string) (item 
 	return
 }
 
-func (u *UserRepository) UpdatePermission(ctx context.Context, id string, user UserPermissionRequest) (err error) {
+func (u *userRepository) UpdatePermission(ctx context.Context, id string, user UserPermissionRequest) (err error) {
 	const q = `UPDATE user_s.users
 		SET permission_type = @PermissionType, is_active = @IsActive
 		WHERE id = '@ID'::UUID`
@@ -211,7 +211,7 @@ func (u *UserRepository) UpdatePermission(ctx context.Context, id string, user U
 	return
 }
 
-func (u *UserRepository) Delete(ctx context.Context, id string, username string) (err error) {
+func (u *userRepository) Delete(ctx context.Context, id string, username string) (err error) {
 	const q = `WITH remove_products AS (
 			DELETE FROM product_s.products WHERE user_id = $1
 		), remove_user_profile AS (
@@ -228,7 +228,7 @@ func (u *UserRepository) Delete(ctx context.Context, id string, username string)
 	return
 }
 
-func (u *UserRepository) SetEmail(ctx context.Context, id string, email EmailAddrRequest) (err error) {
+func (u *userRepository) SetEmail(ctx context.Context, id string, email EmailAddrRequest) (err error) {
 	const q = `WITH remove_not_used_email AS (
 			UPDATE user_s.users
 			SET
@@ -244,7 +244,7 @@ func (u *UserRepository) SetEmail(ctx context.Context, id string, email EmailAdd
 	return
 }
 
-func (u *UserRepository) VerifyEmail(ctx context.Context, id string, isVerified bool) (err error) {
+func (u *userRepository) VerifyEmail(ctx context.Context, id string, isVerified bool) (err error) {
 	const q = `UPDATE user_s.users SET is_v_email = $1 WHERE id = '$2'::UUID`
 	if err = execOne(ctx, u.session, q, isVerified, id); err != nil {
 		u.log.Warn("UserRepository.VerifyEmail", "error", err)
@@ -252,7 +252,7 @@ func (u *UserRepository) VerifyEmail(ctx context.Context, id string, isVerified 
 	return
 }
 
-func (u *UserRepository) SetPhoneNumber(ctx context.Context, id string, phoneNumber PhoneNumberRequest) (err error) {
+func (u *userRepository) SetPhoneNumber(ctx context.Context, id string, phoneNumber PhoneNumberRequest) (err error) {
 	const q = `WITH remove_not_used_phone_number AS (
 			UPDATE user_s.users
 			SET
@@ -267,7 +267,7 @@ func (u *UserRepository) SetPhoneNumber(ctx context.Context, id string, phoneNum
 	return
 }
 
-func (u *UserRepository) VerifyPhoneNumber(ctx context.Context, id string, isVerified bool) (err error) {
+func (u *userRepository) VerifyPhoneNumber(ctx context.Context, id string, isVerified bool) (err error) {
 	const q = `UPDATE user_s.users
 		SET is_v_phone_number = $1
 		WHERE id = $2 AND username IS NOT NULL`
@@ -282,7 +282,7 @@ type UserProfileRequest struct {
 	Bio      string `json:"bio" binding:"required,max=450"`
 }
 
-type UserProfileRepository struct {
+type userProfileRepository struct {
 	session database.Session
 	log     logger.Logger
 }
@@ -295,10 +295,10 @@ type UserProfileStore interface {
 }
 
 func NewUserProfileStore(session database.Session, log logger.Logger) UserProfileStore {
-	return &UserProfileRepository{session, log}
+	return &userProfileRepository{session, log}
 }
 
-func (u *UserProfileRepository) Upsert(ctx context.Context, userID string, userProfile UserProfileRequest) (err error) {
+func (u *userProfileRepository) Upsert(ctx context.Context, userID string, userProfile UserProfileRequest) (err error) {
 	const q = `INSERT INTO user_s.user_profile(user_id, birthday, bio)
         VALUES ('@UserID'::UUID, '@Birthday'::DATE, @Bio)
 		ON CONFLICT(user_id)
@@ -314,7 +314,7 @@ func (u *UserProfileRepository) Upsert(ctx context.Context, userID string, userP
 	return
 }
 
-func (u *UserProfileRepository) GetImgPath(ctx context.Context, userID string) (imgPath string, err error) {
+func (u *userProfileRepository) GetImgPath(ctx context.Context, userID string) (imgPath string, err error) {
 	const q = `SELECT COALESCE(img_path, '') AS img_path
 		FROM user_s.user_profile
 		WHERE user_id = '$1'::UUID`
@@ -324,7 +324,7 @@ func (u *UserProfileRepository) GetImgPath(ctx context.Context, userID string) (
 	return
 }
 
-func (u *UserProfileRepository) SetImgPath(ctx context.Context, userID string, imgPath string) (err error) {
+func (u *userProfileRepository) SetImgPath(ctx context.Context, userID string, imgPath string) (err error) {
 	const q = `UPDATE user_s.user_profile
 		SET img_path = NULLIF($1, '')
 		WHERE user_id = '$2'::UUID`
@@ -334,7 +334,7 @@ func (u *UserProfileRepository) SetImgPath(ctx context.Context, userID string, i
 	return
 }
 
-func (u *UserProfileRepository) DeleteImgPath(ctx context.Context, UserID string) (imgPath string, err error) {
+func (u *userProfileRepository) DeleteImgPath(ctx context.Context, UserID string) (imgPath string, err error) {
 	const q = `UPDATE user_s.user_profile
 		SET img_path = null
 		WHERE user_id = '$1'::UUID

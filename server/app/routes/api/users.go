@@ -21,10 +21,12 @@ import (
 func UsersRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
 	h := usersHandler{
-		store:      queries.NewUserStore(deps.DB.GetSession(), log),
-		cache:      deps.Cache.GetCache(cache.UsersCache),
-		log:        log,
-		pagination: deps.Config.Pagination,
+		userStore:   queries.NewUserStore(deps.DB.GetSession(), log),
+		userProfile: queries.NewUserProfileStore(deps.DB.GetSession(), log),
+		fileStore:   file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, "user_profile"),
+		cache:       deps.Cache.GetCache(cache.UsersCache),
+		log:         log,
+		pagination:  deps.Config.Pagination,
 	}
 
 	router.GET("/:username", h.get)
@@ -45,10 +47,12 @@ type VerfierKey struct {
 }
 
 type usersHandler struct {
-	store      queries.UserStore
-	cache      cache.CacheClient
-	log        logger.Logger
-	pagination int
+	userStore   queries.UserStore
+	userProfile queries.UserProfileStore
+	fileStore   file_storage.FileStore
+	cache       cache.CacheClient
+	log         logger.Logger
+	pagination  int
 }
 
 func (h *usersHandler) createUserByAdmin(c *gin.Context) {
@@ -65,7 +69,7 @@ func (h *usersHandler) createUserByAdmin(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	if h.store.IsUsernameExists(ctx, input.Username) {
+	if h.userStore.IsUsernameExists(ctx, input.Username) {
 		c.JSON(http.StatusConflict, gin.H{"msg": "username already exists"})
 		return
 	}
@@ -75,7 +79,7 @@ func (h *usersHandler) createUserByAdmin(c *gin.Context) {
 		BadRequest(c, "invalid password string")
 		return
 	}
-	if err = h.store.Create(ctx, input); err != nil {
+	if err = h.userStore.Create(ctx, input); err != nil {
 		BadRequest(c, "")
 		return
 	}
@@ -88,7 +92,7 @@ func (h *usersHandler) list(c *gin.Context) {
 		return
 	}
 
-	output, err := h.store.List(c.Request.Context(), h.pagination, GetPage(c))
+	output, err := h.userStore.List(c.Request.Context(), h.pagination, GetPage(c))
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -98,7 +102,7 @@ func (h *usersHandler) list(c *gin.Context) {
 
 func (h *usersHandler) get(c *gin.Context) {
 	username := c.Param("username")
-	output, err := h.store.GetDetails(c.Request.Context(), username)
+	output, err := h.userStore.GetDetails(c.Request.Context(), username)
 	if err != nil || !HasPermissions(nil, output.PermissionType, queries.Admin, queries.Vendor) {
 		NotFound(c, "")
 		return
@@ -119,7 +123,7 @@ func (h *usersHandler) updateUserPermission(c *gin.Context) {
 		return
 	}
 
-	if err := h.store.UpdatePermission(c.Request.Context(), id, input); err != nil {
+	if err := h.userStore.UpdatePermission(c.Request.Context(), id, input); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -132,7 +136,19 @@ func (h *usersHandler) updateUserPermission(c *gin.Context) {
 
 func (h *usersHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if err := h.store.Delete(c.Request.Context(), claims.ID, claims.Username); err != nil {
+	ctx := c.Request.Context()
+	imgPath, err := h.userProfile.GetImgPath(ctx, claims.ID)
+	if err != nil {
+		NotFound(c, "")
+		return
+	}
+	if imgPath != "" {
+		if err := h.fileStore.Delete(ctx, imgPath); err != nil {
+			Unprocessable(c, "")
+			return
+		}
+	}
+	if err := h.userStore.Delete(ctx, claims.ID, claims.Username); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -149,7 +165,7 @@ func (h *usersHandler) setEmail(c *gin.Context) {
 	}
 	claims := md.GetUserClaims(c)
 	ctx := c.Request.Context()
-	if err := h.store.SetEmail(ctx, claims.ID, input); err != nil {
+	if err := h.userStore.SetEmail(ctx, claims.ID, input); err != nil {
 		BadRequest(c, "email already exists")
 		return
 	}
@@ -196,7 +212,7 @@ func (h *usersHandler) verifyEmail(c *gin.Context) {
 		Forbidden(c, "")
 		return
 	}
-	if err := h.store.VerifyEmail(ctx, claims.ID, true); err != nil {
+	if err := h.userStore.VerifyEmail(ctx, claims.ID, true); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -211,7 +227,7 @@ func (h *usersHandler) setPhoneNumber(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	if err := h.store.SetPhoneNumber(c.Request.Context(), claims.ID, json); err != nil {
+	if err := h.userStore.SetPhoneNumber(c.Request.Context(), claims.ID, json); err != nil {
 		NotFound(c, "")
 		return
 	}

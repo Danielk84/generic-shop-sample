@@ -40,7 +40,7 @@ type PaymentStatus struct {
 	IsPaid         bool   `json:"is_paid"`
 }
 
-type OrderRepository struct {
+type orderRepository struct {
 	session database.Session
 	log     logger.Logger
 }
@@ -59,10 +59,10 @@ type OrderStore interface {
 }
 
 func NewOrderStore(session database.Session, log logger.Logger) OrderStore {
-	return &OrderRepository{session, log}
+	return &orderRepository{session, log}
 }
 
-func (o *OrderRepository) Create(ctx context.Context, userID string) (item string, err error) {
+func (o *orderRepository) Create(ctx context.Context, userID string) (item string, err error) {
 	// this query check, if there is not ended order (not paid), return existed id
 	// instead of creating new one.
 	const q = `WITH create_new_order AS (
@@ -78,7 +78,7 @@ func (o *OrderRepository) Create(ctx context.Context, userID string) (item strin
 	return
 }
 
-func (o *OrderRepository) CustomerList(ctx context.Context, userID string, pagination, page int) (items []OrderSummaryResponse, err error) {
+func (o *orderRepository) CustomerList(ctx context.Context, userID string, pagination, page int) (items []OrderSummaryResponse, err error) {
 	const q = `SELECT id, user_id, started_at, is_paid, is_delivered
 		FROM order_s.orders
 		WHERE user_id = '@UserID'::UUID
@@ -97,7 +97,7 @@ func (o *OrderRepository) CustomerList(ctx context.Context, userID string, pagin
 	return
 }
 
-func (o *OrderRepository) NotConfirmedList(ctx context.Context, pagination, page int) (items []OrderSummaryResponse, err error) {
+func (o *orderRepository) NotConfirmedList(ctx context.Context, pagination, page int) (items []OrderSummaryResponse, err error) {
 	const q = `SELECT id, user_id, started_at, is_paid, is_delivered
 		FROM order_s.orders
 		WHERE is_confirmed = FALSE
@@ -111,7 +111,7 @@ func (o *OrderRepository) NotConfirmedList(ctx context.Context, pagination, page
 	return
 }
 
-func (o *OrderRepository) FullList(ctx context.Context, pagination, page int) (items []OrderSummaryResponse, err error) {
+func (o *orderRepository) FullList(ctx context.Context, pagination, page int) (items []OrderSummaryResponse, err error) {
 	const q = `SELECT id, user_id, started_at, is_paid, is_delivered
 		FROM order_s.orders
 		ORDER BY started_at DESC, is_confirmed
@@ -124,7 +124,7 @@ func (o *OrderRepository) FullList(ctx context.Context, pagination, page int) (i
 	return
 }
 
-func (o *OrderRepository) Get(ctx context.Context, id OrderID) (item OrderResponse, err error) {
+func (o *orderRepository) Get(ctx context.Context, id OrderID) (item OrderResponse, err error) {
 	const q = `SELECT
 			id, user_id, started_at,
 			items_total, total_bill, is_paid,
@@ -139,7 +139,7 @@ func (o *OrderRepository) Get(ctx context.Context, id OrderID) (item OrderRespon
 	return
 }
 
-func (o *OrderRepository) SetUserInfo(ctx context.Context, id OrderID, info OrderUserInfo) (err error) {
+func (o *orderRepository) SetUserInfo(ctx context.Context, id OrderID, info OrderUserInfo) (err error) {
 	const q = `UPDATE order_s.orders
 		SET address = @Address, zip_code = @ZipCode, is_verified = FALSE
 		WHERE id = @ID::UUID AND user_id = '@UserID'::UUID`
@@ -155,7 +155,7 @@ func (o *OrderRepository) SetUserInfo(ctx context.Context, id OrderID, info Orde
 	return
 }
 
-func (o *OrderRepository) VerifyUserInfo(ctx context.Context, id OrderID, isVerified bool) (err error) {
+func (o *orderRepository) VerifyUserInfo(ctx context.Context, id OrderID, isVerified bool) (err error) {
 	const q = `UPDATE order_s.orders
 		SET is_verified = @IsVerified
 		WHERE id = '@ID'::UUID AND user_id = '@UserID'::UUID`
@@ -170,7 +170,7 @@ func (o *OrderRepository) VerifyUserInfo(ctx context.Context, id OrderID, isVeri
 	return
 }
 
-func (o *OrderRepository) SetPaymentStatus(ctx context.Context, id OrderID, status PaymentStatus) (err error) {
+func (o *orderRepository) SetPaymentStatus(ctx context.Context, id OrderID, status PaymentStatus) (err error) {
 	const q = `UPDATE order_s.orders
 		SET payment_summary = CONCAT(payment_summary::TEXT, ' ', @Summary::TEXT), is_paid = @IsPaid
 		WHERE id = '@ID'::UUID AND user_id = '@UserID'::UUID`
@@ -186,7 +186,7 @@ func (o *OrderRepository) SetPaymentStatus(ctx context.Context, id OrderID, stat
 	return
 }
 
-func (o *OrderRepository) SetConfirmed(ctx context.Context, id OrderID, IsConfirmed bool) (err error) {
+func (o *orderRepository) SetConfirmed(ctx context.Context, id OrderID, IsConfirmed bool) (err error) {
 	const q = `UPDATE order_s.orders
 		SET is_confirmed = @IsConfirmed
 		WHERE id = '@ID'::UUID AND user_id = '@UserID'::UUID`
@@ -201,7 +201,7 @@ func (o *OrderRepository) SetConfirmed(ctx context.Context, id OrderID, IsConfir
 	return
 }
 
-func (o *OrderRepository) DeleteExpiredOrders(ctx context.Context) (err error) {
+func (o *orderRepository) DeleteExpiredOrders(ctx context.Context) (err error) {
 	const q = `DELETE FROM order_s.orders
 		WHERE started_at > NOW() AND is_paid = FALSE AND payment_summary IS NULL`
 	if _, err = o.session.Exec(ctx, q); err != nil {
@@ -239,7 +239,7 @@ type OrderItemResponse struct {
 	Property ProductProperty
 }
 
-type OrderItemsRepository struct {
+type orderItemsRepository struct {
 	session database.Session
 	log     logger.Logger
 }
@@ -255,10 +255,10 @@ type OrderItemsStore interface {
 }
 
 func NewOrderItemsStore(session database.Session, log logger.Logger) OrderItemsStore {
-	return &OrderItemsRepository{session, log}
+	return &orderItemsRepository{session, log}
 }
 
-func (o *OrderItemsRepository) Create(ctx context.Context, userID string, item OrderItemRequest) (err error) {
+func (o *orderItemsRepository) Create(ctx context.Context, userID string, item OrderItemRequest) (err error) {
 	const q = `WITH is_owned_order AS (
 		SELECT id
 		FROM order_s.orders
@@ -279,7 +279,7 @@ func (o *OrderItemsRepository) Create(ctx context.Context, userID string, item O
 	return
 }
 
-func (o *OrderItemsRepository) CustomerList(ctx context.Context,
+func (o *orderItemsRepository) CustomerList(ctx context.Context,
 	id OrderID, pagination, page int) (items []OwnedOrderItemResponse, err error) {
 	const q = `SELECT
 			o.order_id, o.product_id, o.items_total,
@@ -304,7 +304,7 @@ func (o *OrderItemsRepository) CustomerList(ctx context.Context,
 	return
 }
 
-func (o *OrderItemsRepository) AdminList(ctx context.Context,
+func (o *orderItemsRepository) AdminList(ctx context.Context,
 	orderID string, pagination, page int) (items []OwnedOrderItemResponse, err error) {
 	const q = `SELECT
 			order_id, product_id, items_total,
@@ -326,7 +326,7 @@ func (o *OrderItemsRepository) AdminList(ctx context.Context,
 	return
 }
 
-func (o *OrderItemsRepository) FullList(ctx context.Context,
+func (o *orderItemsRepository) FullList(ctx context.Context,
 	orderID string, pagination, page int) (items []OrderItemResponse, err error) {
 	const q = `SELECT
 		order_id, product_id, items_total,
@@ -348,7 +348,7 @@ func (o *OrderItemsRepository) FullList(ctx context.Context,
 	return
 }
 
-func (o *OrderItemsRepository) Delete(ctx context.Context, id OrderItemID) (err error) {
+func (o *orderItemsRepository) Delete(ctx context.Context, id OrderItemID) (err error) {
 	const q = `DELETE FROM order_s.order_items
 		WHERE order_id = '@OrderID'::UUID AND product_id = '@ProductID'::UUID AND user_id = '@UserID'::UUID`
 	args := pgx.NamedArgs{
@@ -362,7 +362,7 @@ func (o *OrderItemsRepository) Delete(ctx context.Context, id OrderItemID) (err 
 	return
 }
 
-func (o *OrderItemsRepository) SetItemsTotal(ctx context.Context, id OrderItemID, itemsTotal int32) (err error) {
+func (o *orderItemsRepository) SetItemsTotal(ctx context.Context, id OrderItemID, itemsTotal int32) (err error) {
 	const q = `UPDATE order_s.order_items
 		SET items_total = @ItemsTotal
 		WHERE order_id = '@OrderID'::UUID AND product_id = '@ProductID'::UUID AND user_id = '@UserID'::UUID`
@@ -378,7 +378,7 @@ func (o *OrderItemsRepository) SetItemsTotal(ctx context.Context, id OrderItemID
 	return
 }
 
-func (o *OrderItemsRepository) SetConfirmedVendors(ctx context.Context, id OrderItemID, confirmedVendors []ProductVendor) (err error) {
+func (o *orderItemsRepository) SetConfirmedVendors(ctx context.Context, id OrderItemID, confirmedVendors []ProductVendor) (err error) {
 	const q = `UPDATE order_s.order_items
 		SET confirmed_vendors = '@ConfirmedVendors'::JSONB
 		WHERE order_id = 'OrderID'::UUID AND product_id = 'ProductID'::UUID AND user_id = '@UserID'::UUID`

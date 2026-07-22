@@ -30,7 +30,7 @@ type RelatedCommentResponse struct {
 	IsActive bool   `json:"is_active"`
 }
 
-type CommentRepository struct {
+type commentRepository struct {
 	session database.Session
 	log     logger.Logger
 }
@@ -45,10 +45,10 @@ type CommentStore interface {
 }
 
 func NewCommentStore(session database.Session, log logger.Logger) CommentStore {
-	return &CommentRepository{session, log}
+	return &commentRepository{session, log}
 }
 
-func (c *CommentRepository) Create(ctx context.Context, username string, comment *CommentRequest) (err error) {
+func (c *commentRepository) Create(ctx context.Context, username string, comment *CommentRequest) (err error) {
 	const createCommentQuery = `INSERT INTO user_s.comments(username, parent, children_amount, referrer, body)
 		VALUES (@Username, NULLIF(@Parent, '')::UUID, 0, @Referrer, @Body)`
 	const upadteChildrenCount = `UPDATE user_s.comments
@@ -83,7 +83,7 @@ func (c *CommentRepository) Create(ctx context.Context, username string, comment
 	return
 }
 
-func (c *CommentRepository) Get(ctx context.Context, id string) (item RelatedCommentResponse, err error) {
+func (c *commentRepository) Get(ctx context.Context, id string) (item RelatedCommentResponse, err error) {
 	const q = `SELECT
 			id, COALESCE(username, 'deleted') AS username, pub_date,
 			COALESCE(parent::TEXT, '') AS parent, children_amount, referrer,
@@ -97,7 +97,7 @@ func (c *CommentRepository) Get(ctx context.Context, id string) (item RelatedCom
 	return
 }
 
-func (c *CommentRepository) List(ctx context.Context, parent string, referrer string, pagination, page int) (items []CommentResponse, err error) {
+func (c *commentRepository) List(ctx context.Context, parent string, referrer string, pagination, page int) (items []CommentResponse, err error) {
 	const q = `SELECT
 			id, COALESCE(username, 'deleted') AS username, pub_date, children_amount, body
 		FROM user_s.comments
@@ -120,7 +120,7 @@ func (c *CommentRepository) List(ctx context.Context, parent string, referrer st
 	return
 }
 
-func (c *CommentRepository) FullList(ctx context.Context, username string, pagination, page int) (items []RelatedCommentResponse, err error) {
+func (c *commentRepository) FullList(ctx context.Context, username string, pagination, page int) (items []RelatedCommentResponse, err error) {
 	const baseQuery = `SELECT
 			id, COALESCE(username, 'deleted') AS username, pub_date,
 			COALESCE(parent::TEXT, '') AS parent, children_amount, referrer,
@@ -146,7 +146,7 @@ func (c *CommentRepository) FullList(ctx context.Context, username string, pagin
 	return
 }
 
-func (c *CommentRepository) Delete(ctx context.Context, id string) (err error) {
+func (c *commentRepository) Delete(ctx context.Context, id string) (err error) {
 	const q = `DELETE FROM user_s.comments WHERE id = $1::UUID OR parent = $1::UUID`
 	if _, err = c.session.Exec(ctx, q, id); err != nil {
 		c.log.Debug("CommentRepository.Delete", "error", err)
@@ -154,7 +154,7 @@ func (c *CommentRepository) Delete(ctx context.Context, id string) (err error) {
 	return
 }
 
-func (c *CommentRepository) SetActive(ctx context.Context, id string, isActive bool) (err error) {
+func (c *commentRepository) SetActive(ctx context.Context, id string, isActive bool) (err error) {
 	const q = `UPDATE user_s.comments SET is_active = $1 WHERE id = $2::UUID`
 	if err = execOne(ctx, c.session, q, isActive, id); err != nil {
 		c.log.Debug("CommentRepository.SetActive", "error", err)

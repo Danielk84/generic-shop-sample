@@ -46,6 +46,7 @@ type FileStore interface {
 	Upload(ctx context.Context, fh *multipart.FileHeader, key string) (string, error)
 	Download(ctx context.Context, bucket, key string) (*s3.GetObjectOutput, error)
 	Delete(ctx context.Context, key string) error
+	BulkDelete(ctx context.Context, keys []string) error
 }
 
 func NewFileStore(ctx context.Context, config config.FileStorageConfig, bucket string) FileStore {
@@ -94,7 +95,7 @@ func (f *fileManager) isBucketExists(ctx context.Context) (bool, error) {
 func (f *fileManager) createBucket(ctx context.Context) error {
 	exists, err := f.isBucketExists(ctx)
 	if err != nil {
-		f.log.Debug("fileManager.createBucket", "error", err)
+		f.log.Warn("fileManager.createBucket", "error", err)
 		return err
 	}
 	if exists {
@@ -184,4 +185,28 @@ func (f *fileManager) Delete(ctx context.Context, key string) error {
 		}
 	}
 	return nil
+}
+
+func (f *fileManager) BulkDelete(ctx context.Context, keys []string) error {
+	objs := make([]types.ObjectIdentifier, 0, len(keys))
+	for _, k := range keys {
+		fileKey := strings.TrimLeft(k, f.bucket+"/")
+		objs = append(objs, types.ObjectIdentifier{
+			Key: aws.String(fileKey),
+		})
+	}
+	_, err := f.client.DeleteObjects(ctx, &s3.DeleteObjectsInput{
+		Bucket: aws.String(f.bucket),
+		Delete: &types.Delete{
+			Objects: objs,
+			Quiet:   aws.Bool(true),
+		},
+	})
+	if err != nil {
+		f.log.Error("fileManager.BulkDelete",
+			"error", err,
+			"bucket", f.bucket,
+			"keys", keys)
+	}
+	return err
 }

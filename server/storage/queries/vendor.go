@@ -22,7 +22,7 @@ type VendorOrder struct {
 	TotalBill int64 `json:"total_bill" binding:"required,min=0"`
 }
 
-type VendorOrderRepository struct {
+type vendorOrderRepository struct {
 	session database.Session
 	log     logger.Logger
 }
@@ -34,10 +34,10 @@ type VendorOrderStore interface {
 }
 
 func NewVendorOrderStore(session database.Session, log logger.Logger) VendorOrderStore {
-	return &VendorOrderRepository{session, log}
+	return &vendorOrderRepository{session, log}
 }
 
-func (v *VendorOrderRepository) Create(ctx context.Context, order VendorOrder) (err error) {
+func (v *vendorOrderRepository) Create(ctx context.Context, order VendorOrder) (err error) {
 	const q = `INSERT INTO order_s.vendors_order(
 			user_id, order_id, product_id,
 			property, quantity, total_bill, is_delivered)
@@ -59,7 +59,7 @@ func (v *VendorOrderRepository) Create(ctx context.Context, order VendorOrder) (
 	return
 }
 
-func (v *VendorOrderRepository) List(ctx context.Context, userID string, pagination, page int) (items []VendorOrder, err error) {
+func (v *vendorOrderRepository) List(ctx context.Context, userID string, pagination, page int) (items []VendorOrder, err error) {
 	const q = `SELECT
 			user_id, order_id, product_id,
 			property, quantity, total_bill, is_delivered)
@@ -79,7 +79,7 @@ func (v *VendorOrderRepository) List(ctx context.Context, userID string, paginat
 	return
 }
 
-func (v *VendorOrderRepository) SetIsDelivered(ctx context.Context, order VendorOrderDelivere) (err error) {
+func (v *vendorOrderRepository) SetIsDelivered(ctx context.Context, order VendorOrderDelivere) (err error) {
 	const q = `UPDATE order_s.vendors_order
 		SET is_delivered = @IsDelivered
 		WHERE
