@@ -10,7 +10,6 @@ import (
 	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/cache_query"
 	"generic-shop-sample/storage/queries"
-	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
