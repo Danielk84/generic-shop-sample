@@ -100,7 +100,7 @@ func (o *orderRepository) CustomerList(ctx context.Context, userID string, pagin
 func (o *orderRepository) NotConfirmedList(ctx context.Context, pagination, page int) (items []OrderSummaryResponse, err error) {
 	const q = `SELECT id, user_id, started_at, is_paid, is_delivered
 		FROM order_s.orders
-		WHERE is_confirmed = FALSE
+		WHERE is_confirmed = FALSE AND is_paid = TRUE
 		ORDER BY started_at DESC
 		LIMIT $1
 		OFFSET $2`

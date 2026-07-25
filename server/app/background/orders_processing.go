@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/cache_query"
@@ -49,6 +50,17 @@ OuterLoop:
 			var input queries.OrderID
 			if err := json.NewDecoder(bytes.NewBufferString(msg.Payload)).Decode(&input); err != nil {
 				o.Log.Error("failed decode OrderID", "error", err)
+				continue
+			}
+			order, err := o.OrderStore.Get(ctx, input)
+			if err != nil {
+				o.Log.Error("OrdersProcess.Start", "error", err)
+				continue
+			}
+			if !order.IsPaid {
+				o.Log.Warn("OrderProcess.Start",
+					"error", "invalid not paid order on order process queue",
+					"id", input)
 				continue
 			}
 			if err := o.process(ctx, input); err != nil {
@@ -156,3 +168,14 @@ func (o *OrdersProcess) process(ctx context.Context, id queries.OrderID) error {
 }
 
 var _ BackgroundTask = (*OrdersProcess)(nil)
+
+func SendOrderDone(ctx context.Context, cache cache.CacheClient, order queries.OrderID) error {
+	msg, err := json.Marshal(order)
+	if err != nil {
+		return fmt.Errorf("failed to encode OrderID, %s", err)
+	}
+	if err := cache.Publish(ctx, ordersProcessingChannel, msg).Err(); err != nil {
+		return err
+	}
+	return nil
+}
