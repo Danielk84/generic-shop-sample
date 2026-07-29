@@ -2,13 +2,13 @@ CREATE SCHEMA order_s;
 
 CREATE TABLE order_s.orders (
     id UUID PRIMARY KEY DEFAULT uuidv7(),
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    user_id UUID NOT NULL REFERENCES user_s.users(id) ON DELETE RESTRICT,
     started_at TIMESTAMP NOT NULL DEFAULT (NOW() + INTERVAL '24 hours'),
 
     items_total INTEGER NOT NULL CHECK (items_total >= 0) DEFAULT 0,
     total_bill BIGINT NOT NULL CHECK (total_bill >= 0) DEFAULT 0,
 
-    payment_summary TEXT,
+    payment_summary JSONB NOT NULL CHECK (jsonb_typeof(payment_summary) = 'array') DEFAULT '[]'::JSONB,
     is_paid BOOLEAN NOT NULL DEFAULT FALSE,
 
     address TEXT,
@@ -22,14 +22,14 @@ CREATE TABLE order_s.orders (
 );
 
 CREATE TABLE order_s.order_items (
-    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+    user_id UUID NOT NULL REFERENCES user_s.users(id) ON DELETE RESTRICT,
     order_id UUID NOT NULL REFERENCES order_s.orders(id) ON DELETE CASCADE,
     product_id UUID NOT NULL REFERENCES product_s.products(id) ON DELETE RESTRICT,
     items_total INTEGER NOT NULL CHECK (items_total > 0) DEFAULT 1,
     processed_items INTEGER NOT NULL CHECK (processed_items >= 0) DEFAULT 0,
-    property JSONB NOT NULL CHECK (jsonb_typeof(property) = 'object'),
+    property JSONB NOT NULL CHECK (jsonb_typeof(property) = 'object') DEFAULT '{}'::JSONB,
     price BIGINT NOT NULL DEFAULT 0,
-    confirmed_vendors JSONB NOT NULL CHECK (jsonb_typeof(confirmed_vendors) = 'array'),
+    confirmed_vendors JSONB NOT NULL CHECK (jsonb_typeof(confirmed_vendors) = 'array') DEFAULT '[]'::JSONB,
     PRIMARY KEY (user_id, order_id, product_id)
 );
 
@@ -101,6 +101,7 @@ AS $$
         UPDATE product_s.products
             SET available_quantity = (available_quantity +  OLD.items_total)
             WHERE id = OLD.product_id;
+
         RETURN OLD;
     END;
 $$ LANGUAGE PLPGSQL;

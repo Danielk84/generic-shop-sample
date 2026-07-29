@@ -33,20 +33,21 @@ func (o *OrdersProcess) Start(ctx context.Context) {
 	sub := o.Cache.Subscribe(ctx, ordersProcessingChannel)
 	defer func() { _ = sub.Close() }()
 
+	ch := sub.Channel()
+
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
 
 OuterLoop:
 	for {
-		ch := sub.Channel()
 		select {
-		case <-ctx.Done():
-			return
 		case msg, ok := <-ch:
 			if !ok {
 				o.Log.Warn("orders processing Subscription closed")
 				return
 			}
+			o.Log.Debug("OrdersProcess.Start", "debug", "start of sub channel")
+
 			var input queries.OrderID
 			if err := json.NewDecoder(bytes.NewBufferString(msg.Payload)).Decode(&input); err != nil {
 				o.Log.Error("failed decode OrderID", "error", err)
@@ -68,9 +69,10 @@ OuterLoop:
 				continue
 			}
 		case <-ticker.C:
-			page := 0
+			o.Log.Debug("OrdersProcess.Start", "debug", "start of ticker")
+
 		InnerLoop:
-			for {
+			for page := 1; ; page++ {
 				items, err := o.OrderStore.NotConfirmedList(ctx, o.Pagination, page)
 				if err != nil {
 					if err != pgx.ErrNoRows {
@@ -84,40 +86,66 @@ OuterLoop:
 						continue InnerLoop
 					}
 				}
-				page++
 			}
+		case <-ctx.Done():
+			o.Log.Debug("OrdersProcess.Start", "debug", "end of OrdersProcess task")
+			return
 		}
 	}
 }
 
 func (o *OrdersProcess) process(ctx context.Context, id queries.OrderID) error {
-	page := 0
-	for {
+	for page := 1; ; page++ {
 		items, err := o.OrderItemStore.FullList(ctx, id.ID, o.Pagination, page)
 		if err != nil {
 			if err == pgx.ErrNoRows {
+				o.Log.Debug("OrdersProcess.process",
+					"debug", "end of order items",
+					"page", page)
 				break
 			}
 			return err
 		}
-	InnerLoop:
 		for _, i := range items {
 			var remainder int32 = 1
 			confirmedVendor := []queries.ProductVendor{}
-			for remainder < 1 {
+
+		InnertLoop:
+			for remainder > 0 {
 				remainder = i.ItemsTotal - i.ProcessedItems
 				if remainder < 1 {
-					continue InnerLoop
+					o.Log.Debug("OrdersProcess.process",
+						"debug", "not remainder order item",
+						"remainder", remainder,
+						"page", page)
+					continue InnertLoop
 				}
 				vendor, err := o.VendorCacheStore.Turn(ctx, i.ProductID, i.Property)
 				if err != nil {
 					return err
 				}
+				o.Log.Debug("OrdersProcess.process",
+					"debug", "get turn",
+					"productID", i.ProductID,
+					"property", i.Property,
+					"turn", vendor,
+					"page", page)
+
 				quantity, err := o.ProductStore.GetQuantity(ctx, i.ProductID, i.Property, vendor)
 				if err != nil {
 					return err
 				}
+				o.Log.Debug("OrdersProcess.process",
+					"debug", "get quantity",
+					"quantity", quantity,
+					"page", page)
+
 				orderable := min(quantity, remainder)
+				o.Log.Debug("OrdersProcess.process",
+					"debug", "min(quantity, remainder)",
+					"orderable", orderable,
+					"page", page)
+
 				err = o.VendorStore.Create(ctx, queries.VendorOrder{
 					VendorOrderDelivere: queries.VendorOrderDelivere{
 						UserID:      vendor,
@@ -146,13 +174,17 @@ func (o *OrdersProcess) process(ctx context.Context, id queries.OrderID) error {
 				})
 				i.ProcessedItems += orderable
 			}
+			o.Log.Debug("OrdersProcess.process",
+				"confirmedVendor", confirmedVendor,
+				"page", page)
+
 			err = o.OrderItemStore.SetConfirmedVendors(ctx,
 				queries.OrderItemID{
 					OrderItem: queries.OrderItem{
 						OrderID:   i.OrderID,
 						ProductID: i.ProductID,
 					},
-					UserID: "",
+					UserID: id.UserID,
 				},
 				confirmedVendor)
 			if err != nil {
@@ -162,7 +194,6 @@ func (o *OrdersProcess) process(ctx context.Context, id queries.OrderID) error {
 				return err
 			}
 		}
-		page++
 	}
 	return nil
 }

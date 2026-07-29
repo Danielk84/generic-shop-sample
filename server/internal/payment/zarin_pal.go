@@ -85,23 +85,23 @@ func NewZarinPalGateway(addr string, client *http.Client) ZPGateway {
 	return ZPGateway{addr, client}
 }
 
-func (zg *ZPGateway) InitReq(ctx context.Context, payload *ZPRequest) (*ZPResponse, error) {
+func (zg *ZPGateway) InitReq(ctx context.Context, payload ZPRequest) (ZPResponse, error) {
 	var output ZPResponse
 	err := zg.doJSON(ctx, "/pg/v4/payment/request.json", payload, &output)
-	return &output, err
+	return output, err
 }
 
 func (zg *ZPGateway) CheckStatus(status string) bool {
 	return strings.EqualFold(status, "OK")
 }
 
-func (zg *ZPGateway) VerifyReq(ctx context.Context, payload *ZPVerifyRequest) (*ZPVerifyReponse, error) {
+func (zg *ZPGateway) VerifyReq(ctx context.Context, payload ZPVerifyRequest) (ZPVerifyReponse, error) {
 	var output ZPVerifyReponse
 	err := zg.doJSON(ctx, "/pg/v4/payment/verify.json", payload, &output)
-	return &output, err
+	return output, err
 }
 
-func (zg *ZPGateway) ReverseReq(ctx context.Context, payload *ZPReverseRequest) (string, error) {
+func (zg *ZPGateway) ReverseReq(ctx context.Context, payload ZPReverseRequest) (string, error) {
 	var res ZPResponse
 	err := zg.doJSON(ctx, "/pg/v4/payment/reverse.json", payload, &res)
 	output, _ := json.Marshal(res)

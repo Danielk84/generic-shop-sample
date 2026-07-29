@@ -13,9 +13,9 @@ auth:
 
 email_broker:
   from_email: "noreply@example.com"
-  smtp_host: "mail"
-  smtp_port: 1025
-  smtp_password: ""
+  smtp_host: "smtp.example.com"
+  smtp_port: 587
+  smtp_password: "your-smtp-password"
 
 product_image:
   max_product_images_amount: 6
@@ -32,10 +32,10 @@ file_upload:
     - "image/gif"
     - "image/avif"
   aws_s3:
-    key: "test"
-    secret: "test"
+    key: "YOUR_AWS_ACCESS_KEY_ID"
+    secret: "YOUR_AWS_SECRET_ACCESS_KEY"
     region: "us-east-1"
-    endpoint: "http://storage:8333"
+    endpoint: "https://s3.amazonaws.com"
 
 request_logger_filepath: "./logs/request.log"
 
@@ -43,9 +43,9 @@ origins:
   - "https://example.com"
   - "http://localhost:3000"
 
-database_url: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}?sslmode=disable"
+database_url: "postgres://username:password@localhost:5432/mydb?sslmode=disable"
 
-cache_url: "redis://cache:6379/"
+cache_url: "redis://localhost:6379/"
 
 pagination: 20
 

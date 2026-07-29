@@ -58,7 +58,7 @@ type PaymentConfig struct {
 
 type FileStorageConfig struct {
 	AllowedImgMimetype []string    `yaml:"allowed_image_mimetype" binding:"required,dive,required"`
-	AwsS3              AwsS3Config `yaml:"aws_s3" binding:"required,dive"`
+	AwsS3              AwsS3Config `yaml:"aws_s3" binding:"required"`
 }
 
 type AwsS3Config struct {
@@ -90,24 +90,14 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-var defualtConfig *Config
-
 func NewConfig(fp string) Config {
-	if defualtConfig == nil {
-		defualtConfig = &Config{}
-	}
-	if err := defualtConfig.ReadFile(fp); err != nil {
-		panic(err)
-	}
-	if err := defualtConfig.Validate(); err != nil {
-		panic(err)
-	}
-	return *defualtConfig
-}
+	c := &Config{}
 
-func GetConfig() *Config {
-	if defualtConfig == nil {
-		panic("nil default config")
+	if err := c.ReadFile(fp); err != nil {
+		panic(err)
 	}
-	return defualtConfig
+	if err := c.Validate(); err != nil {
+		panic(err)
+	}
+	return *c
 }

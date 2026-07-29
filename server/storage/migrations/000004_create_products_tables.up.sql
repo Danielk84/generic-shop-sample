@@ -9,8 +9,8 @@ CREATE TABLE product_s.products (
     available_quantity INTEGER NOT NULL CHECK (available_quantity >= 0) DEFAULT 0,
     is_available BOOLEAN NOT NULL DEFAULT FALSE,
     is_active BOOLEAN NOT NULL DEFAULT FALSE,
-    common_detail JSONB NOT NULL CHECK (jsonb_typeof(common_detail) = 'object'),
-    variant_detail JSONB NOT NULL CHECK (jsonb_typeof(variant_detail) = 'array')
+    common_detail JSONB NOT NULL CHECK (jsonb_typeof(common_detail) = 'object') DEFAULT '{}'::JSONB,
+    variant_detail JSONB NOT NULL CHECK (jsonb_typeof(variant_detail) = 'array') DEFAULT '[]'::JSONB
     -- variante-detail schema
     -- Array<{
     --     property: Map<{ [key: string]: string }>
@@ -145,14 +145,14 @@ AS $$
             RETURN new;
         END IF;
 
+        j := 0;
         FOR i IN 0..(new_len-1)
         LOOP
             price := (NEW.variant_detail->i->>'price')::BIGINT;
-            IF new.price > price THEN
+            IF new.price > price OR price > 0 THEN
                 NEW.price = price;
             END IF;
 
-            j := 0;
             FOR item in (
                 SELECT value
                 FROM jsonb_array_elements(NEW.variant_detail->i->'vendors')
@@ -160,8 +160,22 @@ AS $$
             LOOP
                 j = j + (item->>'quantity')::INTEGER;
             END LOOP;
-            NEW.available_quantity := NEW.available_quantity + j;
         END LOOP;
+
+        IF TG_OP = 'UPDATE' THEN 
+            IF OLD.available_quantity != NEW.available_quantity THEN
+                IF NEW.available_quantity < j THEN
+                    NEW.available_quantity = (j - (j - NEW.available_quantity));
+                END IF;
+            ELSE
+                NEW.available_quantity := j;
+            END IF;
+        ELSE
+            NEW.available_quantity := j;
+        END IF;
+        IF NEW.available_quantity > j THEN
+            NEW.available_quantity := j;
+        END IF;
 
         RETURN NEW;
     END;
@@ -275,7 +289,7 @@ AS $$
             END IF;
         END LOOP loop_block;
 
-        IF array_length(user_ids) = 0 THEN
+        IF array_length(user_ids, 1) = 0 THEN
             RAISE EXCEPTION 'invalid property';
         END IF;
 

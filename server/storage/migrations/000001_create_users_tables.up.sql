@@ -13,7 +13,7 @@ CREATE TABLE user_s.users (
 );
 
 CREATE TABLE user_s.user_profile (
-    user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID PRIMARY KEY REFERENCES user_s.users(id) ON DELETE CASCADE,
     img_path TEXT UNIQUE,
     birthday DATE,
     bio VARCHAR(450)

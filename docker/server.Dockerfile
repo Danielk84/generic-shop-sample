@@ -13,7 +13,7 @@ RUN go mod download
 
 COPY ./server .
 
-RUN go build -o dist/shop ./cmd/server/main.go
+RUN go build -o dist/shop ./cmd/server/
 
 COPY ./docker/scripts/server-entrypoint.sh ./docker/scripts/server-entrypoint.sh
 ENTRYPOINT ["docker/scripts/server-entrypoint.sh"]

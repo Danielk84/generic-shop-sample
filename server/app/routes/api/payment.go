@@ -87,7 +87,7 @@ func (h *paymentHandler) init(c *gin.Context) {
 		return
 	}
 
-	init, err := h.zpGateway.InitReq(ctx, &payment.ZPRequest{
+	init, err := h.zpGateway.InitReq(ctx, payment.ZPRequest{
 		MerchantID:  h.merchandID,
 		Amount:      order.TotalBill,
 		Currency:    "IRT",
@@ -141,7 +141,7 @@ func (h *paymentHandler) callback(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	reverse := &payment.ZPReverseRequest{MerchantID: h.merchandID, Authority: input.Authority}
+	reverse := payment.ZPReverseRequest{MerchantID: h.merchandID, Authority: input.Authority}
 	data, err := h.cache.Get(ctx, input.Authority).Result()
 	if err != nil {
 		h.reverseWithLog(ctx, "failed to get payment authority related data", err, reverse)
@@ -154,7 +154,7 @@ func (h *paymentHandler) callback(c *gin.Context) {
 		Unprocessable(c, "")
 		return
 	}
-	verfiedPayment, err := h.zpGateway.VerifyReq(ctx, &payment.ZPVerifyRequest{
+	verfiedPayment, err := h.zpGateway.VerifyReq(ctx, payment.ZPVerifyRequest{
 		MerchantID: h.merchandID,
 		Amount:     up.Amount,
 		Authority:  input.Authority,
@@ -165,14 +165,17 @@ func (h *paymentHandler) callback(c *gin.Context) {
 		return
 	}
 
-	status := queries.PaymentStatus{}
-	output, err := json.Marshal(verfiedPayment)
-	if err != nil {
-		h.log.Warn("failed to encode internal.payment.ZPVerifyRequest", "error", err)
-		status.PaymentSummary = fmt.Sprintf("%v", &verfiedPayment)
+	status := queries.PaymentStatus{
+		PaymentSummary: queries.ProductProperty{
+			"code":      fmt.Sprintf("%d", verfiedPayment.Data.Code),
+			"ref_id":    fmt.Sprintf("%d", verfiedPayment.Data.RefID),
+			"card_pan":  verfiedPayment.Data.CardPan,
+			"card_hash": verfiedPayment.Data.CardHash,
+			"fee_type":  verfiedPayment.Data.FeeType,
+			"fee":       fmt.Sprintf("%d", verfiedPayment.Data.Fee),
+			"err":       fmt.Sprintf("%v", verfiedPayment.Errs),
+		},
 	}
-	status.PaymentSummary = string(output)
-
 	if slices.Contains([]int{100, 101}, verfiedPayment.Data.Code) {
 		status.IsPaid = true
 	}
@@ -188,7 +191,7 @@ func (h *paymentHandler) callback(c *gin.Context) {
 	Accepted(c, "")
 }
 
-func (h *paymentHandler) reverseWithLog(ctx context.Context, reason string, err error, payload *payment.ZPReverseRequest) {
+func (h *paymentHandler) reverseWithLog(ctx context.Context, reason string, err error, payload payment.ZPReverseRequest) {
 	result, rerr := h.zpGateway.ReverseReq(ctx, payload)
 	h.log.Error(fmt.Sprintf(`transaction reversed: %s`, reason),
 		"error", err,
