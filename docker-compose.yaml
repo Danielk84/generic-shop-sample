@@ -29,7 +29,13 @@ services:
       cache:
         condition: service_healthy
         restart: true
-
+      mail:
+        condition: service_healthy
+        restart: true
+      storage:
+        condition: service_healthy
+        restart: true
+  
   database:
     image: postgres:18-alpine3.24
     container_name: database
@@ -62,12 +68,48 @@ services:
       retries: 3
       start_period: 40s
 
+  mail:
+    container_name: mail
+    image: axllent/mailpit:v1.30
+    environment:
+      MP_SMTP_BIND_ADDR: "0.0.0.0:1025"
+      MP_UI_BIND_ADDR: "0.0.0.0:8025"
+    networks:
+      - server
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8025/livez"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  storage:
+    container_name: storage
+    image: chrislusf/seaweedfs:4.40
+    command: >
+      server
+      -dir=/data
+      -s3
+      -s3.port=8333
+      -master.port=9333
+      -volume.port=8080
+    networks:
+      - server
+    volumes:
+      - storage-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8333"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
 volumes:
   backend-deps:
   backend-build-cache:
   backend-upload:
   backend-logs:
   database-data:
+  storage-data:
 
 networks:
   server:
