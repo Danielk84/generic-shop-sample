@@ -2,33 +2,34 @@ package queries_test
 
 import (
 	"generic-shop-sample/internal/logger"
-	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
+	tu "generic-shop-sample/tests/internal/testutils"
 	"testing"
 	"time"
 )
 
 func TestCommentStore(t *testing.T) {
 	ctx := t.Context()
-	session := database.GetSession()
+	config := tu.ConfigTestSetup()
+	session := tu.DBTestSetup(ctx, config).GetSession()
 	log := logger.GetLogger()
 
-	if _, err := session.Exec(ctx, "TRUNCATE comments, products CASCADE"); err != nil {
+	if _, err := session.Exec(ctx, "TRUNCATE user_s.comments, product_s.products CASCADE"); err != nil {
 		t.Errorf("error truncate comments and products, %s", err)
 		return
 	}
 
 	productStore := queries.NewProductStore(session, log)
-	if err := productStore.Create(ctx, 1, &queries.CreateProductRequest{
+	if err := productStore.Create(ctx, queries.CreateProductRequest{
 		Name:        "new product for comments",
-		Price:       1001,
 		Description: "lalala",
-		Details:     "{}",
-		IsAvailable: true,
+		CommonDetail: queries.ProductProperty{
+			"info": "some info",
+		},
 	}); err != nil {
 		t.Errorf("failed to create product, %s", err)
 	}
-	products, err := productStore.FullList(ctx, 0, 20, 1)
+	products, err := productStore.AdminList(ctx, 20, 1)
 	if err != nil {
 		t.Errorf("failed to get products full list, %s", err)
 	}
@@ -36,12 +37,16 @@ func TestCommentStore(t *testing.T) {
 
 	username := "adminUser"
 	store := queries.NewCommentStore(session, log)
-	parentComment := &queries.CommentRequest{"", product.ID, "some content"}
+	parentComment := &queries.CommentRequest{
+		Parent:   "",
+		Referrer: product.ID,
+		Body:     "some content",
+	}
 	if err := store.Create(ctx, username, parentComment); err != nil {
 		t.Errorf("failed to create parent comment, %s", err)
 	}
 	var parentCommentID string
-	const getIdQuery = `SELECT id FROM comments WHERE username = $1 LIMIT 1`
+	const getIdQuery = `SELECT id FROM user_s.comments WHERE username = $1 LIMIT 1`
 	if err := session.QueryRow(ctx, getIdQuery, username).Scan(&parentCommentID); err != nil {
 		t.Errorf("failed to find parent comment id, %s", err)
 	}
@@ -55,33 +60,33 @@ func TestCommentStore(t *testing.T) {
 	}{
 		{
 			"adminUserCommand",
-			queries.CommentRequest{"", product.ID, body},
+			queries.CommentRequest{Parent: "", Referrer: product.ID, Body: body},
 			false,
 		},
 		{
 			"subVendorUserCommand",
-			queries.CommentRequest{parentCommentID, product.ID, body},
+			queries.CommentRequest{Parent: parentCommentID, Referrer: product.ID, Body: body},
 			false,
 		},
 		{
 			"costumerUserCommand",
-			queries.CommentRequest{"", product.ID, body},
+			queries.CommentRequest{Parent: "", Referrer: product.ID, Body: body},
 			false,
 		},
 		{
 			"subAdminCommand",
-			queries.CommentRequest{parentCommentID, product.ID, body},
+			queries.CommentRequest{Parent: parentCommentID, Referrer: product.ID, Body: body},
 			false,
 		},
 		{
 			"invalidParentAdminCommand",
-			queries.CommentRequest{invalidCommentID, product.ID, body},
+			queries.CommentRequest{Parent: invalidCommentID, Referrer: product.ID, Body: body},
 			true,
 		},
 	}
 
 	var childrenAmount int32
-	const getChildrenAmountQuery = `SELECT children_amount FROM comments WHERE id = $1::UUID`
+	const getChildrenAmountQuery = `SELECT children_amount FROM user_s.comments WHERE id = $1::UUID`
 	for i, test := range tests {
 		u := username
 		if (i+1)%3 == 0 {
@@ -104,7 +109,7 @@ func TestCommentStore(t *testing.T) {
 		}
 	}
 
-	if _, err := session.Exec(ctx, "UPDATE comments SET is_active = true"); err != nil {
+	if _, err := session.Exec(ctx, "UPDATE user_s.comments SET is_active = true"); err != nil {
 		t.Errorf("failed to adtivate comments, %s", err)
 		return
 	}
@@ -142,7 +147,7 @@ func TestCommentStore(t *testing.T) {
 		t.Errorf("bad CommentStore.SetActive, %s", err)
 	}
 
-	const isCommentsExistsByID = "SELECT EXISTS(SELECT 1 FROM comments WHERE id = $1::UUID OR parent = $1::UUID)"
+	const isCommentsExistsByID = "SELECT EXISTS(SELECT 1 FROM user_s.comments WHERE id = $1::UUID OR parent = $1::UUID)"
 	if err := store.Delete(ctx, parentCommentID); err != nil {
 		t.Errorf("failed to delete comment, %s", err)
 	} else {
@@ -158,15 +163,16 @@ func TestCommentStore(t *testing.T) {
 
 func TestFullListComments(t *testing.T) {
 	ctx := t.Context()
-	session := database.GetSession()
-	if _, err := session.Exec(ctx, "TRUNCATE comments"); err != nil {
+	config := tu.ConfigTestSetup()
+	session := tu.DBTestSetup(ctx, config).GetSession()
+	if _, err := session.Exec(ctx, "TRUNCATE user_s.comments"); err != nil {
 		t.Errorf("error truncate comments, %s", err)
 		return
 	}
 	log := logger.GetLogger()
 
 	productStore := queries.NewProductStore(session, log)
-	products, err := productStore.FullList(ctx, 0, 20, 1)
+	products, err := productStore.AdminList(ctx, 20, 1)
 	if err != nil {
 		t.Errorf("failed to get products full list, %s", err)
 	}
@@ -177,10 +183,10 @@ func TestFullListComments(t *testing.T) {
 		username string
 		queries.CommentRequest
 	}{
-		{"adminUser", queries.CommentRequest{"", product.ID, "admin body"}},
-		{"vendorUser", queries.CommentRequest{"", product.ID, "vendor body"}},
-		{"customerUser", queries.CommentRequest{"", product.ID, "customer body"}},
-		{"adminUser", queries.CommentRequest{"", product.ID, "admin body"}},
+		{"adminUser", queries.CommentRequest{Parent: "", Referrer: product.ID, Body: "admin body"}},
+		{"vendorUser", queries.CommentRequest{Parent: "", Referrer: product.ID, Body: "vendor body"}},
+		{"customerUser", queries.CommentRequest{Parent: "", Referrer: product.ID, Body: "customer body"}},
+		{"adminUser", queries.CommentRequest{Parent: "", Referrer: product.ID, Body: "admin body"}},
 	}
 
 	for i, comment := range comments {

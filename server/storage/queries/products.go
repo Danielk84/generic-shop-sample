@@ -94,8 +94,8 @@ func NewProductStore(session database.Session, log logger.Logger) ProductStore {
 }
 
 func (p *productRepository) Create(ctx context.Context, product CreateProductRequest) (err error) {
-	const q = `INSERT INTO product_s.products(name, description, details, price, is_available, variant_detail)
-		VALUES (@Name, @Description, '@CommonDetail'::JSONB, @Price, @IsAvailable, '[]'::JSONB)`
+	const q = `INSERT INTO product_s.products(name, description, common_detail)
+		VALUES (@Name, @Description, @CommonDetail::JSONB)`
 	args := pgx.NamedArgs{
 		"Name":         product.Name,
 		"Description":  product.Description,
@@ -146,10 +146,10 @@ func (p *productRepository) AdminList(ctx context.Context, pagination, page int)
 
 func (p *productRepository) Get(ctx context.Context, id string) (item ProductResponse, err error) {
 	const q = `SELECT id, name, description,
-			common_detail::TEXT, variant_detail::TEXT,
+			common_detail, variant_detail,
 			price, pub_date, available_quantity, is_available, is_active
 		FROM product_s.products
-		WHERE id = '$1'::UUID
+		WHERE id = $1::UUID
 		LIMIT 1`
 	item, err = get[ProductResponse](ctx, p.session, q, id)
 	if err != nil {
@@ -162,16 +162,14 @@ func (p *productRepository) Update(ctx context.Context, product UpdateProductReq
 	const q = `UPDATE product_s.products
 		SET
 			name = @Name,
-			price = @Price,
 			description = @Description,
-			common_detail = NULLIF(@CommonDetail, '')::JSONB,
-			is_available = @IsAvailable
-		WHERE id = @ID`
+			common_detail = @CommonDetail::JSONB
+		WHERE id = @ID::UUID`
 	args := pgx.NamedArgs{
-		"Name":        product.Name,
-		"Description": product.Description,
-		"Details":     product.CommonDetail,
-		"ID":          product.ID,
+		"Name":         product.Name,
+		"Description":  product.Description,
+		"CommonDetail": product.CommonDetail,
+		"ID":           product.ID,
 	}
 	if err = execOne(ctx, p.session, q, args); err != nil {
 		p.log.Warn("ProductRepository.Update")
@@ -189,8 +187,8 @@ func (p *productRepository) Delete(ctx context.Context, id string) (err error) {
 
 func (p *productRepository) SetVariantDetail(ctx context.Context, id string, variantDetail []ProductVariantDetail) (err error) {
 	const q = `UPDATE product_s.products
-		SET variant_detail = '@VariantDetail'::JSONB
-		WHERE id = '@ID'::UUID`
+		SET variant_detail = @VariantDetail::JSONB
+		WHERE id = @ID::UUID`
 	args := pgx.NamedArgs{
 		"ID":            id,
 		"VariantDetail": variantDetail,
@@ -204,7 +202,7 @@ func (p *productRepository) SetVariantDetail(ctx context.Context, id string, var
 func (p *productRepository) SetVendor(ctx context.Context, vendor UpdateProductVendor) (err error) {
 	var product ProductResponse
 	if product, err = p.Get(ctx, vendor.ID); err != nil {
-		p.log.Debug("ProductRepository.SetQuantity", "error", err)
+		p.log.Debug("ProductRepository.SetVendor", "error", err)
 		return
 	}
 
@@ -241,7 +239,7 @@ OuterLoop:
 }
 
 func (p *productRepository) SetActive(ctx context.Context, id string, isActive bool) (err error) {
-	const q = `UPDATE product_s.products SET is_active = $1 WHERE id = '$2'::UUID`
+	const q = `UPDATE product_s.products SET is_active = $1 WHERE id = $2::UUID`
 	if err = execOne(ctx, p.session, q, isActive, id); err != nil {
 		p.log.Error("ProductRepository.SetActive", "error", err)
 	}
@@ -250,10 +248,10 @@ func (p *productRepository) SetActive(ctx context.Context, id string, isActive b
 
 func (p *productRepository) GetVendors(ctx context.Context, id string, property ProductProperty) (items []string, err error) {
 	const q = `SELECT unnest
-		FROM unnest(product_s.get_vendors('@ProductID'::UUID, '@Property'::JSONB))`
+		FROM unnest(product_s.get_vendors(@ID::UUID, @Property::JSONB))`
 	args := pgx.NamedArgs{
-		"ProductID": id,
-		"Property":  property,
+		"ID":       id,
+		"Property": property,
 	}
 	if items, err = list[string](ctx, p.session, q, args); err != nil {
 		p.log.Debug("ProductRepository.GetVendors", "error", err)
@@ -263,7 +261,7 @@ func (p *productRepository) GetVendors(ctx context.Context, id string, property 
 }
 
 func (p *productRepository) GetQuantity(ctx context.Context, id string, property ProductProperty, userID string) (item int32, err error) {
-	const q = `SELECT product_s.get_quantity('@ProductID'::UUID, '@Property'::JSONB, @UserID)`
+	const q = `SELECT product_s.get_quantity(@ProductID::UUID, @Property::JSONB, @UserID)`
 	args := pgx.NamedArgs{
 		"ProductID": id,
 		"Property":  property,
@@ -300,7 +298,7 @@ func NewProductImagesStore(session database.Session, logger logger.Logger, confi
 func (p *productImagesRepository) Create(ctx context.Context, productID, imgPath string) (err error) {
 	const productImagesCountQuery = `SELECT count(*)
 		FROM product_s.product_images
-		WHERE product_id = '$1'::UUID`
+		WHERE product_id = $1::UUID`
 	count, err := get[int](ctx, p.session, productImagesCountQuery, productID)
 	if err != nil {
 		p.log.Debug("ProductImagesRepository.Create", "error", err)
@@ -321,7 +319,7 @@ func (p *productImagesRepository) Create(ctx context.Context, productID, imgPath
 func (p *productImagesRepository) List(ctx context.Context, productID string) (items []ProductImageResponse, err error) {
 	const q = `SELECT id, img_path
 		FROM product_s.product_images
-		WHERE product_id = '$1'::UUID`
+		WHERE product_id = $1::UUID`
 	items, err = list[ProductImageResponse](ctx, p.session, q, productID)
 	if err != nil {
 		p.log.Debug("ProductImagesRepository.List", "error", err)
@@ -331,7 +329,7 @@ func (p *productImagesRepository) List(ctx context.Context, productID string) (i
 
 func (p *productImagesRepository) Delete(ctx context.Context, id string) (imgPath string, err error) {
 	const q = `DELETE FROM product_s.product_images
-		WHERE id = '$1'::UUID
+		WHERE id = $1::UUID
 		RETURNING img_path`
 	if err = p.session.QueryRow(ctx, q, id).Scan(&imgPath); err != nil {
 		p.log.Debug("productImagesRepository.Delete", "error", err)
@@ -341,7 +339,7 @@ func (p *productImagesRepository) Delete(ctx context.Context, id string) (imgPat
 
 func (p *productImagesRepository) BulkDelete(ctx context.Context, productID string) (err error) {
 	const q = `DELETE FROM product_s.product_images
-		WHERE product_id = '$1'::UUID`
+		WHERE product_id = $1::UUID`
 	if err = execOne(ctx, p.session, q, productID); err != nil {
 		p.log.Debug("productImagesRepository.BulkDelete", "error", err)
 	}

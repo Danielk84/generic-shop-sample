@@ -73,23 +73,29 @@ func NewPCStore(session database.Session, log logger.Logger) PCStore {
 
 func (p *pcRepository) SetTags(ctx context.Context, id string, tags []string) (err error) {
 	const q = `DELETE FROM product_s.products_categories
-		WHERE product_id = '$1'::UUID`
+		WHERE product_id = $1::UUID`
 
 	tagsLen := len(tags)
 	if tagsLen == 0 {
+		p.log.Debug("pcRepository.SetTags",
+			"error", "return nil: empty tag list")
 		return
 	}
 	err = pgx.BeginFunc(ctx, p.session, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, q, id); err != nil {
+			p.log.Debug("pcRepository.SetTags", "error", err)
 			return err
 		}
 		_, err := tx.CopyFrom(ctx,
-			pgx.Identifier{"product_s.products_categories"},
+			pgx.Identifier{"product_s", "products_categories"},
 			[]string{"product_id", "tag"},
 			pgx.CopyFromSlice(tagsLen, func(i int) ([]any, error) {
 				return []any{id, tags[i]}, nil
 			}),
 		)
+		if err != nil {
+			p.log.Debug("pcRepository.SetTags", "error", err)
+		}
 		return err
 	})
 	if err != nil {
@@ -99,7 +105,7 @@ func (p *pcRepository) SetTags(ctx context.Context, id string, tags []string) (e
 }
 
 func (p *pcRepository) List(ctx context.Context, id string) (items []string, err error) {
-	const q = `SELECT tag FROM product_s.products_categories WHERE product_id = '$1'::UUID`
+	const q = `SELECT tag FROM product_s.products_categories WHERE product_id = $1::UUID`
 	items, err = list[string](ctx, p.session, q, id)
 	if err != nil {
 		p.log.Debug("PCRepository.List", "error", err)

@@ -108,7 +108,7 @@ func (u *userRepository) IsValidUser(ctx context.Context, user ValidUserRequest)
 	const q = `SELECT EXISTS(
 		SELECT 1
 		FROM user_s.users
-		WHERE id = '@ID'::UUID AND username = @Username AND permission_type = @PermissionType AND is_active = true)`
+		WHERE id = @ID::UUID AND username = @Username AND permission_type = @PermissionType AND is_active = true)`
 	args := pgx.NamedArgs{
 		"ID":             user.ID,
 		"Username":       user.Username,
@@ -199,7 +199,7 @@ func (u *userRepository) GetDetails(ctx context.Context, username string) (item 
 func (u *userRepository) UpdatePermission(ctx context.Context, id string, user UserPermissionRequest) (err error) {
 	const q = `UPDATE user_s.users
 		SET permission_type = @PermissionType, is_active = @IsActive
-		WHERE id = '@ID'::UUID`
+		WHERE id = @ID::UUID`
 	args := pgx.NamedArgs{
 		"PermissionType": user.PermissionType,
 		"IsActive":       user.IsActive,
@@ -212,16 +212,14 @@ func (u *userRepository) UpdatePermission(ctx context.Context, id string, user U
 }
 
 func (u *userRepository) Delete(ctx context.Context, id string, username string) (err error) {
-	const q = `WITH remove_products AS (
-			DELETE FROM product_s.products WHERE user_id = $1
-		), remove_user_profile AS (
-			DELETE FROM user_s.user_profile WHERE user_id = $1
+	const q = `WITH remove_user_profile AS (
+			DELETE FROM user_s.user_profile WHERE user_id = $1::UUID
 		), delete_related_comments_username AS (
 			UPDATE user_s.comments SET username = NULL WHERE username = $2
 		)
 		UPDATE user_s.users
         SET username = NULL, password = NULL, is_active = FALSE
-        WHERE id = '$1'::UUID`
+        WHERE id = $1::UUID`
 	if err = execOne(ctx, u.session, q, id, username); err != nil {
 		u.log.Warn("UserRepository.Delete", "error", err)
 	}
@@ -237,7 +235,7 @@ func (u *userRepository) SetEmail(ctx context.Context, id string, email EmailAdd
 				WHERE email = $1 AND username IS NULL
 		)
 		UPDATE user_s.users
-		SET email = $1 WHERE id = '$2'::UUID`
+		SET email = $1 WHERE id = $2::UUID`
 	if err = execOne(ctx, u.session, q, email.Email, id); err != nil {
 		u.log.Debug("UserRepository.SetEmail", "error", err)
 	}
@@ -245,7 +243,7 @@ func (u *userRepository) SetEmail(ctx context.Context, id string, email EmailAdd
 }
 
 func (u *userRepository) VerifyEmail(ctx context.Context, id string, isVerified bool) (err error) {
-	const q = `UPDATE user_s.users SET is_v_email = $1 WHERE id = '$2'::UUID`
+	const q = `UPDATE user_s.users SET is_v_email = $1 WHERE id = $2::UUID`
 	if err = execOne(ctx, u.session, q, isVerified, id); err != nil {
 		u.log.Warn("UserRepository.VerifyEmail", "error", err)
 	}
@@ -260,7 +258,7 @@ func (u *userRepository) SetPhoneNumber(ctx context.Context, id string, phoneNum
 				is_v_phone_number = FALSE
 				WHERE phone_number = $1 AND username IS NULL
 		)
-		UPDATE user_s.users SET phone_number = $1 WHERE id = '$2'::UUID`
+		UPDATE user_s.users SET phone_number = $1 WHERE id = $2::UUID`
 	if err = execOne(ctx, u.session, q, phoneNumber.PhoneNumber, id); err != nil {
 		u.log.Debug("UserRepository.SetPhoneNumber", "error", err)
 	}
@@ -300,7 +298,7 @@ func NewUserProfileStore(session database.Session, log logger.Logger) UserProfil
 
 func (u *userProfileRepository) Upsert(ctx context.Context, userID string, userProfile UserProfileRequest) (err error) {
 	const q = `INSERT INTO user_s.user_profile(user_id, birthday, bio)
-        VALUES ('@UserID'::UUID, '@Birthday'::DATE, @Bio)
+        VALUES (@UserID::UUID, @Birthday::DATE, @Bio)
 		ON CONFLICT(user_id)
 		DO UPDATE SET birthday = @Birthday::DATE, bio = @Bio`
 	args := pgx.NamedArgs{
@@ -317,7 +315,7 @@ func (u *userProfileRepository) Upsert(ctx context.Context, userID string, userP
 func (u *userProfileRepository) GetImgPath(ctx context.Context, userID string) (imgPath string, err error) {
 	const q = `SELECT COALESCE(img_path, '') AS img_path
 		FROM user_s.user_profile
-		WHERE user_id = '$1'::UUID`
+		WHERE user_id = $1::UUID`
 	if err = u.session.QueryRow(ctx, q, userID).Scan(&imgPath); err != nil {
 		u.log.Debug("UserProfileRepository.GetImgPath", "error", err)
 	}
@@ -327,7 +325,7 @@ func (u *userProfileRepository) GetImgPath(ctx context.Context, userID string) (
 func (u *userProfileRepository) SetImgPath(ctx context.Context, userID string, imgPath string) (err error) {
 	const q = `UPDATE user_s.user_profile
 		SET img_path = NULLIF($1, '')
-		WHERE user_id = '$2'::UUID`
+		WHERE user_id = $2::UUID`
 	if err = execOne(ctx, u.session, q, imgPath, userID); err != nil {
 		u.log.Debug("UserProfileRepository.SetImgPath", "error", err, "imgPath", imgPath)
 	}
@@ -337,7 +335,7 @@ func (u *userProfileRepository) SetImgPath(ctx context.Context, userID string, i
 func (u *userProfileRepository) DeleteImgPath(ctx context.Context, UserID string) (imgPath string, err error) {
 	const q = `UPDATE user_s.user_profile
 		SET img_path = null
-		WHERE user_id = '$1'::UUID
+		WHERE user_id = $1::UUID
 		RETURNING OLD.img_path AS img_path`
 	if err = u.session.QueryRow(ctx, q, UserID).Scan(&imgPath); err != nil {
 		u.log.Error("UserProfileRepository.DeleteImgPath", "error", err)

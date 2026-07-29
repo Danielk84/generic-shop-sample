@@ -29,15 +29,16 @@ type OrderSummaryResponse struct {
 type OrderResponse struct {
 	OrderSummaryResponse
 	OrderUserInfo
-	ItemsTotal  string `json:"items_total"`
-	TotalBill   int64  `json:"total_bill"`
-	IsVerified  bool   `json:"is_verified"`
-	IsConfirmed bool   `json:"is_confirmed"`
+	ItemsTotal     string            `json:"items_total"`
+	TotalBill      int64             `json:"total_bill"`
+	IsVerified     bool              `json:"is_verified"`
+	IsConfirmed    bool              `json:"is_confirmed"`
+	PaymentSummary []ProductProperty `json:"payment_summary"`
 }
 
 type PaymentStatus struct {
-	PaymentSummary string `json:"payment_summary"`
-	IsPaid         bool   `json:"is_paid"`
+	PaymentSummary ProductProperty `json:"payment_summary" binding:"required,min=0,dive,keys,required,min=1,endkeys,required,min=1"`
+	IsPaid         bool            `json:"is_paid" binding:"required"`
 }
 
 type orderRepository struct {
@@ -65,13 +66,20 @@ func NewOrderStore(session database.Session, log logger.Logger) OrderStore {
 func (o *orderRepository) Create(ctx context.Context, userID string) (item string, err error) {
 	// this query check, if there is not ended order (not paid), return existed id
 	// instead of creating new one.
-	const q = `WITH create_new_order AS (
-			INSERT INTO order_s.orders(user_id)
-				SELECT '$1'::UUID WHERE NOT EXISTS(
-					SELECT 1
-					FROM order_s.orders
-					WHERE user_id = '$1'::UUID AND is_paid = FALSE))
-		SELECT id FROM order_s.orders WHERE user_id = '$1'::UUID AND is_paid = FALSE`
+	const q = `WITH matched AS (
+			SELECT id FROM order_s.orders 
+			WHERE user_id = $1::UUID AND is_paid = FALSE
+			LIMIT 1
+		),
+		inserted AS (
+			INSERT INTO order_s.orders (user_id)
+			SELECT $1::UUID
+			WHERE NOT EXISTS (SELECT 1 FROM matched)
+			RETURNING id
+		)
+		SELECT id FROM matched
+		UNION ALL
+		SELECT id FROM inserted`
 	if err = o.session.QueryRow(ctx, q, userID).Scan(&item); err != nil {
 		o.log.Warn("OrderRepository.Create", "error", err)
 	}
@@ -81,7 +89,7 @@ func (o *orderRepository) Create(ctx context.Context, userID string) (item strin
 func (o *orderRepository) CustomerList(ctx context.Context, userID string, pagination, page int) (items []OrderSummaryResponse, err error) {
 	const q = `SELECT id, user_id, started_at, is_paid, is_delivered
 		FROM order_s.orders
-		WHERE user_id = '@UserID'::UUID
+		WHERE user_id = @UserID::UUID
 		ORDER BY started_at DESC
 		LIMIT @Limit
 		OFFSET @Offset`
@@ -128,10 +136,10 @@ func (o *orderRepository) Get(ctx context.Context, id OrderID) (item OrderRespon
 	const q = `SELECT
 			id, user_id, started_at,
 			items_total, total_bill, is_paid,
-			address, zip_code, is_confirmed,
-			is_verified, is_delivered
+			COALESCE(address, '') AS address, COALESCE(zip_code, '') AS zip_code, is_confirmed,
+			is_verified, is_delivered, payment_summary
 		FROM order_s.orders
-		WHERE id = '$1'::UUID AND user_id = '$2'::UUID`
+		WHERE id = $1::UUID AND user_id = $2::UUID`
 	item, err = get[OrderResponse](ctx, o.session, q, id.ID, id.UserID)
 	if err != nil {
 		o.log.Debug("OrderRepository.Get", "error", err)
@@ -142,7 +150,7 @@ func (o *orderRepository) Get(ctx context.Context, id OrderID) (item OrderRespon
 func (o *orderRepository) SetUserInfo(ctx context.Context, id OrderID, info OrderUserInfo) (err error) {
 	const q = `UPDATE order_s.orders
 		SET address = @Address, zip_code = @ZipCode, is_verified = FALSE
-		WHERE id = @ID::UUID AND user_id = '@UserID'::UUID`
+		WHERE id = @ID::UUID AND user_id = @UserID::UUID`
 	args := pgx.NamedArgs{
 		"Address": info.Address,
 		"ZipCode": info.ZipCode,
@@ -158,7 +166,7 @@ func (o *orderRepository) SetUserInfo(ctx context.Context, id OrderID, info Orde
 func (o *orderRepository) VerifyUserInfo(ctx context.Context, id OrderID, isVerified bool) (err error) {
 	const q = `UPDATE order_s.orders
 		SET is_verified = @IsVerified
-		WHERE id = '@ID'::UUID AND user_id = '@UserID'::UUID`
+		WHERE id = @ID::UUID AND user_id = @UserID::UUID`
 	args := pgx.NamedArgs{
 		"IsVerified": isVerified,
 		"ID":         id.ID,
@@ -172,8 +180,8 @@ func (o *orderRepository) VerifyUserInfo(ctx context.Context, id OrderID, isVeri
 
 func (o *orderRepository) SetPaymentStatus(ctx context.Context, id OrderID, status PaymentStatus) (err error) {
 	const q = `UPDATE order_s.orders
-		SET payment_summary = CONCAT(payment_summary::TEXT, ' ', @Summary::TEXT), is_paid = @IsPaid
-		WHERE id = '@ID'::UUID AND user_id = '@UserID'::UUID`
+		SET payment_summary = jsonb_insert(payment_summary, '{-1}', @Summary::JSONB), is_paid = @IsPaid
+		WHERE id = @ID::UUID AND user_id = @UserID::UUID`
 	args := &pgx.NamedArgs{
 		"Summary": status.PaymentSummary,
 		"IsPaid":  status.IsPaid,
@@ -189,7 +197,7 @@ func (o *orderRepository) SetPaymentStatus(ctx context.Context, id OrderID, stat
 func (o *orderRepository) SetConfirmed(ctx context.Context, id OrderID, IsConfirmed bool) (err error) {
 	const q = `UPDATE order_s.orders
 		SET is_confirmed = @IsConfirmed
-		WHERE id = '@ID'::UUID AND user_id = '@UserID'::UUID`
+		WHERE id = @ID::UUID AND user_id = @UserID::UUID`
 	args := pgx.NamedArgs{
 		"IsConfirmed": IsConfirmed,
 		"ID":          id.ID,
@@ -203,7 +211,9 @@ func (o *orderRepository) SetConfirmed(ctx context.Context, id OrderID, IsConfir
 
 func (o *orderRepository) DeleteExpiredOrders(ctx context.Context) (err error) {
 	const q = `DELETE FROM order_s.orders
-		WHERE started_at > NOW() AND is_paid = FALSE AND payment_summary IS NULL`
+		WHERE is_paid = FALSE
+		AND started_at <= NOW()
+		AND is_confirmed = FALSE`
 	if _, err = o.session.Exec(ctx, q); err != nil {
 		o.log.Warn("OrderRepository.DeleteExpiredOrders", "error", err)
 	}
@@ -222,7 +232,8 @@ type OrderItemID struct {
 
 type OrderItemRequest struct {
 	OrderItem
-	Price int64 `json:"price" binding:"required"`
+	Property ProductProperty `json:"property" binding:"required,min=0,dive,keys,required,min=1,endkeys,required,min=1"`
+	Price    int64           `json:"price"  binding:"required,min=0"`
 }
 
 type OwnedOrderItemResponse struct {
@@ -262,16 +273,18 @@ func (o *orderItemsRepository) Create(ctx context.Context, userID string, item O
 	const q = `WITH is_owned_order AS (
 		SELECT id
 		FROM order_s.orders
-		WHERE id = @OrderID::UUID AND user_id = '@UserID'::UUID LIMIT 1
+		WHERE id = @OrderID::UUID AND user_id = @UserID::UUID AND is_paid = FALSE
+		LIMIT 1
 	)
-	INSERT INTO order_s.order_items(user_id, order_id, product_id, price, confirmed_vendors)
-		SELECT '@UserID'::UUID, id, '@ProductID'::UUID, @Price, '[]'::JSONB
+	INSERT INTO order_s.order_items(user_id, order_id, product_id, price, property)
+		SELECT @UserID::UUID, id, @ProductID::UUID, @Price, @Property::JSONB
 		FROM is_owned_order`
 	args := pgx.NamedArgs{
 		"UserID":    userID,
 		"OrderID":   item.OrderID,
 		"ProductID": item.ProductID,
 		"Price":     item.Price,
+		"Property":  item.Property,
 	}
 	if err = execOne(ctx, o.session, q, args); err != nil {
 		o.log.Warn("OrderItemRepository.Create", "error", err)
@@ -288,7 +301,7 @@ func (o *orderItemsRepository) CustomerList(ctx context.Context,
 		FROM order_s.order_items AS o
 			LEFT JOIN product_s.products AS p
 			ON o.product_id = p.id
-		WHERE o.order_id = '@OrderID'::UUID AND o.user_id = '@UserID'::UUID
+		WHERE o.order_id = @OrderID::UUID AND o.user_id = @UserID::UUID
 		LIMIT @Limit
 		OFFSET @Offset`
 	args := pgx.NamedArgs{
@@ -311,7 +324,7 @@ func (o *orderItemsRepository) AdminList(ctx context.Context,
 			processed_items, price, '' as name,
 			confirmed_vendors
 		FROM order_s.order_items
-		WHERE order_id = '@OrderID'::UUID
+		WHERE order_id = @OrderID::UUID
 		LIMIT @Limit
 		OFFSET @Offset`
 	args := pgx.NamedArgs{
@@ -321,7 +334,7 @@ func (o *orderItemsRepository) AdminList(ctx context.Context,
 	}
 	items, err = list[OwnedOrderItemResponse](ctx, o.session, q, args)
 	if err != nil {
-		o.log.Debug("OrderItemsRepository.FullList", "error", err)
+		o.log.Debug("OrderItemsRepository.AdminList", "error", err)
 	}
 	return
 }
@@ -329,11 +342,11 @@ func (o *orderItemsRepository) AdminList(ctx context.Context,
 func (o *orderItemsRepository) FullList(ctx context.Context,
 	orderID string, pagination, page int) (items []OrderItemResponse, err error) {
 	const q = `SELECT
-		order_id, product_id, items_total,
-		processed_items, price, '' as name,
-		property, confirmed_vendors
+			order_id, product_id, items_total,
+			processed_items, price, '' as name,
+			property, confirmed_vendors
 		FROM order_s.order_items
-		WHERE order_id = '@OrderID'::UUID
+		WHERE order_id = @OrderID::UUID
 		LIMIT @Limit
 		OFFSET @Offset`
 	args := pgx.NamedArgs{
@@ -350,7 +363,7 @@ func (o *orderItemsRepository) FullList(ctx context.Context,
 
 func (o *orderItemsRepository) Delete(ctx context.Context, id OrderItemID) (err error) {
 	const q = `DELETE FROM order_s.order_items
-		WHERE order_id = '@OrderID'::UUID AND product_id = '@ProductID'::UUID AND user_id = '@UserID'::UUID`
+		WHERE order_id = @OrderID::UUID AND product_id = @ProductID::UUID AND user_id = @UserID::UUID`
 	args := pgx.NamedArgs{
 		"OrderID":   id.OrderID,
 		"ProductID": id.ProductID,
@@ -365,7 +378,7 @@ func (o *orderItemsRepository) Delete(ctx context.Context, id OrderItemID) (err 
 func (o *orderItemsRepository) SetItemsTotal(ctx context.Context, id OrderItemID, itemsTotal int32) (err error) {
 	const q = `UPDATE order_s.order_items
 		SET items_total = @ItemsTotal
-		WHERE order_id = '@OrderID'::UUID AND product_id = '@ProductID'::UUID AND user_id = '@UserID'::UUID`
+		WHERE order_id = @OrderID::UUID AND product_id = @ProductID::UUID AND user_id = @UserID::UUID`
 	args := pgx.NamedArgs{
 		"OrderID":    id.OrderID,
 		"ProductID":  id.ProductID,
@@ -380,8 +393,8 @@ func (o *orderItemsRepository) SetItemsTotal(ctx context.Context, id OrderItemID
 
 func (o *orderItemsRepository) SetConfirmedVendors(ctx context.Context, id OrderItemID, confirmedVendors []ProductVendor) (err error) {
 	const q = `UPDATE order_s.order_items
-		SET confirmed_vendors = '@ConfirmedVendors'::JSONB
-		WHERE order_id = 'OrderID'::UUID AND product_id = 'ProductID'::UUID AND user_id = '@UserID'::UUID`
+		SET confirmed_vendors = @ConfirmedVendors::JSONB
+		WHERE order_id = @OrderID::UUID AND product_id = @ProductID::UUID AND user_id = @UserID::UUID`
 	args := pgx.NamedArgs{
 		"ConfirmedVendors": confirmedVendors,
 		"OrderID":          id.OrderID,

@@ -2,21 +2,21 @@ package database_test
 
 import (
 	"context"
-	"generic-shop-sample/internal/testutils"
 	"generic-shop-sample/storage/database"
+	"generic-shop-sample/tests/internal/testutils"
 	"testing"
 	"time"
 )
 
 func TestDBEngine(t *testing.T) {
-	config := testutils.GetConfig()
-	engine, err := database.New(t.Context(), config.Opt.DatabaseURL)
+	config := testutils.ConfigTestSetup()
+	db, err := database.New(t.Context(), config.DatabaseURL)
 	if err != nil {
 		t.Errorf("incorrect database connection: %s", err)
 	}
-	defer engine.Close()
+	defer db.Close()
 
-	session := database.GetSession()
+	session := db.GetSession()
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 

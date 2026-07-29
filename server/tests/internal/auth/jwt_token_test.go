@@ -2,8 +2,8 @@ package auth_test
 
 import (
 	"generic-shop-sample/internal/auth"
-	tu "generic-shop-sample/internal/testutils"
 	"generic-shop-sample/storage/queries"
+	tu "generic-shop-sample/tests/internal/testutils"
 	"reflect"
 	"testing"
 	"time"
@@ -12,10 +12,13 @@ import (
 )
 
 func TestJWTToken(t *testing.T) {
-	_ = tu.GetConfig()
+	config := tu.ConfigTestSetup()
+	j := auth.JWTToken{
+		JWTSecretKey: []byte(config.JWTSecretKey),
+	}
 	t.Run("validate claims data", func(st *testing.T) {
 		claims := auth.AuthClaims{
-			ID:             123,
+			ID:             "uuid",
 			Username:       "adminUser",
 			PermissionType: queries.Admin,
 			RegisteredClaims: jwt.RegisteredClaims{
@@ -24,11 +27,11 @@ func TestJWTToken(t *testing.T) {
 				IssuedAt:  jwt.NewNumericDate(time.Now()),
 			},
 		}
-		tokenString, err := auth.TokenEncoder(claims)
+		tokenString, err := j.Encoder(claims)
 		if err != nil {
 			st.Fatalf("failed to encoding claims in JWTEncoder, %s", err)
 		}
-		decodedClaims, err := auth.TokenDecoder(tokenString)
+		decodedClaims, err := j.Decoder(tokenString)
 		if err != nil {
 			st.Fatalf("failed to decoding tokenString in JWTDecoder, %s", err)
 		}
@@ -39,7 +42,7 @@ func TestJWTToken(t *testing.T) {
 	})
 	t.Run("check expiration", func(st *testing.T) {
 		claims := auth.AuthClaims{
-			ID:             123,
+			ID:             "uuid",
 			Username:       "adminUser",
 			PermissionType: queries.Admin,
 			RegisteredClaims: jwt.RegisteredClaims{
@@ -48,12 +51,12 @@ func TestJWTToken(t *testing.T) {
 				IssuedAt:  jwt.NewNumericDate(time.Now()),
 			},
 		}
-		tokenString, err := auth.TokenEncoder(claims)
+		tokenString, err := j.Encoder(claims)
 		if err != nil {
 			st.Fatalf("failed to encoding claims in JWTEncoder, %s", err)
 		}
 		time.Sleep(2 * time.Second)
-		_, err = auth.TokenDecoder(tokenString)
+		_, err = j.Decoder(tokenString)
 		if err == nil {
 			st.Fatalf("failed to return error on expiration")
 		}

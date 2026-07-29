@@ -5,9 +5,8 @@ import (
 	md "generic-shop-sample/app/middlewares"
 	"generic-shop-sample/internal/auth"
 	"generic-shop-sample/internal/logger"
-	tu "generic-shop-sample/internal/testutils"
-	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
+	tu "generic-shop-sample/tests/internal/testutils"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -20,16 +19,21 @@ import (
 
 func TestAuthMiddleware(t *testing.T) {
 	ctx := t.Context()
-	db := tu.DBManagerSetup(ctx)
-	defer db.Close()
+	config := tu.ConfigTestSetup()
+	deps := tu.ServiceDepsTestSetup(ctx, config)
+	defer tu.CloseServieDepsTestSetup(deps)
 
-	session := database.GetSession()
+	j := auth.JWTToken{
+		JWTSecretKey: []byte(config.JWTSecretKey),
+	}
+
+	session := deps.DB.GetSession()
 	log := logger.SetLogger(logger.LevelDebug, os.Stdout)
-	if _, err := session.Exec(ctx, "TRUNCATE users RESTART IDENTITY CASCADE"); err != nil {
+	if _, err := session.Exec(ctx, "TRUNCATE user_s.users RESTART IDENTITY CASCADE"); err != nil {
 		t.Fatal(err)
 	}
 	store := queries.NewUserStore(session, log)
-	if err := store.Create(ctx, &queries.CreateUserRequest{
+	if err := store.Create(ctx, queries.CreateUserRequest{
 		LoginRequest:          queries.LoginRequest{Username: "auth_user", Password: "securePassword"},
 		UserPermissionRequest: queries.UserPermissionRequest{PermissionType: queries.Admin, IsActive: true},
 	}); err != nil {
@@ -47,12 +51,12 @@ func TestAuthMiddleware(t *testing.T) {
 			NotBefore: jwt.NewNumericDate(time.Now()),
 		},
 	}
-	tokenString, err := auth.TokenEncoder(baseClaims)
+	tokenString, err := j.Encoder(baseClaims)
 	if err != nil {
 		t.Errorf("failed to encode token string, %s", err)
 	}
 	router := gin.Default()
-	router.Use(md.AuthMiddleware(log))
+	router.Use(md.AuthMiddleware(deps, log))
 	router.GET("/", func(c *gin.Context) {
 		claims := md.GetUserClaims(c)
 		if claims.ID == baseClaims.ID &&

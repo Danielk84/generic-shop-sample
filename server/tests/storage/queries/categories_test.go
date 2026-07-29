@@ -5,16 +5,18 @@ import (
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
+	tu "generic-shop-sample/tests/internal/testutils"
 	"testing"
 )
 
 func TestCategoryStore(t *testing.T) {
 	ctx := t.Context()
-	session := database.GetSession()
+	config := tu.ConfigTestSetup()
+	session := tu.DBTestSetup(ctx, config).GetSession()
 	log := logger.GetLogger()
 	store := queries.NewCategoryStore(session, log)
 
-	if _, err := session.Exec(ctx, "TRUNCATE categories RESTART IDENTITY CASCADE"); err != nil {
+	if _, err := session.Exec(ctx, "TRUNCATE product_s.categories RESTART IDENTITY CASCADE"); err != nil {
 		t.Fatalf("failed to truncate categories: %s", err)
 	}
 
@@ -33,7 +35,7 @@ type testCategoryStore struct {
 }
 
 func (s *testCategoryStore) create(t *testing.T) {
-	c1 := &queries.Category{CategoryTag: queries.CategoryTag{"electronics"}}
+	c1 := &queries.Category{CategoryTag: queries.CategoryTag{Tag: "electronics"}}
 	if err := s.store.Create(s.ctx, c1.Tag); err != nil {
 		t.Fatalf("failed to create category: %s", err)
 	}
@@ -86,32 +88,40 @@ func (s *testCategoryStore) delete(t *testing.T) {
 
 func TestPCStore(t *testing.T) {
 	ctx := t.Context()
-	session := database.GetSession()
+	config := tu.ConfigTestSetup()
+	session := tu.DBTestSetup(ctx, config).GetSession()
 	log := logger.GetLogger()
 
-	if _, err := session.Exec(ctx, "TRUNCATE products, categories RESTART IDENTITY CASCADE"); err != nil {
+	_, err := session.Exec(ctx, "TRUNCATE product_s.products, product_s.categories RESTART IDENTITY CASCADE")
+	if err != nil {
 		t.Fatalf("failed to truncate products_categories: %s", err)
 	}
 
 	categoryStore := queries.NewCategoryStore(session, log)
 	for _, tag := range []string{"1", "2", "3", "4", "5"} {
 		if err := categoryStore.Create(ctx, tag); err != nil {
-			t.Error("failed to create category tags", err)
+			t.Fatalf("failed to create category tags: %s", err)
 		}
 	}
 
 	productStore := queries.NewProductStore(session, log)
-	product := queries.CreateProductRequest{Name: "item 1", Price: 10, Description: "some description", Details: `{"info": "some info"}`, IsAvailable: true}
-	if err := productStore.Create(ctx, 1, &product); err != nil {
-		t.Error("failed to create product", err)
+	product := queries.CreateProductRequest{
+		Name:        "item 1",
+		Description: "some description",
+		CommonDetail: queries.ProductProperty{
+			"info": "some info",
+		},
+	}
+	if err := productStore.Create(ctx, product); err != nil {
+		t.Fatalf("failed to create product: %s", err)
 	}
 
-	if _, err := session.Exec(ctx, "UPDATE products SET is_active = true"); err != nil {
-		t.Errorf("failed to active products, %s", err)
+	if _, err := session.Exec(ctx, "UPDATE product_s.products SET is_active = true"); err != nil {
+		t.Fatalf("failed to active products, %s", err)
 	}
 	products, err := productStore.List(ctx, 1, 1)
 	if err != nil {
-		t.Error("unexpected error in list method, ", err)
+		t.Fatalf("unexpected error in list method: %s", err)
 	}
 	productID := products[0].ID
 
@@ -132,7 +142,7 @@ func TestPCStore(t *testing.T) {
 	expected := map[string]bool{"1": true, "2": true, "3": true}
 	for _, tag := range got {
 		if !expected[tag] {
-			t.Errorf("unexpected tag %q found", tag)
+			t.Fatalf("unexpected tag %q found", tag)
 		}
 	}
 	newTags := []string{"4", "5"}
@@ -150,7 +160,7 @@ func TestPCStore(t *testing.T) {
 	expected = map[string]bool{"4": true, "5": true}
 	for _, tag := range got {
 		if !expected[tag] {
-			t.Errorf("unexpected tag after overwrite: %q", tag)
+			t.Fatalf("unexpected tag after overwrite: %q", tag)
 		}
 	}
 }

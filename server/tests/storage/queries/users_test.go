@@ -5,13 +5,15 @@ import (
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/database"
 	"generic-shop-sample/storage/queries"
+	tu "generic-shop-sample/tests/internal/testutils"
 	"testing"
 	"time"
 )
 
 func TestUserStore(t *testing.T) {
 	ctx := t.Context()
-	session := database.GetSession()
+	config := tu.ConfigTestSetup()
+	session := tu.DBTestSetup(ctx, config).GetSession()
 	log := logger.GetLogger()
 	store := queries.NewUserStore(session, log)
 	s := testUserStore{ctx, session, store}
@@ -40,9 +42,9 @@ func (s *testUserStore) isUsernameExists(t *testing.T) {
 }
 
 func (s *testUserStore) createGetDetailsUser(t *testing.T) {
-	user := &queries.CreateUserRequest{
-		queries.LoginRequest{"validUser", "secure_password"},
-		queries.UserPermissionRequest{queries.Customer, true},
+	user := queries.CreateUserRequest{
+		LoginRequest:          queries.LoginRequest{Username: "validUser", Password: "secure_password"},
+		UserPermissionRequest: queries.UserPermissionRequest{PermissionType: queries.Customer, IsActive: true},
 	}
 	if err := s.store.Create(s.ctx, user); err != nil {
 		t.Errorf("expected to creating valid user, but got: %s", err)
@@ -59,7 +61,7 @@ func (s *testUserStore) createGetDetailsUser(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to get user details, %s", err)
 	}
-	const isUserProfileExistsQuery = `SELECT EXISTS(SELECT 1 FROM user_profile WHERE user_id = $1)`
+	const isUserProfileExistsQuery = `SELECT EXISTS(SELECT 1 FROM user_s.user_profile WHERE user_id = $1)`
 	var isExists bool
 	if err := s.session.QueryRow(s.ctx, isUserProfileExistsQuery, userDetails.ID).Scan(&isExists); err != nil || !isExists {
 		t.Errorf("failed to query existing of user_profile on user creation, %s", err)
@@ -67,18 +69,18 @@ func (s *testUserStore) createGetDetailsUser(t *testing.T) {
 }
 
 func (s *testUserStore) setEmailAndSetPhoneNumber(t *testing.T) {
-	const getIDFromUsernameQuery = `SELECT id FROM users WHERE username = $1`
-	var id int32
+	const getIDFromUsernameQuery = `SELECT id FROM user_s.users WHERE username = $1`
+	var id string
 	if err := s.session.QueryRow(s.ctx, getIDFromUsernameQuery, "customerUser").Scan(&id); err != nil {
 		t.Errorf("failed to query id from username, %s", err)
 	}
 
-	email := &queries.EmailAddrRequest{"someaddr@email.blab"}
+	email := queries.EmailAddrRequest{Email: "someaddr@email.blab"}
 	if err := s.store.SetEmail(s.ctx, id, email); err != nil {
 		t.Errorf("bad SetEmail operation, %s", err)
 	}
 	var newEmail string
-	const getEmailQuery = `SELECT email FROM users WHERE id = $1`
+	const getEmailQuery = `SELECT email FROM user_s.users WHERE id = $1`
 	if err := s.session.QueryRow(s.ctx, getEmailQuery, id).Scan(&newEmail); err != nil {
 		t.Errorf("failed to query email address with id, %s", err)
 	}
@@ -92,7 +94,7 @@ func (s *testUserStore) setEmailAndSetPhoneNumber(t *testing.T) {
 	}
 
 	phoneNumber := "123393"
-	if err := s.store.SetPhoneNumber(s.ctx, id, &queries.PhoneNumberRequest{phoneNumber}); err != nil {
+	if err := s.store.SetPhoneNumber(s.ctx, id, queries.PhoneNumberRequest{PhoneNumber: phoneNumber}); err != nil {
 		t.Errorf("failed to set phone number, %s", err)
 	}
 
@@ -103,10 +105,10 @@ func (s *testUserStore) setEmailAndSetPhoneNumber(t *testing.T) {
 
 func (s *testUserStore) getUser(t *testing.T) {
 	user := queries.CreateUserRequest{
-		queries.LoginRequest{"NewSimpleUser", "secure password"},
-		queries.UserPermissionRequest{queries.Customer, true},
+		LoginRequest:          queries.LoginRequest{Username: "NewSimpleUser", Password: "secure password"},
+		UserPermissionRequest: queries.UserPermissionRequest{PermissionType: queries.Customer, IsActive: true},
 	}
-	if err := s.store.Create(s.ctx, &user); err != nil {
+	if err := s.store.Create(s.ctx, user); err != nil {
 		t.Errorf("failed to creating new user, %s", err)
 	}
 
@@ -127,7 +129,10 @@ func (s *testUserStore) updateUserPermission(t *testing.T) {
 		t.Errorf(`failed to get user "%s", %s`, username, err)
 	}
 
-	if err := s.store.UpdatePermission(s.ctx, user.ID, &queries.UserPermissionRequest{queries.BlockUser, true}); err != nil {
+	err = s.store.UpdatePermission(s.ctx, user.ID, queries.UserPermissionRequest{
+		PermissionType: queries.BlockUser,
+		IsActive:       true})
+	if err != nil {
 		t.Errorf(`failed to update user "%s", %s`, username, err)
 	}
 
@@ -142,9 +147,9 @@ func (s *testUserStore) updateUserPermission(t *testing.T) {
 }
 
 func (s *testUserStore) deleteUser(t *testing.T) {
-	user := &queries.CreateUserRequest{
-		queries.LoginRequest{"deleteUser", "secure password"},
-		queries.UserPermissionRequest{queries.BlockUser, false},
+	user := queries.CreateUserRequest{
+		LoginRequest:          queries.LoginRequest{Username: "deleteUser", Password: "secure password"},
+		UserPermissionRequest: queries.UserPermissionRequest{PermissionType: queries.BlockUser, IsActive: false},
 	}
 	if err := s.store.Create(s.ctx, user); err != nil {
 		t.Errorf(`failed to create user "%s", %s`, user.Username, err)
@@ -165,7 +170,8 @@ func (s *testUserStore) deleteUser(t *testing.T) {
 
 func TestUserProfileStore(t *testing.T) {
 	ctx := t.Context()
-	session := database.GetSession()
+	config := tu.ConfigTestSetup()
+	session := tu.DBTestSetup(ctx, config).GetSession()
 	log := logger.GetLogger()
 	userStore := queries.NewUserStore(session, log)
 	store := queries.NewUserProfileStore(session, log)
@@ -192,15 +198,15 @@ type testUserProfileStore struct {
 }
 
 func (s *testUserProfileStore) upsert(t *testing.T) {
-	upr := &queries.UserProfileRequest{
+	u := queries.UserProfileRequest{
 		Birthday: time.Now().Format(time.DateOnly),
 		Bio:      "some descriptions",
 	}
-	if err := s.store.Upsert(s.ctx, s.userDetails.ID, upr); err != nil {
+	if err := s.store.Upsert(s.ctx, s.userDetails.ID, u); err != nil {
 		t.Errorf("failed to upsert birthday and bio on user_profile, %s", err)
 	}
-	s.userDetails.Birthday = upr.Birthday
-	s.userDetails.Bio = upr.Bio
+	s.userDetails.Birthday = u.Birthday
+	s.userDetails.Bio = u.Bio
 }
 
 func (s *testUserProfileStore) setGetImgPath(t *testing.T) {
