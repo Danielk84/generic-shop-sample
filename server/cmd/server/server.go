@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"generic-shop-sample/app"
 	bg "generic-shop-sample/app/background"
 	md "generic-shop-sample/app/middlewares"
@@ -16,15 +15,13 @@ import (
 )
 
 type server struct {
-	ctx  context.Context
 	app  *app.App
 	deps *app.ServiceDeps
 }
 
-func newServer(ctx context.Context, deps *app.ServiceDeps) *server {
+func newServer(deps *app.ServiceDeps) *server {
 	sv := &server{
-		ctx:  ctx,
-		app:  app.NewApp(ctx, deps.Config.App),
+		app:  app.NewApp(deps.Ctx, deps.Config.App),
 		deps: deps,
 	}
 	sv.setMiddlewares()
@@ -41,7 +38,7 @@ func (s *server) run() {
 func (s *server) setMiddlewares() {
 	rlogWriter := logger.CreateLogFile(s.deps.Config.RequestLoggerFilepath)
 	s.app.OpenWriter = append(s.app.OpenWriter, rlogWriter)
-	rl := md.NewRateLimiter(s.ctx, 500, 10*time.Minute, 30*time.Minute)
+	rl := md.NewRateLimiter(s.deps.Ctx, 500, 10*time.Minute, 30*time.Minute)
 
 	s.app.Router.Use(
 		md.RequestLoggerMiddleware(rlogWriter),
@@ -85,6 +82,6 @@ func (s *server) setBackgroundTask() {
 		},
 	}
 	for _, t := range tasks {
-		go t.Start(s.ctx)
+		go t.Start(s.deps.Ctx)
 	}
 }

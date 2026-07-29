@@ -23,7 +23,7 @@ func UsersRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	h := usersHandler{
 		userStore:   queries.NewUserStore(deps.DB.GetSession(), log),
 		userProfile: queries.NewUserProfileStore(deps.DB.GetSession(), log),
-		fileStore:   file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, "user_profile"),
+		fileStore:   file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, deps.FileStore, "user-profile"),
 		cache:       deps.Cache.GetCache(cache.UsersCache),
 		log:         log,
 		pagination:  deps.Config.Pagination,
@@ -239,7 +239,7 @@ func UserProfileRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	h := userProfileHandler{
 		store:     queries.NewUserProfileStore(deps.DB.GetSession(), log),
 		log:       log,
-		fileStore: file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, "user_profile"),
+		fileStore: file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, deps.FileStore, "user-profile"),
 	}
 
 	router.Use(md.AuthMiddleware(deps, log))

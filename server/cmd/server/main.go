@@ -133,7 +133,12 @@ func (m *manager) newAdmin(cmd *cobra.Command, args []string) error {
 func (m *manager) run(cmd *cobra.Command, args []string) (err error) {
 	ctx := cmd.Context()
 
-	cacheDBs := []int{cache.PublicCache, cache.UsersCache, cache.ProductsCache, cache.PaymentCache}
+	cacheDBs := []int{
+		cache.PublicCache,
+		cache.UsersCache,
+		cache.ProductsCache,
+		cache.OrdersCache,
+		cache.PaymentCache}
 	m.cache, err = cache.New(ctx, m.config.CacheURL, cacheDBs)
 	if err != nil {
 		return
@@ -141,15 +146,16 @@ func (m *manager) run(cmd *cobra.Command, args []string) (err error) {
 
 	fileStore, err := file_storage.NewFileStoreClient(ctx, m.config.FileStore.AwsS3)
 	if err != nil {
-		return
+		return err
 	}
 	deps := &app.ServiceDeps{
+		Ctx:       ctx,
 		DB:        m.db,
 		Cache:     m.cache,
 		Config:    m.config,
 		FileStore: fileStore,
 	}
-	sv := newServer(ctx, deps)
+	sv := newServer(deps)
 	sv.run()
 	return
 }

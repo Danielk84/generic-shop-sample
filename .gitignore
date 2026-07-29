@@ -6,11 +6,12 @@ gin.log
 app.log
 upload/
 dist/
-server/log/
+server/logs/
 server/gin.log
 server/app.log
 server/upload/
 server/dist/
+server/server
 # Logs
 client/logs
 client/*.log

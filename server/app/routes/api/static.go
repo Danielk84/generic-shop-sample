@@ -13,7 +13,7 @@ import (
 func FileRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
 	h := fileHandler{
-		fileStore: file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, ""),
+		fileStore: file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, deps.FileStore, "global-static"),
 		log:       log,
 		mimetypes: deps.Config.FileStore.AllowedImgMimetype,
 	}

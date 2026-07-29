@@ -49,12 +49,13 @@ type FileStore interface {
 	BulkDelete(ctx context.Context, keys []string) error
 }
 
-func NewFileStore(ctx context.Context, config config.FileStorageConfig, bucket string) FileStore {
+func NewFileStore(ctx context.Context, config config.FileStorageConfig, client FileStoreClient, bucket string) FileStore {
 	log := logger.GetLogger()
 	f := &fileManager{
 		log:    log,
 		config: config,
 		bucket: bucket,
+		client: client,
 	}
 	if err := f.createBucket(ctx); err != nil {
 		log.Debug("NewFileStore", "error", err)

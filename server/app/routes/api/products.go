@@ -20,7 +20,7 @@ func ProductsRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 		productStore:       queries.NewProductStore(deps.DB.GetSession(), log),
 		productImagesStore: queries.NewProductImagesStore(deps.DB.GetSession(), log, deps.Config.ProductImage),
 		cache:              deps.Cache.GetCache(cache.ProductsCache),
-		fileStore:          file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, "product_images"),
+		fileStore:          file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, deps.FileStore, "product-images"),
 		baseCacheKey:       "products",
 		cacheExpiration:    1 * time.Hour,
 		log:                log,
@@ -293,7 +293,7 @@ func ProductImagesRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 		cache:           deps.Cache.GetCache(cache.ProductsCache),
 		baseCacheKey:    "images",
 		cacheExpiration: 1 * time.Hour,
-		fileStore:       file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, "product_images"),
+		fileStore:       file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, deps.FileStore, "product-images"),
 		log:             log,
 	}
 
