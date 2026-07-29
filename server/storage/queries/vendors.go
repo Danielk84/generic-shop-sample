@@ -42,12 +42,12 @@ func (v *vendorOrderRepository) Create(ctx context.Context, order VendorOrder) (
 			user_id, order_id, product_id,
 			property, quantity, total_bill, is_delivered)
 		VALUES (
-			'@UserID'::UUID, '@OrderID'::UUID, '@ProductID'::UUID,
-			'@Property'::JSONB, @Quantity, @TotalBill, @IsDelivered)`
+			@UserID::UUID, @OrderID::UUID, @ProductID::UUID,
+			@Property::JSONB, @Quantity, @TotalBill, @IsDelivered)`
 	args := pgx.NamedArgs{
 		"UserID":      order.UserID,
 		"OrderID":     order.OrderID,
-		"ProductId":   order.ProductID,
+		"ProductID":   order.ProductID,
 		"Property":    order.Property,
 		"Quantity":    order.Quantity,
 		"TotalBill":   order.TotalBill,
@@ -62,10 +62,10 @@ func (v *vendorOrderRepository) Create(ctx context.Context, order VendorOrder) (
 func (v *vendorOrderRepository) List(ctx context.Context, userID string, pagination, page int) (items []VendorOrder, err error) {
 	const q = `SELECT
 			user_id, order_id, product_id,
-			property, quantity, total_bill, is_delivered)
+			property, quantity, total_bill, is_delivered
 		FROM order_s.vendors_order
-		WHERE order_id = '@UserID'::UUID
-		ORDER is_delivered
+		WHERE user_id = @UserID::UUID
+		ORDER BY is_delivered
 		LIMIT @Limit
 		OFFSET @Offset`
 	args := pgx.NamedArgs{
@@ -83,10 +83,10 @@ func (v *vendorOrderRepository) SetIsDelivered(ctx context.Context, order Vendor
 	const q = `UPDATE order_s.vendors_order
 		SET is_delivered = @IsDelivered
 		WHERE
-			user_id = '@UserID'::UUID AND
-			order_id = '@OrderID'::UUID AND
-			product_id = '@ProductID'::UUID AND
-			property = '@Property'::JSONB`
+			user_id = @UserID::UUID AND
+			order_id = @OrderID::UUID AND
+			product_id = @ProductID::UUID AND
+			property = @Property::JSONB`
 	args := pgx.NamedArgs{
 		"IsDelivered": order.IsDelivered,
 		"UserID":      order.UserID,
