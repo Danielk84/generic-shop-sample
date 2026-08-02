@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"generic-shop-sample/app"
 	bg "generic-shop-sample/app/background"
 	md "generic-shop-sample/app/middlewares"
@@ -24,6 +25,8 @@ func newServer(deps *app.ServiceDeps) *server {
 		app:  app.NewApp(deps.Ctx, deps.Config.App),
 		deps: deps,
 	}
+	log := logger.GetLogger()
+	log.Debug("newServer", "config", fmt.Sprintf("%+v", deps.Config))
 	sv.setMiddlewares()
 	sv.setRoutes()
 	return sv

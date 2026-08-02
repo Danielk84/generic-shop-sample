@@ -1,16 +1,36 @@
 services:
+  proxyserver:
+    image: nginx:1.31-alpine
+    container_name: proxyserver
+    restart: always
+    volumes:
+        - type: bind
+          source: "./nginx"
+          target: "/etc/nginx"
+          read_only: true
+    ports:
+      - 8080:8080
+    networks:
+      - server
+    depends_on:
+      backend:
+        condition: service_healthy
+        restart: true
+
   backend:
     container_name: backend
     build:
       context: .
       dockerfile: docker/server.Dockerfile
-    ports:
-      - "8080:8080"
+      args:
+        GOPROXY: ${GOPROXY:-https://proxy.golang.org}
     environment:
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-adminPassword}
       POSTGRES_DB: ${POSTGRES_DB:-postgres}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
-      MIGRATE_VERSION: ${MIGRATE_VERSION:-10}
+      MIGRATE_VERSION: ${MIGRATE_VERSION:-12}
     volumes:
       - type: bind
         source: ${BACKEND_CONFIG:-./docker/configs/server.yaml}
@@ -35,6 +55,20 @@ services:
       storage:
         condition: service_healthy
         restart: true
+    healthcheck:
+      test: [
+        "CMD",
+        "wget",
+        "-q",
+        "-O-",
+        "--post-data",
+        "{\"username\": \"${ADMIN_USERNAME:-admin}\", \"password\": \"${ADMIN_PASSWORD:-adminPassword}\"}",
+        "http://backend:8080/api/auth/login"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+      start_period: 80s
+
   
   database:
     image: postgres:18-alpine3.24
@@ -77,7 +111,7 @@ services:
     networks:
       - server
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8025/livez"]
+      test: ["CMD", "wget", "--spider", "-q", "http://mail:8025/livez"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -91,17 +125,17 @@ services:
       -s3
       -s3.port=8333
       -master.port=9333
-      -volume.port=8080
+      -volume.port=9080
     networks:
       - server
     volumes:
       - storage-data:/data
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8333"]
+      test: ["CMD", "wget", "--spider", "-q", "http://storage:8333"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
+      start_period: 30s
 
 volumes:
   backend-deps:

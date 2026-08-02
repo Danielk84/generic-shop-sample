@@ -5,6 +5,9 @@ RUN apk add --no-cache \
   bash \
   ca-certificates;
 
+ARG GOPROXY=https://proxy.golang.org,direct
+ENV GOPROXY=${GOPROXY}
+
 RUN go install -tags "pgx5" github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 ENV PATH="/go/bin:${PATH}"
 

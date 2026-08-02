@@ -39,11 +39,7 @@ file_upload:
 
 request_logger_filepath: "./logs/request.log"
 
-origins:
-  - "https://example.com"
-  - "http://localhost:3000"
-
-database_url: "postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}?sslmode=disable"
+database_url: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
 
 cache_url: "redis://cache:6379/"
 

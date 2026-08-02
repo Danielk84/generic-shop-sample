@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"generic-shop-sample/internal"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -17,8 +18,7 @@ type Config struct {
 	Payment      PaymentConfig      `yaml:"payment"`
 	FileStore    FileStorageConfig  `yaml:"file_upload"`
 
-	RequestLoggerFilepath string   `yaml:"request_logger_filepath" binding:"required,filepath"`
-	Origins               []string `yaml:"origins" binding:"required,dive,required,origin"`
+	RequestLoggerFilepath string `yaml:"request_logger_filepath" binding:"required,filepath"`
 
 	DatabaseURL string `yaml:"database_url" binding:"required,url"`
 	CacheURL    string `yaml:"cache_url" binding:"required,url"`
@@ -76,7 +76,8 @@ func (c *Config) ReadFile(fp string) error {
 	if err != nil {
 		return err
 	}
-	if err = yaml.Unmarshal(yamlFile, c); err != nil {
+	replaced := os.ExpandEnv(string(yamlFile))
+	if err = yaml.Unmarshal([]byte(replaced), c); err != nil {
 		return err
 	}
 
@@ -97,6 +98,7 @@ func NewConfig(fp string) Config {
 		panic(err)
 	}
 	if err := c.Validate(); err != nil {
+		log.Printf(`config: "%+v"`, c)
 		panic(err)
 	}
 	return *c
