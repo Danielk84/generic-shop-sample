@@ -29,7 +29,7 @@ type OrderSummaryResponse struct {
 type OrderResponse struct {
 	OrderSummaryResponse
 	OrderUserInfo
-	ItemsTotal     string            `json:"items_total"`
+	ItemsTotal     int32             `json:"items_total"`
 	TotalBill      int64             `json:"total_bill"`
 	IsVerified     bool              `json:"is_verified"`
 	IsConfirmed    bool              `json:"is_confirmed"`

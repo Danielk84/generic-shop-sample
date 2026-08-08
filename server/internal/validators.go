@@ -32,20 +32,28 @@ func GetValidator() *validator.Validate {
 	return v
 }
 
-var usernameValidatorRegexp = regexp.MustCompile(`(^([a-z]|[0-9]|[_-]){4,128}$)`)
+var usernameValidatorRegexp = regexp.MustCompile(`(^[-a-z0-9_]{4,128}$)`)
 
 func usernameValidator(fl validator.FieldLevel) bool {
 	return usernameValidatorRegexp.MatchString(fl.Field().String())
 }
 
-var basicPasswordRegexp = regexp.MustCompile(`(^[a-zA-Z][!-~]{7,63}$)`)
+var basicPasswordRegexp = regexp.MustCompile(`(^[-a-zA-Z0-9~!@#$%^&*?_+]{8,64}$)`)
+var isLowerExistRegexp = regexp.MustCompile(`[a-z]`)
 var isUpperExistRegexp = regexp.MustCompile(`[A-Z]`)
+var isNumberExistRegexp = regexp.MustCompile(`[0-9]`)
+var isSymbolExistRegexp = regexp.MustCompile(`[-~!@#$%^&*?_+]`)
 
 func passwordValidator(fl validator.FieldLevel) bool {
 	value := fl.Field().String()
-	regexPatterns := []*regexp.Regexp{basicPasswordRegexp, isUpperExistRegexp}
-	for _, rp := range regexPatterns {
-		if !rp.MatchString(value) {
+	regexPatterns := []*regexp.Regexp{
+		basicPasswordRegexp,
+		isLowerExistRegexp,
+		isUpperExistRegexp,
+		isNumberExistRegexp,
+		isSymbolExistRegexp}
+	for _, r := range regexPatterns {
+		if !r.MatchString(value) {
 			return false
 		}
 	}

@@ -26,7 +26,7 @@ services:
         GOPROXY: ${GOPROXY:-https://proxy.golang.org}
     environment:
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
-      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-adminPassword}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-adminPassword1@}
       POSTGRES_DB: ${POSTGRES_DB:-postgres}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
@@ -62,7 +62,7 @@ services:
         "-q",
         "-O-",
         "--post-data",
-        "{\"username\": \"${ADMIN_USERNAME:-admin}\", \"password\": \"${ADMIN_PASSWORD:-adminPassword}\"}",
+        "{\"username\": \"${ADMIN_USERNAME:-admin}\", \"password\": \"${ADMIN_PASSWORD:-adminPassword1@}\"}",
         "http://backend:8080/api/auth/login"]
       interval: 30s
       timeout: 60s

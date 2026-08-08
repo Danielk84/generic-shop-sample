@@ -37,7 +37,7 @@ ${MIGRATE} \
 
 # default admin username and password
 : "${ADMIN_USERNAME:="admin"}"
-: "${ADMIN_PASSWORD:="adminPassword"}"
+: "${ADMIN_PASSWORD:="adminPassword1@"}"
 
 # creating new admin user
 if ${APP} new-admin -c="${CONFIG_FILE}" -u="${ADMIN_USERNAME}" -p="${ADMIN_PASSWORD}" >/dev/null; then
