@@ -23,6 +23,11 @@ const icon = {
     },
   },
   pages: {
+    basket: {
+      close: 'pages/basket/close-icon.svg',
+      plus: 'pages/basket/plus-icon.svg',
+      minus: 'pages/basket/minus-icon.svg',
+    },
     products: {
       close: 'pages/products/close-icon.svg',
       fullScreen: 'pages/products/full-screen-icon.svg',

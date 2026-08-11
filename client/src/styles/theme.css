@@ -44,4 +44,24 @@
   /* pages/products/ImageFrameList.vue */
   --color-img-frame-list-border: #000000;
   --color-img-frame-list-icon: #ffffff;
+
+  /* pages/basket/CardTotal.vue */
+  --color-basket-card-total-border: #000000;
+  --color-basket-card-total-title: #a6a6a6;
+  --color-basket-card-total-title-text: #ffffff;
+  --color-basket-card-total-btn: #000000;
+  --color-basket-card-total-btn-text: #ffffff;
+
+  /* pages/basket/OrderItemsCard.vue */
+  --color-basket-item-remove-hover: #000000;
+  --color-basket-item-change-btn: #000000;
+  --color-basket-item-change-border: #000000;
+  --color-basket-item-change-icon: #ffffff;
+  --color-basket-item-not-saved-btn: #000000;
+  --color-basket-item-not-saved-text: #ffffff;
+
+  /* pages/basket/OrderItems.vue */
+  --color-basket-orders-border: #000000;
+  --color-basket-orders-title-bg: #000000;
+  --color-basket-orders-title-text: #ffffff;
 }

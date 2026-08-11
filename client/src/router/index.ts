@@ -23,6 +23,10 @@ const router = createRouter({
         },
       ],
     },
+    {
+      path: '/basket/:id',
+      component: () => import('@/pages/basket/BasketPage.vue') 
+    },
   ],
 })
 
