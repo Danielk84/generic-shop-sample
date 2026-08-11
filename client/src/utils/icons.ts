@@ -3,6 +3,12 @@ const icon = {
     plusCircle: 'card/plus-circle-icon.svg',
   },
   common: {
+    navBar: {
+      infinity: 'ui/nav-bar/infinity-icon.svg',
+      profile: 'ui/nav-bar/profile-icon.svg',
+      shoppingBag: 'ui/nav-bar/shopping-bag-icon.svg',
+      dropdown: 'ui/nav-bar/dropdown-icon.svg',
+    },
     footer: {
       send: 'common/footer/send-icon.svg',
     }
@@ -10,11 +16,6 @@ const icon = {
   ui: {
     search: {
       btn: 'ui/search/search-icon.svg',
-    },
-    navBar: {
-      infinity: 'ui/nav-bar/infinity-icon.svg',
-      profile: 'ui/nav-bar/profile-icon.svg',
-      shoppingBag: 'ui/nav-bar/shopping-bag-icon.svg',
     },
     pagination: {
       next: 'ui/pagination/next-icon.svg',

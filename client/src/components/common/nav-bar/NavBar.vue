@@ -4,12 +4,13 @@ import { defineAsyncComponent } from 'vue'
 import icons from '@/utils/icons'
 
 const BaseIcon = defineAsyncComponent(() => import('@/components/ui/BaseIcon.vue'))
+const ProfileDropdown = defineAsyncComponent(() => import('@/components/common/nav-bar/ProfileDropdown.vue'))
 </script>
 
 <template>
   <div class="nav-bar">
     <RouterLink to="/">
-      <BaseIcon :icon="icons.ui.navBar.infinity" size="42px"/>
+      <BaseIcon :icon="icons.common.navBar.infinity" size="42px"/>
     </RouterLink>
     <div class="n-items c-flex-all-center">
       <RouterLink to="/">
@@ -26,11 +27,11 @@ const BaseIcon = defineAsyncComponent(() => import('@/components/ui/BaseIcon.vue
       </RouterLink>
     </div>
     <div class="n-items c-flex-all-center">
-      <RouterLink to="/" >
-        <BaseIcon :icon="icons.ui.navBar.profile" />
-      </RouterLink>
+      <ProfileDropdown>
+        <BaseIcon :icon="icons.common.navBar.profile" />
+      </ProfileDropdown>
       <RouterLink to="/">
-        <BaseIcon :icon="icons.ui.navBar.shoppingBag" />
+        <BaseIcon :icon="icons.common.navBar.shoppingBag" />
       </RouterLink>
     </div>
   </div>

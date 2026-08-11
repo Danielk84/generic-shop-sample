@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from 'vue';
 
-const NavBar = defineAsyncComponent(() => import('@/components/common/NavBar.vue'))
+const NavBar = defineAsyncComponent(() => import('@/components/common/nav-bar/NavBar.vue'))
 const FooterBlock = defineAsyncComponent(() => import('@/components/common/footer/FooterBlock.vue'))
 </script>
 
