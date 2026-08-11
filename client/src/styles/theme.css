@@ -1,38 +1,47 @@
 @theme {
-  --font-default-font: 'Ubuntu-Regular';
+  /* components/common/NavBar.vue */
+  --color-nav-bar-bg: #ffffff;
+  --color-nav-bar-border: #000000;
 
-  /* base color schemes */
-  --color-polar-night-1: #2e3440;
-  --color-polar-night-2: #3b4252;
-  --color-polar-night-3: #434c5e;
-  --color-polar-night-4: #4c566a;
+  /* components/common/footer */
+  --color-footer-bg: #3d3d3d;
+  --color-footer-text: #ffffff;
+  --color-footer-border: #adadad;
+  --color-footer-input: #343434;
+  --color-footer-btn: #282828;
+  --color-footer-icon: #f2f2f2;
+  --color-footer-placeholder: #9b9a9a;
 
-  --color-snow-storm-1: #d8dee9;
-  --color-snow-storm-2: #e5e9f0;
-  --color-snow-storm-3: #eceff4;
+  /* components/ui/BaseIcon.vue */
+  --color-default-icon: #000000;
 
-  --color-frost-1: #8fbcbb;
-  --color-frost-2: #88c0d0;
-  --color-frost-3: #81a1c1;
-  --color-frost-4: #5e81ac;
+  /* components/ui/SearchBox.vue */
+  --color-search-box-bg: #585858;
+  --color-search-box-border: #b5b5b5;
+  --color-search-box-icon: #ffffff;
+  --color-search-box-btn: #282828;
+  --color-search-box-text: #ffffff;
+  --color-search-box-placeholder: #b5b5b5;
+  
+  /* components/ui/ListPagination.vue */
+  --color-pagination-btn: #000000;
+  --color-pagination-icon: #ffffff;
+  --color-pagination-border: #000000;
+  --color-pagination-default-text: #000000;
+  --color-pagination-select-bg: #000000;
+  --color-pagination-select-text: #ffffff;
 
-  --color-aurora-1: #bf616a;
-  --color-aurora-2: #d08770;
-  --color-aurora-3: #ebcb8b;
-  --color-aurora-4: #a3be8c;
-  --color-aurora-5: #b48ead;
+  /* components/card/ImageFrame.vue */
+  --color-img-frame-card-bg: #A6A6A6;
+  --color-img-frame-card-tag-bg: #3D3D3D;
+  --color-img-frame-card-tag-text: #FFFFFF;
 
-  /* light theme */
-  --color-default-bg: var(--color-snow-storm-2);
-  --color-secondary-bg: var(--color-snow-storm-1);
-  --color-default-banner: var(--color-polar-night-4);
-  --color-primary-theme: var(--color-aurora-1);
-  --color-secondary-theme: var(--color-aurora-3);
-  --color-baseline: var(--color-polar-night-4);
-  --color-shadown-hover: var(--color-polar-night-3);
-  --color-default-icon: var(--color-polar-night-2);
-  --color-primary-text: var(--color-polar-night-1);
-  --color-secondary-text: var(--color-snow-storm-3);
-  --color-tab-1: var(--color-frost-1);
-  --color-tab-2: var(--color-frost-2);
+  /* pages/landing/LandingPage.vue */
+  --color-landing-p-primary-bg: #686b6f;
+  --color-landing-p-secondary-bg: #ffffff;
+  --color-landing-p-text: #ffffff;
+
+  /* pages/products/ImageFrameList.vue */
+  --color-img-frame-list-border: #000000;
+  --color-img-frame-list-icon: #ffffff;
 }

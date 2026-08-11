@@ -1,17 +1,27 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHistory(),
   routes: [
     {
       path: '/',
       name: 'home',
-      component: () => import('@/components/pages/HomePage.vue'),
+      component: () => import('@/pages/landing/LandingPage.vue'),
     },
     {
-      path: "/auth",
-      name: "auth",
-      component: () => import('@/components/pages/AuthPage.vue'),
+      path: '/products',
+      children: [
+        {
+          path: '/products/',
+          name: 'products-list',
+          component: () => import('@/pages/products/ProductsListPage.vue'),
+        },
+        {
+          path: '/products/:id',
+          name: 'product',
+          component: () => import('@/pages/products/ProductPage.vue'),
+        },
+      ],
     },
   ],
 })

@@ -2,20 +2,4 @@
   .c-flex-all-center {
     @apply flex justify-center items-center;
   }
-  .right-separator {
-    @apply border-r border-baseline rounded-none;
-  }
-  .default-btn-size {
-    @apply w-55 h-16;
-  }
-  .default-shadow-hover {
-    @apply hover:shadow-[0px_0px_8px] shadow-baseline;
-  }
-  .default-banner-bg {
-    @apply bg-linear-to-br/hsl from-polar-night-3 via-polar-night-2 to-polar-night-1;
-  }
-  .default-scrollbar {
-    @apply scrollbar-gutter-stable
-      scrollbar-thumb-primary-theme scrollbar-track-secondary-bg;
-  }
 }
