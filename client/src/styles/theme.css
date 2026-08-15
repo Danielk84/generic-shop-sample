@@ -64,4 +64,13 @@
   --color-basket-orders-border: #000000;
   --color-basket-orders-title-bg: #000000;
   --color-basket-orders-title-text: #ffffff;
+
+  /* pages/auth/AuthPage.vue */
+  --color-auth-p-bg: #3c3c3c;
+  --color-auth-p-text: #ffffff;
+  --color-auth-p-border: #666666;
+  --color-auth-p-outline: #ffffff;
+  --color-auth-p-btn: #000000;
+  --color-auth-p-btn-text: #ffffff;
+  --color-auth-p-icon: #ffffff;
 }

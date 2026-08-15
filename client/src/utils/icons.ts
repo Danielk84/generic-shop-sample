@@ -14,6 +14,9 @@ const icon = {
     }
   },
   ui: {
+    button: {
+      back: 'ui/back-arrow-icon.svg',
+    },
     search: {
       btn: 'ui/search/search-icon.svg',
     },
