@@ -51,7 +51,7 @@ func GetPage(c *gin.Context) int {
 
 func GenFileKey(claims *auth.AuthClaims, dst string) string {
 	y, m, d := time.Now().Date()
-	return fmt.Sprintf("%d/%d/%d/%s-%d", y, m, d, claims.Username, time.Now().UnixNano())
+	return fmt.Sprintf("%d/%d/%d/%s-%d", y, m, d, claims.ID, time.Now().UnixNano())
 }
 
 func JSONResponse(c *gin.Context, code int, msg, defaultMsg string) {

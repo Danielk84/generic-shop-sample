@@ -63,7 +63,7 @@ func (h *commentsHandler) create(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	if err := h.store.Create(c.Request.Context(), claims.Username, &input); err != nil {
+	if err := h.store.Create(c.Request.Context(), claims.ID, claims.Name, &input); err != nil {
 		BadRequest(c, "")
 		return
 	}
@@ -72,6 +72,11 @@ func (h *commentsHandler) create(c *gin.Context) {
 
 func (h *commentsHandler) get(c *gin.Context) {
 	claims := md.GetUserClaims(c)
+	if !HasPermissions(nil, claims.PermissionType, queries.Admin) {
+		Forbidden(c, "")
+		return
+	}
+
 	id := c.Param("id")
 	output, err := h.store.Get(c.Request.Context(), id)
 	if err != nil {
@@ -79,10 +84,6 @@ func (h *commentsHandler) get(c *gin.Context) {
 		return
 	}
 
-	if output.Username != claims.Username && !HasPermissions(nil, claims.PermissionType, queries.Admin) {
-		Forbidden(c, "")
-		return
-	}
 	c.JSON(http.StatusOK, output)
 }
 
@@ -114,17 +115,17 @@ func (h *commentsHandler) list(c *gin.Context) {
 
 func (h *commentsHandler) fullList(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	username := claims.Username
+	userID := claims.ID
 	if HasPermissions(nil, claims.PermissionType, queries.Admin) {
-		username = ""
+		userID = ""
 	}
 
 	ctx := c.Request.Context()
-	cacheKey := fmt.Sprintf("%s:full:%s", h.baseCacheKey, username)
+	cacheKey := fmt.Sprintf("%s:full:%s", h.baseCacheKey, userID)
 	var output []queries.RelatedCommentResponse
 	if err := GetJSONCache(ctx, h.cache, cacheKey, &output); err != nil {
 		LogCacheErr("GetJSONCache", "commentsHandler.fullList", err)
-		output, err = h.store.FullList(ctx, username, h.pagination, GetPage(c))
+		output, err = h.store.FullList(ctx, userID, h.pagination, GetPage(c))
 		if err != nil {
 			NotFound(c, "")
 			return

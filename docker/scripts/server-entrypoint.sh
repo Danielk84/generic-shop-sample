@@ -35,13 +35,12 @@ ${MIGRATE} \
   -path "./storage/migrations/" \
   goto "${MIGRATE_VERSION}";
 
-# default admin username and password
-: "${ADMIN_USERNAME:="admin"}"
-: "${ADMIN_PASSWORD:="adminPassword1@"}"
+# default admin email
+: "${ADMIN_EMAIL:="admin@example.com"}"
 
 # creating new admin user
-if ${APP} new-admin -c="${CONFIG_FILE}" -u="${ADMIN_USERNAME}" -p="${ADMIN_PASSWORD}" >/dev/null; then
-  echo "warn: admin username may already exists, continuing" >&2
+if ${APP} new-admin -c="${CONFIG_FILE}" -e="${ADMIN_EMAIL}" >/dev/null; then
+  echo "warn: admin email may already exists, continuing" >&2
 fi
 
 # run server

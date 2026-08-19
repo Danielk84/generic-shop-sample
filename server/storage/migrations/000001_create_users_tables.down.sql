@@ -1,4 +1,4 @@
-DROP TABLE IF EXISTS user_s.user_profile;
+DROP TABLE IF EXISTS user_s.shop;
 
 DROP TABLE IF EXISTS user_s.users CASCADE;
 

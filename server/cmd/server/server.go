@@ -69,6 +69,7 @@ func (s *server) setBackgroundTask() {
 			Host:     s.deps.Config.EmailBroker.SMTPHost,
 			Port:     s.deps.Config.EmailBroker.SMTPPort,
 			Password: s.deps.Config.EmailBroker.SMTPPassword,
+			Log:      log,
 		},
 		&bg.OrdersProcess{
 			Cache:          s.deps.Cache.GetCache(cache.OrdersCache),

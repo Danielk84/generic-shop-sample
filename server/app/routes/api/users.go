@@ -6,7 +6,6 @@ import (
 	"generic-shop-sample/app"
 	"generic-shop-sample/app/background"
 	md "generic-shop-sample/app/middlewares"
-	"generic-shop-sample/internal/auth"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/file_storage"
@@ -21,19 +20,17 @@ import (
 func UsersRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
 	h := usersHandler{
-		userStore:   queries.NewUserStore(deps.DB.GetSession(), log),
-		userProfile: queries.NewUserProfileStore(deps.DB.GetSession(), log),
-		fileStore:   file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, deps.FileStore, "user-profile"),
-		cache:       deps.Cache.GetCache(cache.UsersCache),
-		log:         log,
-		pagination:  deps.Config.Pagination,
+		userStore:  queries.NewUserStore(deps.DB.GetSession(), log),
+		shopStore:  queries.NewShopStore(deps.DB.GetSession(), log),
+		fileStore:  file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, deps.FileStore, "user-profile"),
+		cache:      deps.Cache.GetCache(cache.UsersCache),
+		log:        log,
+		pagination: deps.Config.Pagination,
 	}
-
-	router.GET("/:username", h.get)
 
 	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(deps, log)}, []RouteSpec{
 		{http.MethodGet, "/", []gin.HandlerFunc{h.list}},
-		{http.MethodPost, "/", []gin.HandlerFunc{h.createUserByAdmin}},
+		{http.MethodGet, "/:id", []gin.HandlerFunc{h.get}},
 		{http.MethodDelete, "/", []gin.HandlerFunc{h.delete}},
 		{http.MethodPut, "/set-email", []gin.HandlerFunc{h.setEmail}},
 		{http.MethodPut, "/set-phone-number", []gin.HandlerFunc{h.setPhoneNumber}},
@@ -47,43 +44,12 @@ type VerfierKey struct {
 }
 
 type usersHandler struct {
-	userStore   queries.UserStore
-	userProfile queries.UserProfileStore
-	fileStore   file_storage.FileStore
-	cache       cache.CacheClient
-	log         logger.Logger
-	pagination  int
-}
-
-func (h *usersHandler) createUserByAdmin(c *gin.Context) {
-	claims := md.GetUserClaims(c)
-	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
-		return
-	}
-
-	var input queries.CreateUserRequest
-	if err := c.ShouldBindJSON(&input); err != nil {
-		h.log.Debug("usersHandler.createUserByAdmin", "error", err)
-		BadRequest(c, "invalid user data")
-		return
-	}
-
-	ctx := c.Request.Context()
-	if h.userStore.IsUsernameExists(ctx, input.Username) {
-		c.JSON(http.StatusConflict, gin.H{"msg": "username already exists"})
-		return
-	}
-	var err error
-	input.Password, err = auth.PasswordHash(input.Password)
-	if err != nil {
-		BadRequest(c, "invalid password string")
-		return
-	}
-	if err = h.userStore.Create(ctx, input); err != nil {
-		BadRequest(c, "")
-		return
-	}
-	Created(c, "")
+	userStore  queries.UserStore
+	shopStore  queries.ShopStore
+	fileStore  file_storage.FileStore
+	cache      cache.CacheClient
+	log        logger.Logger
+	pagination int
 }
 
 func (h *usersHandler) list(c *gin.Context) {
@@ -101,9 +67,14 @@ func (h *usersHandler) list(c *gin.Context) {
 }
 
 func (h *usersHandler) get(c *gin.Context) {
-	username := c.Param("username")
-	output, err := h.userStore.GetDetails(c.Request.Context(), username)
-	if err != nil || !HasPermissions(nil, output.PermissionType, queries.Admin, queries.Vendor) {
+	claims := md.GetUserClaims(c)
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
+		return
+	}
+
+	id := c.Param("id")
+	output, err := h.userStore.Get(c.Request.Context(), id)
+	if err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -137,18 +108,20 @@ func (h *usersHandler) updateUserPermission(c *gin.Context) {
 func (h *usersHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	ctx := c.Request.Context()
-	imgPath, err := h.userProfile.GetImgPath(ctx, claims.ID)
-	if err != nil {
-		NotFound(c, "")
-		return
-	}
-	if imgPath != "" {
-		if err := h.fileStore.Delete(ctx, imgPath); err != nil {
-			Unprocessable(c, "")
+	if HasPermissions(nil, claims.PermissionType, queries.Admin, queries.Vendor) {
+		imgPath, err := h.shopStore.GetImgPath(ctx, claims.ID)
+		if err != nil {
+			NotFound(c, "")
 			return
 		}
+		if imgPath != "" {
+			if err := h.fileStore.Delete(ctx, imgPath); err != nil {
+				Unprocessable(c, "")
+				return
+			}
+		}
 	}
-	if err := h.userStore.Delete(ctx, claims.ID, claims.Username); err != nil {
+	if err := h.userStore.Delete(ctx, claims.ID, claims.Email); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -171,7 +144,7 @@ func (h *usersHandler) setEmail(c *gin.Context) {
 	}
 
 	randKey := RandVerifyNum()
-	cacheKey := fmt.Sprintf("verify:email:%s", claims.Username)
+	cacheKey := fmt.Sprintf("verify:email:%s", input.Email)
 	if _, err := h.cache.Set(ctx, cacheKey, randKey, 2*time.Minute).Result(); err != nil {
 		LogCacheErr("Set", "usersHandler.setEmail", err)
 		Unprocessable(c, "Failed to set verifier key")
@@ -182,8 +155,9 @@ func (h *usersHandler) setEmail(c *gin.Context) {
 		defer cancel()
 
 		if err := background.SendMail(ctx, h.cache, background.MailMessage{
-			To:  input.Email,
-			Msg: []byte(strconv.Itoa(randKey)),
+			To:      []string{input.Email},
+			Subject: "pass-key",
+			Msg:     strconv.Itoa(randKey),
 		}); err != nil {
 			LogCacheErr("SendMail", "usersHandler.setEmail", err)
 		}
@@ -201,7 +175,7 @@ func (h *usersHandler) verifyEmail(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	cacheKey := fmt.Sprintf("verify:email:%s", claims.Username)
+	cacheKey := fmt.Sprintf("verify:email:%s", claims.Email)
 	key, err := h.cache.GetDel(ctx, cacheKey).Result()
 	if err != nil {
 		LogCacheErr("GetDel", "usersHandler.verifyEmail", err)
@@ -234,42 +208,94 @@ func (h *usersHandler) setPhoneNumber(c *gin.Context) {
 	Accepted(c, "")
 }
 
-func UserProfileRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
+func ShopRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
-	h := userProfileHandler{
-		store:     queries.NewUserProfileStore(deps.DB.GetSession(), log),
-		log:       log,
-		fileStore: file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, deps.FileStore, "user-profile"),
+	h := ShopHandler{
+		store:      queries.NewShopStore(deps.DB.GetSession(), log),
+		log:        log,
+		fileStore:  file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, deps.FileStore, "user-profile"),
+		pagination: deps.Config.Pagination,
 	}
 
 	router.Use(md.AuthMiddleware(deps, log))
 	router.POST("/", h.upsert)
+	router.GET("/:id", h.get)
+	router.GET("/", h.list)
+	router.PUT("/:id", h.setPhoneNumber)
 	router.POST("/upload", h.uploadProfileImg)
 	router.DELETE("/", h.deleteImgPath)
 }
 
-type userProfileHandler struct {
-	store     queries.UserProfileStore
-	log       logger.Logger
-	fileStore file_storage.FileStore
+type ShopHandler struct {
+	store      queries.ShopStore
+	log        logger.Logger
+	fileStore  file_storage.FileStore
+	pagination int
 }
 
-func (h *userProfileHandler) upsert(c *gin.Context) {
+func (h *ShopHandler) upsert(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	var json queries.UserProfileRequest
-	if err := c.ShouldBindJSON(&json); err != nil {
-		h.log.Debug("userProfileHandler.upsert", "error", err)
+	var input queries.UpsertShopRequest
+	if err := c.ShouldBindJSON(&input); err != nil {
+		h.log.Debug("ShopHandler.upsert", "error", err)
 		BadRequest(c, "")
 		return
 	}
-	if err := h.store.Upsert(c.Request.Context(), claims.ID, json); err != nil {
+	if err := h.store.Upsert(c.Request.Context(), claims.ID, input); err != nil {
 		NotFound(c, "")
 		return
 	}
 	Accepted(c, "")
 }
 
-func (h *userProfileHandler) uploadProfileImg(c *gin.Context) {
+func (h *ShopHandler) get(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
+		return
+	}
+	ctx := c.Request.Context()
+	id := c.Param("id")
+	output, err := h.store.Get(ctx, id)
+	if err != nil {
+		NotFound(c, "")
+		return
+	}
+	c.JSON(http.StatusOK, output)
+}
+
+func (h *ShopHandler) list(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
+		return
+	}
+	ctx := c.Request.Context()
+	output, err := h.store.List(ctx, h.pagination, GetPage(c))
+	if err != nil {
+		NotFound(c, "")
+		return
+	}
+	c.JSON(http.StatusOK, output)
+}
+
+func (h *ShopHandler) setPhoneNumber(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
+		return
+	}
+	var input queries.ShopPhoneNumberRequest
+	if err := c.ShouldBindBodyWithJSON(&input); err != nil {
+		BadRequest(c, "")
+		return
+	}
+	ctx := c.Request.Context()
+	if err := h.store.SetPhoneNumber(ctx, claims.ID, input); err != nil {
+		NotFound(c, "")
+		return
+	}
+	Accepted(c, "")
+}
+
+func (h *ShopHandler) uploadProfileImg(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	file, err := c.FormFile("file")
 	if err != nil {
@@ -300,7 +326,7 @@ func (h *userProfileHandler) uploadProfileImg(c *gin.Context) {
 	Accepted(c, "")
 }
 
-func (h *userProfileHandler) deleteImgPath(c *gin.Context) {
+func (h *ShopHandler) deleteImgPath(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	imgPath, err := h.store.DeleteImgPath(c.Request.Context(), claims.ID)
 	if err != nil {

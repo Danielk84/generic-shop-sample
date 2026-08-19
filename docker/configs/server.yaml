@@ -15,7 +15,7 @@ email_broker:
   from_email: "noreply@example.com"
   smtp_host: "mail"
   smtp_port: 1025
-  smtp_password: ""
+  smtp_password: ${SMTP_PASSWORD}
 
 product_image:
   max_product_images_amount: 6
@@ -32,8 +32,8 @@ file_upload:
     - "image/gif"
     - "image/avif"
   aws_s3:
-    key: "test"
-    secret: "test"
+    key: ${AWS_ACCESS_KEY_ID}
+    secret: ${AWS_SECRET_ACCESS_KEY}
     region: "us-east-1"
     endpoint: "http://storage:8333"
 

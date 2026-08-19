@@ -36,10 +36,10 @@ type commentRepository struct {
 }
 
 type CommentStore interface {
-	Create(ctx context.Context, username string, comment *CommentRequest) error
+	Create(ctx context.Context, userID, name string, comment *CommentRequest) error
 	Get(ctx context.Context, id string) (RelatedCommentResponse, error)
 	List(ctx context.Context, parent string, referrer string, pagination, page int) ([]CommentResponse, error)
-	FullList(ctx context.Context, username string, pagination, page int) ([]RelatedCommentResponse, error)
+	FullList(ctx context.Context, userID string, pagination, page int) ([]RelatedCommentResponse, error)
 	Delete(ctx context.Context, id string) error
 	SetActive(ctx context.Context, id string, isActive bool) error
 }
@@ -48,15 +48,16 @@ func NewCommentStore(session database.Session, log logger.Logger) CommentStore {
 	return &commentRepository{session, log}
 }
 
-func (c *commentRepository) Create(ctx context.Context, username string, comment *CommentRequest) (err error) {
-	const createCommentQuery = `INSERT INTO user_s.comments(username, parent, children_amount, referrer, body)
-		VALUES (@Username, NULLIF(@Parent, '')::UUID, 0, @Referrer, @Body)`
+func (c *commentRepository) Create(ctx context.Context, userID, name string, comment *CommentRequest) (err error) {
+	const createCommentQuery = `INSERT INTO user_s.comments(user_id, name, parent, children_amount, referrer, body)
+		VALUES (@UserID, @Name, NULLIF(@Parent, '')::UUID, 0, @Referrer, @Body)`
 	const upadteChildrenCount = `UPDATE user_s.comments
 		SET children_amount = children_amount + 1
 		WHERE id = $1::UUID`
 
 	args := pgx.NamedArgs{
-		"Username": username,
+		"UserID":   userID,
+		"Name":     name,
 		"Parent":   comment.Parent,
 		"Referrer": comment.Referrer,
 		"Body":     comment.Body,
@@ -85,7 +86,7 @@ func (c *commentRepository) Create(ctx context.Context, username string, comment
 
 func (c *commentRepository) Get(ctx context.Context, id string) (item RelatedCommentResponse, err error) {
 	const q = `SELECT
-			id, COALESCE(username, 'deleted') AS username, pub_date,
+			id, COALESCE(name, 'deleted') AS name, pub_date,
 			COALESCE(parent::TEXT, '') AS parent, children_amount, referrer,
 			body, is_active
 		FROM user_s.comments
@@ -99,7 +100,7 @@ func (c *commentRepository) Get(ctx context.Context, id string) (item RelatedCom
 
 func (c *commentRepository) List(ctx context.Context, parent string, referrer string, pagination, page int) (items []CommentResponse, err error) {
 	const q = `SELECT
-			id, COALESCE(username, 'deleted') AS username, pub_date, children_amount, body
+			id, COALESCE(name, 'deleted') AS name, pub_date, children_amount, body
 		FROM user_s.comments
 		WHERE COALESCE(parent::TEXT, '') = @Parent
 			AND referrer = @Referrer
@@ -120,9 +121,9 @@ func (c *commentRepository) List(ctx context.Context, parent string, referrer st
 	return
 }
 
-func (c *commentRepository) FullList(ctx context.Context, username string, pagination, page int) (items []RelatedCommentResponse, err error) {
+func (c *commentRepository) FullList(ctx context.Context, userID string, pagination, page int) (items []RelatedCommentResponse, err error) {
 	const baseQuery = `SELECT
-			id, COALESCE(username, 'deleted') AS username, pub_date,
+			id, COALESCE(name, 'deleted') AS name, pub_date,
 			COALESCE(parent::TEXT, '') AS parent, children_amount, referrer,
 			body, is_active
 		FROM user_s.comments`
@@ -133,11 +134,11 @@ func (c *commentRepository) FullList(ctx context.Context, username string, pagin
 	}
 
 	var q string
-	if username == "" {
+	if userID == "" {
 		q = baseQuery + " ORDER BY pub_date DESC, is_active" + limitOffset
 	} else {
-		args["Username"] = username
-		q = baseQuery + " WHERE username = NULLIF(@Username, 'deleted') ORDER BY pub_date DESC" + limitOffset
+		args["UserID"] = userID
+		q = baseQuery + " WHERE user_id = @UserID::UUID ORDER BY pub_date DESC" + limitOffset
 	}
 	items, err = list[RelatedCommentResponse](ctx, c.session, q, args)
 	if err != nil {

@@ -8,6 +8,7 @@ import (
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
 	"net/smtp"
+	"strings"
 )
 
 const (
@@ -15,8 +16,9 @@ const (
 )
 
 type MailMessage struct {
-	To  string `json:"to"`
-	Msg []byte `json:"msg"`
+	To      []string `json:"to"`
+	Subject string   `json:"subject"`
+	Msg     string   `json:"msg"`
 }
 
 type EmailBroker struct {
@@ -47,16 +49,33 @@ func (b *EmailBroker) Start(ctx context.Context) {
 				b.Log.Error("failed decode EmailMessage", "error", err)
 				continue
 			}
-			b.send(input.To, input.Msg)
+			b.send(input)
 		}
 	}
 }
 
-func (b *EmailBroker) send(to string, msg []byte) {
-	auth := smtp.PlainAuth("", b.From, b.Password, b.Host)
-	if err := smtp.SendMail(fmt.Sprintf("%s:%d", b.Host, b.Port), auth, b.From, []string{to}, msg); err != nil {
+func (b *EmailBroker) send(mail MailMessage) {
+	msg := b.buildMessage(mail)
+	var auth smtp.Auth
+	if b.Password == "" {
+		auth = nil
+	} else {
+		auth = smtp.PlainAuth("", b.From, b.Password, b.Host)
+	}
+	if err := smtp.SendMail(fmt.Sprintf("%s:%d", b.Host, b.Port), auth, b.From, mail.To, []byte(msg)); err != nil {
 		b.Log.Error("failed to send mail", "error", err)
 	}
+}
+
+func (b *EmailBroker) buildMessage(mail MailMessage) string {
+	msgs := []string{
+		"MIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";",
+		fmt.Sprintf("From: %s", b.From),
+		fmt.Sprintf("To: %s", strings.Join(mail.To, ";")),
+		fmt.Sprintf("Subject: %s", mail.Subject),
+		fmt.Sprintf("\r\n%s\r\n", mail.Msg),
+	}
+	return strings.Join(msgs, "\r\n")
 }
 
 var _ BackgroundTask = (*EmailBroker)(nil)

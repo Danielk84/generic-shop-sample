@@ -78,7 +78,7 @@ func (h *paymentHandler) init(c *gin.Context) {
 		Forbidden(c, "Unconfirmed order")
 		return
 	}
-	user, err := h.userStore.GetDetails(ctx, claims.Username)
+	user, err := h.userStore.Get(ctx, claims.ID)
 	if err != nil {
 		h.log.Error("unexpected error in UserStore.GetDetails in payment init",
 			"user_id", claims.ID,
@@ -91,7 +91,7 @@ func (h *paymentHandler) init(c *gin.Context) {
 		MerchantID:  h.merchandID,
 		Amount:      order.TotalBill,
 		Currency:    "IRT",
-		Description: fmt.Sprintf("%s-%s", user.Username, order.StartedAt),
+		Description: fmt.Sprintf("%s-%s", user.ID, order.StartedAt),
 		CallbackURL: h.callbackURL,
 		Metadata: payment.ZPReqMetadata{
 			Mobile:  user.PhoneNumber,

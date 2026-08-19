@@ -9,7 +9,7 @@ import (
 
 func APIRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	api.LoginRouter(deps, router.Group("/auth"))
-	api.UserProfileRouter(deps, router.Group("/users/profile"))
+	api.ShopRouter(deps, router.Group("/users/shop"))
 	api.UsersRouter(deps, router.Group("/users"))
 	api.ProductImagesRouter(deps, router.Group("/products/images"))
 	api.ProductsRouter(deps, router.Group("/products"))

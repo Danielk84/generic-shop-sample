@@ -9,7 +9,6 @@ import (
 
 	"generic-shop-sample/app"
 	"generic-shop-sample/internal"
-	"generic-shop-sample/internal/auth"
 	"generic-shop-sample/internal/config"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
@@ -36,11 +35,10 @@ func main() {
 	newAdminCmd := &cobra.Command{
 		Use:     "new-admin",
 		Short:   "add new admin user",
-		Example: `cmd -c="path/to/file" new-admin --username="username" --password="password"`,
+		Example: `cmd -c="path/to/file" new-admin --email="person@example.com"`,
 		RunE:    m.newAdmin,
 	}
-	newAdminCmd.PersistentFlags().StringP("username", "u", "", "admin username")
-	newAdminCmd.PersistentFlags().StringP("password", "p", "", "admin password")
+	newAdminCmd.PersistentFlags().StringP("email", "e", "", "admin email")
 
 	runCmd := &cobra.Command{
 		Use:   "run",
@@ -94,34 +92,28 @@ func (m *manager) persistentPostRunE(cmd *cobra.Command, args []string) error {
 
 func (m *manager) newAdmin(cmd *cobra.Command, args []string) error {
 	var err error
-	username, err := cmd.PersistentFlags().GetString("username")
-	if err != nil {
-		return err
-	}
-	password, err := cmd.PersistentFlags().GetString("password")
+	email, err := cmd.PersistentFlags().GetString("email")
 	if err != nil {
 		return err
 	}
 	store := queries.NewUserStore(m.db.GetSession(), logger.GetLogger())
 	user := queries.CreateUserRequest{
-		LoginRequest: queries.LoginRequest{
-			Username: username,
-			Password: password,
+		EmailAddrRequest: queries.EmailAddrRequest{
+			Email: email,
 		},
 		UserPermissionRequest: queries.UserPermissionRequest{
-			PermissionType: queries.Admin,
-			IsActive:       true,
+			PermissionRequest: queries.PermissionRequest{
+				PermissionType: queries.Admin,
+			},
+			IsActive: true,
 		},
 	}
 	validate := internal.GetValidator()
 	if err = validate.Struct(user); err != nil {
-		if username == "" || password == "" {
-			return fmt.Errorf("username and password required")
+		if email == "" {
+			return fmt.Errorf("email required")
 		}
 		return fmt.Errorf("failed to validate input, %s", err)
-	}
-	if user.Password, err = auth.PasswordHash(password); err != nil {
-		return fmt.Errorf("failed to hash password, %s", err)
 	}
 	if err = store.Create(cmd.Context(), user); err != nil {
 		return fmt.Errorf("failed to create admin, %s", err)
