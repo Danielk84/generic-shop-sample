@@ -16,6 +16,7 @@ type searchRepository struct {
 type SearchStore interface {
 	Reindex(ctx context.Context, product_id string) error
 	Search(ctx context.Context, queryStr string, pagination, page int) ([]ProductSummaryResponse, error)
+	DeleteAll(ctx context.Context) error
 }
 
 func NewSearchStore(session database.Session, log logger.Logger) SearchStore {
@@ -56,6 +57,17 @@ func (s *searchRepository) Search(
 	items, err = list[ProductSummaryResponse](ctx, s.session, q, args)
 	if err != nil {
 		s.log.Debug("searchRepository.Search", "error", err)
+	}
+	return
+}
+
+// on deleting rows in full_text_search_s.products_changes,
+// TRIGGER _01_set_products_search_on_delete_t will execute,
+// that process product_s.products.__search.
+func (s *searchRepository) DeleteAll(ctx context.Context) (err error) {
+	const q = `DELETE FROM full_text_search_s.products_changes`
+	if err = execOne(ctx, s.session, q); err != nil {
+		s.log.Debug("searchRepository.DeleteAll", "error", err)
 	}
 	return
 }

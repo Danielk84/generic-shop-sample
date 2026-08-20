@@ -84,6 +84,10 @@ func (s *server) setBackgroundTask() {
 				queries.NewProductStore(session, log)),
 			Pagination: s.deps.Config.Pagination,
 		},
+		&bg.SearchIndexProcess{
+			Store: queries.NewSearchStore(session, log),
+			Log:   log,
+		},
 	}
 	for _, t := range tasks {
 		go t.Start(s.deps.Ctx)

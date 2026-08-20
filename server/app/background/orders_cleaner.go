@@ -22,7 +22,7 @@ func (b *ExpiredOrdersCleaner) Start(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if err := b.Store.DeleteExpiredOrders(ctx); err != nil {
-				logger.GetLogger().Error("failed to delete expired orders", "error", err)
+				b.Log.Error("failed to delete expired orders", "error", err)
 			}
 		}
 	}
