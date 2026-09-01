@@ -1,11 +1,16 @@
 package api
 
 import (
+	"context"
+	"fmt"
 	"generic-shop-sample/app"
 	md "generic-shop-sample/app/middlewares"
 	"generic-shop-sample/internal/logger"
+	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/queries"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -13,9 +18,12 @@ import (
 func OrderRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
 	h := orderHandler{
-		store:      queries.NewOrderStore(deps.DB.GetSession(), log),
-		log:        log,
-		pagination: deps.Config.Pagination,
+		store:           queries.NewOrderStore(deps.DB.GetSession(), log),
+		cache:           deps.Cache.GetCache(cache.OrdersCache),
+		baseCacheKey:    "orders",
+		cacheExpiration: 1 * time.Hour,
+		log:             log,
+		pagination:      deps.Config.Pagination,
 	}
 
 	router.Use(md.AuthMiddleware(deps, log))
@@ -27,9 +35,12 @@ func OrderRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 }
 
 type orderHandler struct {
-	store      queries.OrderStore
-	log        logger.Logger
-	pagination int
+	store           queries.OrderStore
+	cache           cache.CacheClient
+	baseCacheKey    string
+	cacheExpiration time.Duration
+	log             logger.Logger
+	pagination      int
 }
 
 func (h *orderHandler) create(c *gin.Context) {
@@ -54,12 +65,32 @@ func (h *orderHandler) customerList(c *gin.Context) {
 		return
 	}
 
+	ctx := c.Request.Context()
 	page := GetPage(c)
-	output, err := h.store.CustomerList(c.Request.Context(), claims.ID, h.pagination, page)
+	cacheKey := fmt.Sprintf("%s:customerList:%d", h.baseCacheKey, page)
+
+	output, err := JsonCache(JsonCacheInput[[]queries.OrderSummaryResponse]{
+		Ctx:        ctx,
+		CacheKey:   cacheKey,
+		Client:     h.cache,
+		Expiration: h.cacheExpiration,
+		Log:        h.log,
+		Fn: func(sCtx context.Context) ([]queries.OrderSummaryResponse, error) {
+			return h.store.CustomerList(sCtx, claims.ID, h.pagination, page)
+		},
+	})
 	if err != nil {
 		NotFound(c, "")
 		return
 	}
+
+	SetPageHeader(c, CacheMaxPageInput{
+		ctx:        ctx,
+		client:     h.cache,
+		name:       "orders-customerList",
+		pagination: h.pagination,
+		getMaxPage: h.store.MaxCustomerListPage(claims.ID),
+	})
 	c.JSON(http.StatusOK, output)
 }
 
@@ -70,15 +101,27 @@ func (h *orderHandler) get(c *gin.Context) {
 		return
 	}
 
+	ctx := c.Request.Context()
 	id := c.Param("id")
-	output, err := h.store.Get(c.Request.Context(), queries.OrderID{
-		ID:     id,
-		UserID: claims.ID,
+	cacheKey := fmt.Sprintf("%s:get:%s", h.baseCacheKey, id)
+	output, err := JsonCache(JsonCacheInput[queries.OrderResponse]{
+		Ctx:        ctx,
+		CacheKey:   cacheKey,
+		Client:     h.cache,
+		Expiration: h.cacheExpiration,
+		Log:        h.log,
+		Fn: func(sCtx context.Context) (queries.OrderResponse, error) {
+			return h.store.Get(sCtx, queries.OrderID{
+				ID:     id,
+				UserID: claims.ID,
+			})
+		},
 	})
 	if err != nil {
 		NotFound(c, "")
 		return
 	}
+
 	c.JSON(http.StatusOK, output)
 }
 
@@ -136,14 +179,18 @@ func (h *orderHandler) verifyUserInfo(c *gin.Context) {
 func OrderItemsRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
 	h := orderItemsHandler{
-		store:      queries.NewOrderItemsStore(deps.DB.GetSession(), log),
-		log:        log,
-		pagination: deps.Config.Pagination,
+		store:           queries.NewOrderItemsStore(deps.DB.GetSession(), log),
+		log:             log,
+		baseCacheKey:    "ordre-items",
+		cacheExpiration: 1 * time.Hour,
+		cache:           deps.Cache.GetCache(cache.OrdersCache),
+		pagination:      deps.Config.Pagination,
 	}
 
 	router.Use(md.AuthMiddleware(deps, log))
 	router.POST("/", h.create)
 	router.DELETE("/", h.delete)
+	router.GET("/daily-sales", h.dailySales)
 	router.GET("/customer/:id", h.customerList)
 	router.GET("/admin/:id", h.adminList)
 	router.PUT("/set-items-total/:total", h.setItemsTotal)
@@ -154,9 +201,12 @@ type ItemsTotal struct {
 }
 
 type orderItemsHandler struct {
-	store      queries.OrderItemsStore
-	log        logger.Logger
-	pagination int
+	store           queries.OrderItemsStore
+	log             logger.Logger
+	baseCacheKey    string
+	cacheExpiration time.Duration
+	cache           cache.CacheClient
+	pagination      int
 }
 
 func (h *orderItemsHandler) create(c *gin.Context) {
@@ -188,7 +238,8 @@ func (h *orderItemsHandler) customerList(c *gin.Context) {
 
 	id := c.Param("id")
 	page := GetPage(c)
-	output, err := h.store.CustomerList(c.Request.Context(), queries.OrderID{
+	ctx := c.Request.Context()
+	output, err := h.store.CustomerList(ctx, queries.OrderID{
 		ID:     id,
 		UserID: claims.ID,
 	}, h.pagination, page)
@@ -196,6 +247,14 @@ func (h *orderItemsHandler) customerList(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
+	count, err := h.store.MaxCustomerListPage(queries.OrderID{
+		ID:     id,
+		UserID: claims.ID,
+	})(ctx, h.pagination)
+	if err == nil {
+		c.Header("X-Max-Page", strconv.Itoa(count))
+	}
+
 	c.JSON(http.StatusOK, output)
 }
 
@@ -206,12 +265,61 @@ func (h *orderItemsHandler) adminList(c *gin.Context) {
 	}
 
 	id := c.Param("id")
+	ctx := c.Request.Context()
 	page := GetPage(c)
-	output, err := h.store.AdminList(c.Request.Context(), id, h.pagination, page)
+	cacheKey := fmt.Sprintf("%s:adminList:%d", h.baseCacheKey, page)
+
+	output, err := JsonCache(JsonCacheInput[[]queries.OwnedOrderItemResponse]{
+		Ctx:        ctx,
+		CacheKey:   cacheKey,
+		Client:     h.cache,
+		Expiration: h.cacheExpiration,
+		Log:        h.log,
+		Fn: func(sCtx context.Context) ([]queries.OwnedOrderItemResponse, error) {
+			return h.store.AdminList(sCtx, id, h.pagination, page)
+		},
+	})
 	if err != nil {
 		NotFound(c, "")
 		return
 	}
+
+	SetPageHeader(c, CacheMaxPageInput{
+		ctx:        ctx,
+		client:     h.cache,
+		name:       "orderItems-adminList",
+		pagination: h.pagination,
+		getMaxPage: h.store.MaxAdminListPage(id),
+	})
+
+	c.JSON(http.StatusOK, output)
+}
+
+func (h *orderItemsHandler) dailySales(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
+		return
+	}
+
+	page := GetPage(c)
+	ctx := c.Request.Context()
+	cacheKey := fmt.Sprintf("%s:dailySales:%d", h.baseCacheKey, page)
+
+	output, err := JsonCache(JsonCacheInput[[]queries.DailySalesResponse]{
+		Ctx:        ctx,
+		CacheKey:   cacheKey,
+		Client:     h.cache,
+		Expiration: h.cacheExpiration,
+		Log:        h.log,
+		Fn: func(sCtx context.Context) ([]queries.DailySalesResponse, error) {
+			return h.store.DailySales(sCtx, h.pagination, page)
+		},
+	})
+	if err != nil {
+		NotFound(c, "")
+		return
+	}
+
 	c.JSON(http.StatusOK, output)
 }
 

@@ -68,6 +68,7 @@ type ProductResponse struct {
 	Description   string                 `json:"description"`
 	CommonDetail  ProductProperty        `json:"common_detail"`
 	VariantDetail []ProductVariantDetail `json:"variant_detail"`
+	ViewCounter   int64                  `json:"view_counter"`
 }
 
 type productRepository struct {
@@ -77,8 +78,14 @@ type productRepository struct {
 
 type ProductStore interface {
 	Create(ctx context.Context, product CreateProductRequest) error
+
 	List(ctx context.Context, pagination, page int) ([]ProductSummaryResponse, error)
+	MostView(ctx context.Context, pagination, page int) ([]ProductSummaryResponse, error)
+	MaxPage(ctx context.Context, pagination int) (int, error)
+
 	AdminList(ctx context.Context, pagination, page int) ([]ProductStatusResponse, error)
+	MaxAdminListPage(ctx context.Context, pagination int) (int, error)
+
 	Get(ctx context.Context, id string) (ProductResponse, error)
 	Update(ctx context.Context, product UpdateProductRequest) error
 	Delete(ctx context.Context, id string) error
@@ -121,9 +128,40 @@ func (p *productRepository) List(ctx context.Context, pagination, page int) (ite
 
 	items, err = list[ProductSummaryResponse](ctx, p.session, q, pagination, getOffsetFromPageNum(pagination, page))
 	if err != nil {
-		p.log.Debug("ProductRepository.List", "error", err)
+		p.log.Debug("productRepository.List", "error", err)
 		return nil, err
 	}
+	return
+}
+
+func (p *productRepository) MostView(ctx context.Context, pagination, page int) (items []ProductSummaryResponse, err error) {
+	const q = `SELECT id, name, price, pub_date
+		FROM product_s.products
+		WHERE is_active = true
+		ORDER BY
+			view_counter DESC,
+			pub_date DESC,
+			available_quantity DESC,
+			price,
+			is_available DESC
+		LIMIT $1
+		OFFSET $2`
+	items, err = list[ProductSummaryResponse](ctx, p.session, q, pagination, getOffsetFromPageNum(pagination, page))
+	if err != nil {
+		p.log.Debug("productRepository.MostView", "error", err)
+	}
+	return
+}
+
+func (p *productRepository) MaxPage(ctx context.Context, pagination int) (count int, err error) {
+	const q = `SELECT COUNT(*)
+		FROM product_s.products
+		WHERE is_active = TRUE`
+	if err = p.session.QueryRow(ctx, q).Scan(&count); err != nil {
+		p.log.Debug("productRepository.MaxPage")
+		return
+	}
+	count = count / pagination
 	return
 }
 
@@ -144,13 +182,19 @@ func (p *productRepository) AdminList(ctx context.Context, pagination, page int)
 	return
 }
 
+func (p *productRepository) MaxAdminListPage(ctx context.Context, pagination int) (int, error) {
+	return getMaxPage(ctx, p.session, "product_s.products", pagination)
+}
+
 func (p *productRepository) Get(ctx context.Context, id string) (item ProductResponse, err error) {
-	const q = `SELECT id, name, description,
-			common_detail, variant_detail,
-			price, pub_date, available_quantity, is_available, is_active
-		FROM product_s.products
+	const q = `UPDATE product_s.products
+		SET view_counter = view_counter + 1
 		WHERE id = $1::UUID
-		LIMIT 1`
+		RETURNING
+			id, name, description,
+			common_detail, variant_detail, price,
+			pub_date, available_quantity, is_available,
+			is_active, view_counter`
 	item, err = get[ProductResponse](ctx, p.session, q, id)
 	if err != nil {
 		p.log.Debug("ProductRepository.Get", "error", err)

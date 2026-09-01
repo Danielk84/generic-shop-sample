@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"generic-shop-sample/app"
 	md "generic-shop-sample/app/middlewares"
@@ -17,10 +18,11 @@ import (
 func CategoriesRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
 	h := categoriesHandler{
-		store:        queries.NewCategoryStore(deps.DB.GetSession(), log),
-		cache:        deps.Cache.GetCache(cache.ProductsCache),
-		baseCacheKey: "categories",
-		log:          log,
+		store:           queries.NewCategoryStore(deps.DB.GetSession(), log),
+		cache:           deps.Cache.GetCache(cache.ProductsCache),
+		baseCacheKey:    "categories",
+		cacheExpiration: 1 * time.Hour,
+		log:             log,
 	}
 
 	router.GET("/", h.list)
@@ -32,10 +34,11 @@ func CategoriesRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 }
 
 type categoriesHandler struct {
-	store        queries.CategoryStore
-	cache        cache.CacheClient
-	baseCacheKey string
-	log          logger.Logger
+	store           queries.CategoryStore
+	cache           cache.CacheClient
+	baseCacheKey    string
+	cacheExpiration time.Duration
+	log             logger.Logger
 }
 
 func (h *categoriesHandler) create(c *gin.Context) {
@@ -63,19 +66,22 @@ func (h *categoriesHandler) create(c *gin.Context) {
 
 func (h *categoriesHandler) list(c *gin.Context) {
 	ctx := c.Request.Context()
-	var output []queries.Category
-	if err := GetJSONCache(ctx, h.cache, h.baseCacheKey, &output); err != nil {
-		LogCacheErr("GetJSONCache", "categoriesHandler.list", err)
 
-		output, err = h.store.List(ctx)
-		if err != nil {
-			NotFound(c, "")
-			return
-		}
-		if err = SetJSONCacheEx(ctx, h.cache, h.baseCacheKey, 24*time.Hour, output); err != nil {
-			LogCacheErr("SetJSONCache", "categoriesHandler.list", err)
-		}
+	output, err := JsonCache(JsonCacheInput[[]queries.Category]{
+		Ctx:        ctx,
+		CacheKey:   h.baseCacheKey,
+		Client:     h.cache,
+		Expiration: h.cacheExpiration,
+		Log:        h.log,
+		Fn: func(sCtx context.Context) ([]queries.Category, error) {
+			return h.store.List(sCtx)
+		},
+	})
+	if err != nil {
+		NotFound(c, "")
+		return
 	}
+
 	c.JSON(http.StatusOK, output)
 }
 
@@ -105,11 +111,12 @@ func PCRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
 	session := deps.DB.GetSession()
 	h := pcHandler{
-		pcStore:      queries.NewPCStore(session, log),
-		productStore: queries.NewProductStore(session, log),
-		cache:        deps.Cache.GetCache(cache.ProductsCache),
-		baseCacheKey: "pc",
-		log:          log,
+		pcStore:         queries.NewPCStore(session, log),
+		productStore:    queries.NewProductStore(session, log),
+		cache:           deps.Cache.GetCache(cache.ProductsCache),
+		cacheExpiration: 1 * time.Hour,
+		baseCacheKey:    "pc",
+		log:             log,
 	}
 
 	router.GET("/:id", h.list)
@@ -121,11 +128,12 @@ type PC struct {
 }
 
 type pcHandler struct {
-	pcStore      queries.PCStore
-	productStore queries.ProductStore
-	cache        cache.CacheClient
-	baseCacheKey string
-	log          logger.Logger
+	pcStore         queries.PCStore
+	productStore    queries.ProductStore
+	cache           cache.CacheClient
+	baseCacheKey    string
+	cacheExpiration time.Duration
+	log             logger.Logger
 }
 
 func (h *pcHandler) setTags(c *gin.Context) {
@@ -163,18 +171,21 @@ func (h *pcHandler) list(c *gin.Context) {
 	id := c.Param("id")
 	ctx := c.Request.Context()
 	cacheKey := fmt.Sprintf("%s:%s", h.baseCacheKey, id)
-	var output []string
-	if err := GetJSONCache(ctx, h.cache, cacheKey, &output); err != nil {
-		LogCacheErr("GetJSONCache", "pcHandler.list", err)
 
-		output, err = h.pcStore.List(ctx, id)
-		if err != nil {
-			NotFound(c, "")
-			return
-		}
-		if err := SetJSONCacheEx(ctx, h.cache, cacheKey, 12*time.Hour, output); err != nil {
-			LogCacheErr("SetJSONCacheEx", "pcHandler.list", err)
-		}
+	output, err := JsonCache(JsonCacheInput[[]string]{
+		Ctx:        ctx,
+		CacheKey:   cacheKey,
+		Client:     h.cache,
+		Expiration: h.cacheExpiration,
+		Log:        h.log,
+		Fn: func(sCtx context.Context) ([]string, error) {
+			return h.pcStore.List(sCtx, id)
+		},
+	})
+	if err != nil {
+		NotFound(c, "")
+		return
 	}
+
 	c.JSON(http.StatusOK, output)
 }

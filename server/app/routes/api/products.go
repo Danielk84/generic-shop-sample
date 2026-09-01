@@ -1,8 +1,10 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"generic-shop-sample/app"
+	"generic-shop-sample/app/background"
 	md "generic-shop-sample/app/middlewares"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
@@ -20,6 +22,7 @@ func ProductsRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 		productStore:       queries.NewProductStore(deps.DB.GetSession(), log),
 		productImagesStore: queries.NewProductImagesStore(deps.DB.GetSession(), log, deps.Config.ProductImage),
 		cache:              deps.Cache.GetCache(cache.ProductsCache),
+		publicCache:        deps.Cache.GetCache(cache.PublicCache),
 		fileStore:          file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, deps.FileStore, "product-images"),
 		baseCacheKey:       "products",
 		cacheExpiration:    1 * time.Hour,
@@ -28,6 +31,7 @@ func ProductsRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	}
 
 	router.GET("/", h.list)
+	router.GET("/popular", h.popular)
 	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(deps, log)}, []RouteSpec{
 		{http.MethodPost, "/", []gin.HandlerFunc{h.create}},
 		{http.MethodPut, "/", []gin.HandlerFunc{h.update}},
@@ -49,6 +53,7 @@ type productsHandler struct {
 	productStore       queries.ProductStore
 	productImagesStore queries.ProductImagesStore
 	cache              cache.CacheClient
+	publicCache        cache.CacheClient
 	fileStore          file_storage.FileStore
 	baseCacheKey       string
 	cacheExpiration    time.Duration
@@ -80,19 +85,59 @@ func (h *productsHandler) list(c *gin.Context) {
 	ctx := c.Request.Context()
 	page := GetPage(c)
 	cacheKey := fmt.Sprintf("%s:list:%d", h.baseCacheKey, page)
-	var output []queries.ProductSummaryResponse
-	if err := GetJSONCache(ctx, h.cache, cacheKey, &output); err != nil {
-		LogCacheErr("GetJSONCache", "productsHandler.list", err)
 
-		output, err = h.productStore.List(ctx, h.pagination, page)
-		if err != nil {
-			NotFound(c, "")
-			return
-		}
-		if err := SetJSONCacheEx(ctx, h.cache, cacheKey, h.cacheExpiration, output); err != nil {
-			LogCacheErr("SetJSONCacheEx", "productsHandler.list", err)
-		}
+	output, err := JsonCache(JsonCacheInput[[]queries.ProductSummaryResponse]{
+		Ctx:        ctx,
+		CacheKey:   cacheKey,
+		Client:     h.cache,
+		Expiration: h.cacheExpiration,
+		Log:        h.log,
+		Fn: func(sCtx context.Context) ([]queries.ProductSummaryResponse, error) {
+			return h.productStore.List(sCtx, h.pagination, page)
+		},
+	})
+	if err != nil {
+		NotFound(c, "")
+		return
 	}
+
+	SetPageHeader(c, CacheMaxPageInput{
+		ctx:        ctx,
+		client:     h.cache,
+		name:       "products-list",
+		pagination: h.pagination,
+		getMaxPage: h.productStore.MaxPage,
+	})
+	c.JSON(http.StatusOK, output)
+}
+
+func (h *productsHandler) popular(c *gin.Context) {
+	ctx := c.Request.Context()
+	page := GetPage(c)
+	cacheKey := fmt.Sprintf("%s:popular:%d", h.baseCacheKey, page)
+
+	output, err := JsonCache(JsonCacheInput[[]queries.ProductSummaryResponse]{
+		Ctx:        ctx,
+		CacheKey:   cacheKey,
+		Client:     h.cache,
+		Expiration: h.cacheExpiration,
+		Log:        h.log,
+		Fn: func(sCtx context.Context) ([]queries.ProductSummaryResponse, error) {
+			return h.productStore.MostView(sCtx, h.pagination, page)
+		},
+	})
+	if err != nil {
+		NotFound(c, "")
+		return
+	}
+
+	SetPageHeader(c, CacheMaxPageInput{
+		ctx:        ctx,
+		client:     h.cache,
+		name:       "products-popular",
+		pagination: h.pagination,
+		getMaxPage: h.productStore.MaxPage,
+	})
 	c.JSON(http.StatusOK, output)
 }
 
@@ -103,20 +148,20 @@ func (h *productsHandler) adminList(c *gin.Context) {
 	}
 	ctx := c.Request.Context()
 	page := GetPage(c)
-	cacheKey := fmt.Sprintf("%s:full:%d", h.baseCacheKey, page)
-	var output []queries.ProductStatusResponse
-	if err := GetJSONCache(ctx, h.cache, cacheKey, &output); err != nil {
-		LogCacheErr("GetJSONCache", "productsHandler.adminList", err)
 
-		output, err = h.productStore.AdminList(ctx, h.pagination, page)
-		if err != nil {
-			NotFound(c, "")
-			return
-		}
-		if err := SetJSONCacheEx(ctx, h.cache, cacheKey, h.cacheExpiration, output); err != nil {
-			LogCacheErr("SetJSONCacheEx", "productsHandler.adminList", err)
-		}
+	output, err := h.productStore.AdminList(ctx, h.pagination, page)
+	if err != nil {
+		NotFound(c, "")
+		return
 	}
+
+	SetPageHeader(c, CacheMaxPageInput{
+		ctx:        ctx,
+		client:     h.cache,
+		name:       "products-adminList",
+		pagination: h.pagination,
+		getMaxPage: h.productStore.MaxAdminListPage,
+	})
 	c.JSON(http.StatusOK, output)
 }
 
@@ -126,18 +171,19 @@ func (h *productsHandler) get(c *gin.Context) {
 	id := c.Param("id")
 
 	cacheKey := fmt.Sprintf("%s:%s", h.baseCacheKey, id)
-	var output queries.ProductResponse
-	if err := GetJSONCache(ctx, h.cache, cacheKey, &output); err != nil {
-		LogCacheErr("GetJSONCache", "productsHandler.get", err)
-
-		output, err = h.productStore.Get(ctx, id)
-		if err != nil {
-			NotFound(c, "")
-			return
-		}
-		if err := SetJSONCacheEx(ctx, h.cache, cacheKey, h.cacheExpiration, output); err != nil {
-			LogCacheErr("SetJSONCacheEx", "productsHandler.get", err)
-		}
+	output, err := JsonCache(JsonCacheInput[queries.ProductResponse]{
+		Ctx:        ctx,
+		CacheKey:   cacheKey,
+		Client:     h.cache,
+		Expiration: h.cacheExpiration,
+		Log:        h.log,
+		Fn: func(sCtx context.Context) (queries.ProductResponse, error) {
+			return h.productStore.Get(sCtx, id)
+		},
+	})
+	if err != nil {
+		NotFound(c, "")
+		return
 	}
 
 	if !output.IsActive {
@@ -277,9 +323,21 @@ func (h *productsHandler) setActive(c *gin.Context) {
 	}
 
 	id := c.Param("id")
-	if err := h.productStore.SetActive(c.Request.Context(), id, input.Accepted); err != nil {
+	ctx := c.Request.Context()
+	if err := h.productStore.SetActive(ctx, id, input.Accepted); err != nil {
 		NotFound(c, "")
 		return
+	}
+	err := background.SendCacheCleanr(ctx, h.publicCache, background.CacheCleanerMessage{
+		CacheDB: cache.ProductsCache,
+		Keys: []string{
+			fmt.Sprintf("%s:%s", h.baseCacheKey, id),
+			fmt.Sprintf("%s:list", h.baseCacheKey),
+			fmt.Sprintf("%s:popular", h.baseCacheKey),
+		},
+	})
+	if err != nil {
+		h.log.Warn("productsHandler.setActive", "error", err)
 	}
 	Accepted(c, "")
 }
@@ -351,19 +409,22 @@ func (h *productImagesHandler) list(c *gin.Context) {
 	productID := c.Param("productID")
 	ctx := c.Request.Context()
 	cacheKey := fmt.Sprintf("%s:%s", h.baseCacheKey, productID)
-	var output []queries.ProductImageResponse
-	if err := GetJSONCache(ctx, h.cache, cacheKey, &cacheKey); err != nil {
-		LogCacheErr("GetJSONCache", "productImagesHandler.list", err)
 
-		output, err = h.imagesStore.List(ctx, productID)
-		if err != nil {
-			NotFound(c, "")
-			return
-		}
-		if err := SetJSONCacheEx(ctx, h.cache, cacheKey, h.cacheExpiration, output); err != nil {
-			LogCacheErr("SetJSONCacheEx", "productImagesHandler.list", err)
-		}
+	output, err := JsonCache(JsonCacheInput[[]queries.ProductImageResponse]{
+		Ctx:        ctx,
+		CacheKey:   cacheKey,
+		Client:     h.cache,
+		Expiration: h.cacheExpiration,
+		Log:        h.log,
+		Fn: func(sCtx context.Context) ([]queries.ProductImageResponse, error) {
+			return h.imagesStore.List(sCtx, productID)
+		},
+	})
+	if err != nil {
+		NotFound(c, "")
+		return
 	}
+
 	c.JSON(http.StatusOK, output)
 }
 

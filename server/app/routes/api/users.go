@@ -20,12 +20,14 @@ import (
 func UsersRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
 	h := usersHandler{
-		userStore:  queries.NewUserStore(deps.DB.GetSession(), log),
-		shopStore:  queries.NewShopStore(deps.DB.GetSession(), log),
-		fileStore:  file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, deps.FileStore, "user-profile"),
-		cache:      deps.Cache.GetCache(cache.UsersCache),
-		log:        log,
-		pagination: deps.Config.Pagination,
+		userStore:       queries.NewUserStore(deps.DB.GetSession(), log),
+		shopStore:       queries.NewShopStore(deps.DB.GetSession(), log),
+		fileStore:       file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, deps.FileStore, "user-profile"),
+		cache:           deps.Cache.GetCache(cache.UsersCache),
+		baseCacheKey:    "users",
+		cacheExpiration: 1 * time.Hour,
+		log:             log,
+		pagination:      deps.Config.Pagination,
 	}
 
 	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(deps, log)}, []RouteSpec{
@@ -44,12 +46,14 @@ type VerfierKey struct {
 }
 
 type usersHandler struct {
-	userStore  queries.UserStore
-	shopStore  queries.ShopStore
-	fileStore  file_storage.FileStore
-	cache      cache.CacheClient
-	log        logger.Logger
-	pagination int
+	userStore       queries.UserStore
+	shopStore       queries.ShopStore
+	fileStore       file_storage.FileStore
+	cache           cache.CacheClient
+	baseCacheKey    string
+	cacheExpiration time.Duration
+	log             logger.Logger
+	pagination      int
 }
 
 func (h *usersHandler) list(c *gin.Context) {
@@ -58,11 +62,20 @@ func (h *usersHandler) list(c *gin.Context) {
 		return
 	}
 
-	output, err := h.userStore.List(c.Request.Context(), h.pagination, GetPage(c))
+	ctx := c.Request.Context()
+	page := GetPage(c)
+	output, err := h.userStore.List(ctx, h.pagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return
 	}
+	SetPageHeader(c, CacheMaxPageInput{
+		ctx:        ctx,
+		client:     h.cache,
+		name:       "users",
+		pagination: h.pagination,
+		getMaxPage: h.userStore.MaxPage,
+	})
 	c.JSON(http.StatusOK, output)
 }
 
@@ -73,7 +86,8 @@ func (h *usersHandler) get(c *gin.Context) {
 	}
 
 	id := c.Param("id")
-	output, err := h.userStore.Get(c.Request.Context(), id)
+	ctx := c.Request.Context()
+	output, err := h.userStore.Get(ctx, id)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -97,10 +111,6 @@ func (h *usersHandler) updateUserPermission(c *gin.Context) {
 	if err := h.userStore.UpdatePermission(c.Request.Context(), id, input); err != nil {
 		NotFound(c, "")
 		return
-	}
-	cacheKey := fmt.Sprintf("login:%s", claims.ID)
-	if _, err := h.cache.Del(c.Request.Context(), cacheKey).Result(); err != nil {
-		LogCacheErr("Del", "usersHandler.updateUserPermission", err)
 	}
 	Accepted(c, "")
 }
@@ -211,10 +221,13 @@ func (h *usersHandler) setPhoneNumber(c *gin.Context) {
 func ShopRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
 	h := ShopHandler{
-		store:      queries.NewShopStore(deps.DB.GetSession(), log),
-		log:        log,
-		fileStore:  file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, deps.FileStore, "user-profile"),
-		pagination: deps.Config.Pagination,
+		store:           queries.NewShopStore(deps.DB.GetSession(), log),
+		log:             log,
+		fileStore:       file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, deps.FileStore, "user-profile"),
+		cache:           deps.Cache.GetCache(cache.UsersCache),
+		baseCacheKey:    "shop",
+		cacheExpiration: 1 * time.Hour,
+		pagination:      deps.Config.Pagination,
 	}
 
 	router.Use(md.AuthMiddleware(deps, log))
@@ -227,10 +240,13 @@ func ShopRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 }
 
 type ShopHandler struct {
-	store      queries.ShopStore
-	log        logger.Logger
-	fileStore  file_storage.FileStore
-	pagination int
+	store           queries.ShopStore
+	log             logger.Logger
+	fileStore       file_storage.FileStore
+	cache           cache.CacheClient
+	baseCacheKey    string
+	cacheExpiration time.Duration
+	pagination      int
 }
 
 func (h *ShopHandler) upsert(c *gin.Context) {
@@ -260,6 +276,7 @@ func (h *ShopHandler) get(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
+
 	c.JSON(http.StatusOK, output)
 }
 
@@ -269,7 +286,8 @@ func (h *ShopHandler) list(c *gin.Context) {
 		return
 	}
 	ctx := c.Request.Context()
-	output, err := h.store.List(ctx, h.pagination, GetPage(c))
+	page := GetPage(c)
+	output, err := h.store.List(ctx, h.pagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return

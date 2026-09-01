@@ -18,7 +18,7 @@ const (
 )
 
 type EmailAddrRequest struct {
-	Email string `json:"email" binding:"required,email,min=10,max=256"`
+	Email string `json:"email" binding:"required,email,min=10,max=254"`
 }
 
 type PhoneNumberRequest struct {
@@ -51,6 +51,12 @@ type UserInfoRequest struct {
 	NationalCode string `json:"national_code" binding:"required,length=10"`
 }
 
+type RegisterUserRequest struct {
+	EmailAddrRequest
+	PhoneNumberRequest
+	UserInfoRequest
+}
+
 type UserResponse struct {
 	ID             string `json:"id"`
 	Name           string `json:"name"`
@@ -78,7 +84,9 @@ type UserStore interface {
 	IsValidUser(ctx context.Context, user ValidUserRequest) bool
 
 	Create(ctx context.Context, user CreateUserRequest) error
+	Register(ctx context.Context, user RegisterUserRequest) error
 	List(ctx context.Context, pagination, page int) ([]UserResponse, error)
+	MaxPage(ctx context.Context, pagination int) (int, error)
 	Get(ctx context.Context, email string) (UserInfoResponse, error)
 	Delete(ctx context.Context, id, email string) error
 
@@ -153,6 +161,30 @@ func (u *userRepository) Create(ctx context.Context, user CreateUserRequest) (er
 	return
 }
 
+func (u *userRepository) Register(ctx context.Context, user RegisterUserRequest) (err error) {
+	const q = `INSERT INTO user_s.users(
+			email, phone_number,
+			first_name, last_name, national_code,
+			permission_type, is_active)
+		VALUES (
+			@Email, @PhoneNumber,
+			@FirstNumber, @LastNumber, @NationalCode,
+			@PermissionType, @IsActive)`
+	args := pgx.NamedArgs{
+		"Email":          user.Email,
+		"PhoneNumber":    user.PhoneNumber,
+		"FirstName":      user.FirstName,
+		"LastName":       user.LastName,
+		"NationalCode":   user.NationalCode,
+		"PermissionType": Customer,
+		"IsActive":       true,
+	}
+	if err = execOne(ctx, u.session, q, args); err != nil {
+		u.log.Debug("userRepository.Register", "error", err)
+	}
+	return
+}
+
 func (u *userRepository) List(ctx context.Context, pagination, page int) (items []UserResponse, err error) {
 	const q = `SELECT
 			id, (first_name || ' ' || last_name) as name
@@ -166,6 +198,10 @@ func (u *userRepository) List(ctx context.Context, pagination, page int) (items 
 		u.log.Debug("UserRepository.List", "error", err)
 	}
 	return
+}
+
+func (u *userRepository) MaxPage(ctx context.Context, pagination int) (int, error) {
+	return getMaxPage(ctx, u.session, "user_s.users", pagination)
 }
 
 func (u *userRepository) Get(ctx context.Context, id string) (item UserInfoResponse, err error) {
@@ -243,6 +279,9 @@ func (u *userRepository) VerifyUser(ctx context.Context, id string, isVerified b
 			first_name != '' AND
 			last_name != '' AND
 			national_code != ''`
+	if err = execOne(ctx, u.session, q, id, isVerified); err != nil {
+		u.log.Debug("userRepository.VerifyUser", "error", err)
+	}
 	return
 }
 
@@ -338,6 +377,7 @@ type ShopStore interface {
 	Upsert(ctx context.Context, userID string, info UpsertShopRequest) error
 	Get(ctx context.Context, userID string) (item ShopInfoResponse, err error)
 	List(ctx context.Context, pagination, page int) ([]ShopResponse, error)
+	MaxPage(ctx context.Context, pagination int) (int, error)
 	SetPhoneNumber(ctx context.Context, userID string, phoneNumber ShopPhoneNumberRequest) error
 	VerifyPhoneNumber(ctx context.Context, id string, isVerified bool) error
 	GetImgPath(ctx context.Context, userID string) (string, error)
@@ -424,6 +464,10 @@ func (s *shopRepository) List(ctx context.Context, pagination, page int) (items 
 		s.log.Debug("ShopRepository.List", "error", err)
 	}
 	return
+}
+
+func (p *shopRepository) MaxPage(ctx context.Context, pagination int) (int, error) {
+	return getMaxPage(ctx, p.session, "user_s.shop", pagination)
 }
 
 func (s *shopRepository) SetPhoneNumber(ctx context.Context, userID string, phoneNumber ShopPhoneNumberRequest) (err error) {

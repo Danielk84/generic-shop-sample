@@ -17,7 +17,7 @@ type CommentRequest struct {
 
 type CommentResponse struct {
 	ID             string    `json:"id"`
-	Username       string    `json:"username"`
+	Name           string    `json:"Name"`
 	PubDate        time.Time `json:"pub_date"`
 	ChildrenAmount int32     `json:"children_amount"`
 	Body           string    `json:"body"`
@@ -39,8 +39,10 @@ type CommentStore interface {
 	Create(ctx context.Context, userID, name string, comment *CommentRequest) error
 	Get(ctx context.Context, id string) (RelatedCommentResponse, error)
 	List(ctx context.Context, parent string, referrer string, pagination, page int) ([]CommentResponse, error)
+	MaxListPage(ctx context.Context, pagination int) (int, error)
 	FullList(ctx context.Context, userID string, pagination, page int) ([]RelatedCommentResponse, error)
-	Delete(ctx context.Context, id string) error
+	MaxFullListPage(ctx context.Context, pagination int) (int, error)
+	Delete(ctx context.Context, id string) (string, error)
 	SetActive(ctx context.Context, id string, isActive bool) error
 }
 
@@ -121,6 +123,19 @@ func (c *commentRepository) List(ctx context.Context, parent string, referrer st
 	return
 }
 
+func (c *commentRepository) MaxListPage(ctx context.Context, pagination int) (count int, err error) {
+	const q = `SELECT COUNT(*)
+		FROM user_s.comments
+		WHERE is_active = TRUE`
+	err = c.session.QueryRow(ctx, q).Scan(&count)
+	if err != nil {
+		c.log.Debug("commentRepository.MaxListPage", "error", err)
+		return
+	}
+	count = count / pagination
+	return
+}
+
 func (c *commentRepository) FullList(ctx context.Context, userID string, pagination, page int) (items []RelatedCommentResponse, err error) {
 	const baseQuery = `SELECT
 			id, COALESCE(name, 'deleted') AS name, pub_date,
@@ -147,9 +162,15 @@ func (c *commentRepository) FullList(ctx context.Context, userID string, paginat
 	return
 }
 
-func (c *commentRepository) Delete(ctx context.Context, id string) (err error) {
-	const q = `DELETE FROM user_s.comments WHERE id = $1::UUID OR parent = $1::UUID`
-	if _, err = c.session.Exec(ctx, q, id); err != nil {
+func (c *commentRepository) MaxFullListPage(ctx context.Context, pagination int) (int, error) {
+	return getMaxPage(ctx, c.session, "user_s.comments", pagination)
+}
+
+func (c *commentRepository) Delete(ctx context.Context, id string) (item string, err error) {
+	const q = `DELETE FROM user_s.comments
+		WHERE id = $1::UUID OR parent = $1::UUID
+		RETURNING referrer`
+	if err = c.session.QueryRow(ctx, q, id).Scan(&item); err != nil {
 		c.log.Debug("CommentRepository.Delete", "error", err)
 	}
 	return

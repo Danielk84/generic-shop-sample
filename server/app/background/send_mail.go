@@ -1,7 +1,6 @@
 package background
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -45,7 +44,7 @@ func (b *EmailBroker) Start(ctx context.Context) {
 				return
 			}
 			var input MailMessage
-			if err := json.NewDecoder(bytes.NewBufferString(msg.Payload)).Decode(&input); err != nil {
+			if err := json.Unmarshal([]byte(msg.Payload), &input); err != nil {
 				b.Log.Error("failed decode EmailMessage", "error", err)
 				continue
 			}

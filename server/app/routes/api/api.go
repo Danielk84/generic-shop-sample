@@ -103,7 +103,7 @@ func RandVerifyNum() int {
 	return rand.Intn(maxN-minN) + minN
 }
 
-func SetJSONCacheEx(ctx context.Context, cache cache.CacheClient, key string, expiration time.Duration, value any) error {
+func SetJSONCache(ctx context.Context, cache cache.CacheClient, key string, expiration time.Duration, value any) error {
 	data, err := json.Marshal(value)
 	if err != nil {
 		return err
@@ -130,4 +130,60 @@ func LogCacheErr(method, section string, err error) {
 		"secion", section,
 		"err", err,
 	)
+}
+
+type JsonCacheInput[T any] struct {
+	Ctx        context.Context
+	CacheKey   string
+	Client     cache.CacheClient
+	Expiration time.Duration
+	Log        logger.Logger
+	Fn         func(context.Context) (T, error)
+}
+
+func JsonCache[T any](j JsonCacheInput[T]) (output T, err error) {
+	if err = GetJSONCache(j.Ctx, j.Client, j.CacheKey, &output); err != nil {
+		LogCacheErr("GetJSONCache", j.CacheKey, err)
+
+		if output, err = j.Fn(j.Ctx); err != nil {
+			return
+		}
+		if err = SetJSONCache(j.Ctx, j.Client, j.CacheKey, j.Expiration, output); err != nil {
+			LogCacheErr("SetJSONCache", j.CacheKey, err)
+			err = nil
+		}
+	}
+	return
+}
+
+type CacheMaxPageInput struct {
+	ctx        context.Context
+	client     cache.CacheClient
+	name       string
+	pagination int
+	getMaxPage queries.MaxPageType
+}
+
+func CacheMaxPage(c CacheMaxPageInput) (count int, err error) {
+	cacheKey := fmt.Sprintf("max-page:%s", c.name)
+	if err = c.client.Get(c.ctx, cacheKey).Scan(&count); err != nil {
+		LogCacheErr("Get", "CacheMaxPage", err)
+
+		if count, err = c.getMaxPage(c.ctx, c.pagination); err != nil {
+			return
+		}
+		if err = c.client.Set(c.ctx, cacheKey, count, time.Hour).Err(); err != nil {
+			LogCacheErr("Set", "CacheMaxPage", err)
+			err = nil
+		}
+	}
+	return
+}
+
+func SetPageHeader(c *gin.Context, maxPage CacheMaxPageInput) {
+	count, err := CacheMaxPage(maxPage)
+	if err != nil {
+		return
+	}
+	c.Header("X-Max-Page", strconv.Itoa(count))
 }

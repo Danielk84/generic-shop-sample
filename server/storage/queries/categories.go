@@ -9,7 +9,7 @@ import (
 )
 
 type CategoryTag struct {
-	Tag string `json:"tag" binding:"required"`
+	Tag string `json:"tag" binding:"required,min=1"`
 }
 
 type Category struct {

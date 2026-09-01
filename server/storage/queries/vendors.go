@@ -30,6 +30,7 @@ type vendorOrderRepository struct {
 type VendorOrderStore interface {
 	Create(ctx context.Context, order VendorOrder) error
 	List(ctx context.Context, userID string, pagination, page int) ([]VendorOrder, error)
+	MaxPage(userID string) MaxPageType
 	SetIsDelivered(ctx context.Context, order VendorOrderDelivere) error
 }
 
@@ -77,6 +78,20 @@ func (v *vendorOrderRepository) List(ctx context.Context, userID string, paginat
 		v.log.Debug("VendorOrderRepository.List", "error", err)
 	}
 	return
+}
+
+func (v *vendorOrderRepository) MaxPage(userID string) MaxPageType {
+	const q = `SELECT COUNT(*)
+		FROM order_s.vendors_order
+		WHERE user_id = $1::UUID`
+	return func(ctx context.Context, pagination int) (count int, err error) {
+		if err = v.session.QueryRow(ctx, q, userID).Scan(&count); err != nil {
+			v.log.Debug("vendorOrderRepository.MaxPage", "error", err)
+			return
+		}
+		count = count / pagination
+		return
+	}
 }
 
 func (v *vendorOrderRepository) SetIsDelivered(ctx context.Context, order VendorOrderDelivere) (err error) {

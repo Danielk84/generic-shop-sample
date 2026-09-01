@@ -48,7 +48,10 @@ type orderRepository struct {
 
 type OrderStore interface {
 	Create(ctx context.Context, userID string) (string, error)
+
 	CustomerList(ctx context.Context, userID string, pagination, page int) ([]OrderSummaryResponse, error)
+	MaxCustomerListPage(userID string) MaxPageType
+
 	FullList(ctx context.Context, pagination, page int) ([]OrderSummaryResponse, error)
 	NotConfirmedList(ctx context.Context, pagination, page int) ([]OrderSummaryResponse, error)
 	Get(ctx context.Context, id OrderID) (OrderResponse, error)
@@ -103,6 +106,20 @@ func (o *orderRepository) CustomerList(ctx context.Context, userID string, pagin
 		o.log.Debug("OrderRepository.CustomerList", "error", err)
 	}
 	return
+}
+
+func (o *orderRepository) MaxCustomerListPage(userID string) MaxPageType {
+	const q = `SELECT COUNT(*)
+		FROM order_s.orders
+		WHERE user_id = $1::UUID`
+	return func(ctx context.Context, pagination int) (count int, err error) {
+		if err = o.session.QueryRow(ctx, q, userID).Scan(&count); err != nil {
+			o.log.Debug("orderRepository.MaxCustomerListPage", "error", err)
+			return
+		}
+		count = count / pagination
+		return
+	}
 }
 
 func (o *orderRepository) NotConfirmedList(ctx context.Context, pagination, page int) (items []OrderSummaryResponse, err error) {
@@ -250,6 +267,11 @@ type OrderItemResponse struct {
 	Property ProductProperty
 }
 
+type DailySalesResponse struct {
+	Date  string `json:"date"`
+	Count int    `json:"count"`
+}
+
 type orderItemsRepository struct {
 	session database.Session
 	log     logger.Logger
@@ -257,9 +279,15 @@ type orderItemsRepository struct {
 
 type OrderItemsStore interface {
 	Create(ctx context.Context, userID string, item OrderItemRequest) error
+
 	CustomerList(ctx context.Context, id OrderID, pagination, page int) ([]OwnedOrderItemResponse, error)
+	MaxCustomerListPage(id OrderID) MaxPageType
+
 	AdminList(ctx context.Context, orderID string, pagination, page int) ([]OwnedOrderItemResponse, error)
+	MaxAdminListPage(orderID string) MaxPageType
+
 	FullList(ctx context.Context, orderID string, pagination, page int) ([]OrderItemResponse, error)
+	DailySales(ctx context.Context, pagination, page int) ([]DailySalesResponse, error)
 	Delete(ctx context.Context, id OrderItemID) error
 	SetItemsTotal(ctx context.Context, id OrderItemID, itemsTotal int32) error
 	SetConfirmedVendors(ctx context.Context, id OrderItemID, confirmedVendors []ProductVendor) error
@@ -317,6 +345,20 @@ func (o *orderItemsRepository) CustomerList(ctx context.Context,
 	return
 }
 
+func (o *orderItemsRepository) MaxCustomerListPage(id OrderID) MaxPageType {
+	const q = `SELECT COUNT(*)
+		FROM order_s.order_items
+		WHERE order_id = $1::UUID AND user_id = $2::UUID`
+	return func(ctx context.Context, pagination int) (count int, err error) {
+		if err = o.session.QueryRow(ctx, q, id.ID, id.UserID).Scan(&count); err != nil {
+			o.log.Debug("orderItemsRepository.MaxCustomerListPage", "error", err)
+			return
+		}
+		count = count / pagination
+		return
+	}
+}
+
 func (o *orderItemsRepository) AdminList(ctx context.Context,
 	orderID string, pagination, page int) (items []OwnedOrderItemResponse, err error) {
 	const q = `SELECT
@@ -335,6 +377,35 @@ func (o *orderItemsRepository) AdminList(ctx context.Context,
 	items, err = list[OwnedOrderItemResponse](ctx, o.session, q, args)
 	if err != nil {
 		o.log.Debug("OrderItemsRepository.AdminList", "error", err)
+	}
+	return
+}
+
+func (o *orderItemsRepository) MaxAdminListPage(orderID string) MaxPageType {
+	const q = `SELECT COUNT(*)
+		FROM order_s.order_items
+		WHERE order_id = $1::UUID`
+	return func(ctx context.Context, pagination int) (count int, err error) {
+		if err = o.session.QueryRow(ctx, q, orderID).Scan(&count); err != nil {
+			o.log.Debug("orderItemsRepository.MaxAdminListPage", "error", err)
+			return
+		}
+		count = count / pagination
+		return
+	}
+}
+
+func (o *orderItemsRepository) DailySales(ctx context.Context, pagination, page int) (items []DailySalesResponse, err error) {
+	const q = `SELECT o.started_at AS date, COUNT(*) AS count
+		FROM order_s.order_items AS i
+		LEFT JOIN order_s.orders AS o ON o.id = i.order_id
+		GROUP BY o.started_at
+		ORDER BY o.started_at DESC
+		LIMIT $1
+		OFFSET $2`
+	items, err = list[DailySalesResponse](ctx, o.session, q, pagination, getOffsetFromPageNum(pagination, page))
+	if err != nil {
+		o.log.Debug("orderItemsRepository.DailySales", "error", err)
 	}
 	return
 }

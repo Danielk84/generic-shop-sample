@@ -1,7 +1,6 @@
 package background
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -49,7 +48,7 @@ OuterLoop:
 			o.Log.Debug("OrdersProcess.Start", "debug", "start of sub channel")
 
 			var input queries.OrderID
-			if err := json.NewDecoder(bytes.NewBufferString(msg.Payload)).Decode(&input); err != nil {
+			if err := json.Unmarshal([]byte(msg.Payload), &input); err != nil {
 				o.Log.Error("failed decode OrderID", "error", err)
 				continue
 			}

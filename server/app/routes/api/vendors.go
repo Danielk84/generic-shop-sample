@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"generic-shop-sample/app"
 	md "generic-shop-sample/app/middlewares"
 	"generic-shop-sample/internal/logger"
@@ -37,30 +36,29 @@ type vendorOrderHandler struct {
 	baseCacheKey    string
 }
 
-func (v *vendorOrderHandler) list(c *gin.Context) {
+func (h *vendorOrderHandler) list(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
 		return
 	}
 	ctx := c.Request.Context()
 	page := GetPage(c)
-	cacheKey := fmt.Sprintf("%s:%s", v.baseCacheKey, claims.ID)
-	var output []queries.VendorOrder
-	if err := GetJSONCache(ctx, v.cache, cacheKey, &output); err != nil {
-		LogCacheErr("GetJSONCache", "vendorOrderHandler.list", err)
-		output, err = v.store.List(ctx, claims.ID, v.pagination, page)
-		if err != nil {
-			NotFound(c, "")
-			return
-		}
-		if err := SetJSONCacheEx(ctx, v.cache, cacheKey, v.cacheExpiration, output); err != nil {
-			LogCacheErr("SetJSONCacheEx", "vendorOrderHandler.list", err)
-		}
+	output, err := h.store.List(ctx, claims.ID, h.pagination, page)
+	if err != nil {
+		NotFound(c, "")
+		return
 	}
+	SetPageHeader(c, CacheMaxPageInput{
+		ctx:        ctx,
+		client:     h.cache,
+		name:       "vendorOrder",
+		pagination: h.pagination,
+		getMaxPage: h.store.MaxPage(claims.ID),
+	})
 	c.JSON(http.StatusOK, output)
 }
 
-func (v *vendorOrderHandler) setIsDelivered(c *gin.Context) {
+func (h *vendorOrderHandler) setIsDelivered(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
 		return
@@ -75,13 +73,10 @@ func (v *vendorOrderHandler) setIsDelivered(c *gin.Context) {
 		return
 	}
 	ctx := c.Request.Context()
-	if err := v.store.SetIsDelivered(ctx, input); err != nil {
+	if err := h.store.SetIsDelivered(ctx, input); err != nil {
 		NotFound(c, "")
 		return
 	}
-	cacheKey := fmt.Sprintf("%s:%s", v.baseCacheKey, claims.ID)
-	if err := v.cache.Del(ctx, cacheKey).Err(); err != nil {
-		LogCacheErr("Del", "vendorOrderHandler.setIsDelivered", err)
-	}
+
 	Accepted(c, "")
 }

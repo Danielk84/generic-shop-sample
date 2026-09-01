@@ -63,13 +63,11 @@ services:
         "wget",
         "-q",
         "-O-",
-        "--post-data",
-        "{\"email\": \"${ADMIN_EMAIL:-admin@example.com}\"}",
-        "http://backend:8080/api/auth/is-user-exists"]
-      interval: 30s
+        "http://backend:8080/api/auth/healthz"]
+      interval: 10m
       timeout: 60s
-      retries: 5
-      start_period: 80s
+      retries: 3
+      start_period: 30s
 
   
   database:
@@ -86,10 +84,10 @@ services:
       - server
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-postgres}"]
-      interval: 30s
+      interval: 10m
       timeout: 60s
-      retries: 5
-      start_period: 80s
+      retries: 3
+      start_period: 30s
 
   cache:
     container_name: cache
@@ -99,10 +97,10 @@ services:
       - server
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 1m30s
+      interval: 10m
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 30s
 
   mail:
     container_name: mail
@@ -116,9 +114,10 @@ services:
       - server
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://mail:8025/livez"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
+      interval: 10m
+      timeout: 30s
+      retries: 3
+      start_period: 30s
 
   storage:
     container_name: storage
@@ -139,9 +138,10 @@ services:
       - storage-data:/data
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://storage:8333/healthz"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 10m
+      timeout: 30s
+      retries: 3
+      start_period: 30s
 
 volumes:
   backend-deps:
@@ -153,4 +153,3 @@ volumes:
 
 networks:
   server:
-

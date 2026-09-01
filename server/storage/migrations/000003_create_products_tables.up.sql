@@ -10,7 +10,8 @@ CREATE TABLE product_s.products (
     is_available BOOLEAN NOT NULL DEFAULT FALSE,
     is_active BOOLEAN NOT NULL DEFAULT FALSE,
     common_detail JSONB NOT NULL CHECK (jsonb_typeof(common_detail) = 'object') DEFAULT '{}'::JSONB,
-    variant_detail JSONB NOT NULL CHECK (jsonb_typeof(variant_detail) = 'array') DEFAULT '[]'::JSONB
+    variant_detail JSONB NOT NULL CHECK (jsonb_typeof(variant_detail) = 'array') DEFAULT '[]'::JSONB,
+    view_counter BIGINT NOT NULL CHECK (view_counter >= 0) DEFAULT 0
     -- variante-detail schema
     -- Array<{
     --     property: Map<{ [key: string]: string }>

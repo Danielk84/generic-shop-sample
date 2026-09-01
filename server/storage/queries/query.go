@@ -3,6 +3,8 @@ package queries
 import (
 	"context"
 	"errors"
+	"fmt"
+	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/database"
 	"reflect"
 
@@ -66,4 +68,24 @@ func getRowToFunc[T any]() pgx.RowToFunc[T] {
 	} else {
 		return pgx.RowTo[T]
 	}
+}
+
+type MaxPageType = func(ctx context.Context, pagination int) (int, error)
+
+func getMaxPage(
+	ctx context.Context,
+	session database.Session,
+	name string,
+	pagination int,
+) (count int, err error) {
+	const q = `SELECT COUNT(*) FROM %s`
+	err = session.QueryRow(ctx, fmt.Sprintf(q, name)).Scan(&count)
+	if err != nil {
+		logger.GetLogger().Debug("getMaxPage",
+			"name", name,
+			"error", err)
+		return
+	}
+	count = count / pagination
+	return
 }

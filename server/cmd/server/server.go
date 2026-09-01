@@ -88,6 +88,11 @@ func (s *server) setBackgroundTask() {
 			Store: queries.NewSearchStore(session, log),
 			Log:   log,
 		},
+		&bg.CacheCleaner{
+			Cache:  s.deps.Cache,
+			Client: s.deps.Cache.GetCache(cache.PublicCache),
+			Log:    log,
+		},
 	}
 	for _, t := range tasks {
 		go t.Start(s.deps.Ctx)

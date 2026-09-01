@@ -4,6 +4,7 @@ import (
 	"generic-shop-sample/app"
 	md "generic-shop-sample/app/middlewares"
 	"generic-shop-sample/internal/logger"
+	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/queries"
 	"net/http"
 	"time"
@@ -13,10 +14,13 @@ import (
 
 func SearchRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
+	session := deps.DB.GetSession()
 	h := searchHandler{
-		store:      queries.NewSearchStore(deps.DB.GetSession(), log),
-		log:        log,
-		pagination: deps.Config.Pagination,
+		store:        queries.NewSearchStore(session, log),
+		productStore: queries.NewProductStore(session, log),
+		cache:        deps.Cache.GetCache(cache.ProductsCache),
+		log:          log,
+		pagination:   deps.Config.Pagination,
 	}
 
 	rl := md.NewRateLimiter(deps.Ctx, 50, 30*time.Minute, 60*time.Second)
@@ -34,9 +38,11 @@ type searchRequest struct {
 }
 
 type searchHandler struct {
-	store      queries.SearchStore
-	log        logger.Logger
-	pagination int
+	store        queries.SearchStore
+	productStore queries.ProductStore
+	cache        cache.CacheClient
+	log          logger.Logger
+	pagination   int
 }
 
 func (h *searchHandler) reindex(c *gin.Context) {
@@ -64,5 +70,12 @@ func (h *searchHandler) search(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
+	SetPageHeader(c, CacheMaxPageInput{
+		ctx:        ctx,
+		client:     h.cache,
+		name:       "search",
+		pagination: h.pagination,
+		getMaxPage: h.productStore.MaxPage,
+	})
 	c.JSON(http.StatusOK, output)
 }

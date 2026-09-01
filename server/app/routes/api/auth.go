@@ -39,6 +39,7 @@ func LoginRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 		{http.MethodPost, "/login", []gin.HandlerFunc{h.login}},
 		{http.MethodPost, "/register", []gin.HandlerFunc{h.register}},
 		{http.MethodGet, "/refresh", []gin.HandlerFunc{h.refresh}},
+		{http.MethodGet, "/healthz", []gin.HandlerFunc{h.healthz}},
 	})
 	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(deps, log)}, []RouteSpec{
 		{http.MethodGet, "/logout", []gin.HandlerFunc{h.logout}},
@@ -55,7 +56,7 @@ type loginRequest struct {
 }
 
 type registerRequest struct {
-	queries.CreateUserRequest
+	queries.RegisterUserRequest
 	randKeyRequest
 }
 
@@ -98,7 +99,7 @@ func (h *authHandler) isUserExists(c *gin.Context) {
 			Unprocessable(c, "")
 			return
 		}
-		NotFound(c, "")
+		NotFound(c, "register")
 	} else {
 		cacheKey := fmt.Sprintf("pass-key:%s", input.Email)
 		if err := h.cache.Set(ctx, cacheKey, randKey, h.passKeyExpiration).Err(); err != nil {
@@ -156,7 +157,7 @@ func (h *authHandler) login(c *gin.Context) {
 			refreshKey = fmt.Sprintf("refresh:%s", refreshToken)
 			authExpiration := time.Now().Add(h.authExpiration * time.Minute)
 			maxAge = time.Until(authExpiration)
-			if err = SetJSONCacheEx(ctx, h.cache, refreshKey, maxAge, user); err != nil {
+			if err = SetJSONCache(ctx, h.cache, refreshKey, maxAge, user); err != nil {
 				LogCacheErr("Get", "authHandler.getRefreshToken", err)
 			}
 		}
@@ -194,7 +195,7 @@ func (h *authHandler) register(c *gin.Context) {
 		BadRequest(c, "Invalid register-key")
 		return
 	}
-	if err := h.store.Create(ctx, input.CreateUserRequest); err != nil {
+	if err := h.store.Register(ctx, input.RegisterUserRequest); err != nil {
 		Unprocessable(c, "failed to create request")
 		return
 	}
@@ -258,4 +259,8 @@ func (h *authHandler) logout(c *gin.Context) {
 		LogCacheErr("Del", "authHandler.logout", err)
 	}
 	c.Status(http.StatusNoContent)
+}
+
+func (h *authHandler) healthz(c *gin.Context) {
+	c.Status(http.StatusOK)
 }

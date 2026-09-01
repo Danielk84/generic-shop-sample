@@ -1,8 +1,10 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"generic-shop-sample/app"
+	"generic-shop-sample/app/background"
 	md "generic-shop-sample/app/middlewares"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
@@ -78,7 +80,19 @@ func (h *commentsHandler) get(c *gin.Context) {
 	}
 
 	id := c.Param("id")
-	output, err := h.store.Get(c.Request.Context(), id)
+	ctx := c.Request.Context()
+	cacheKey := fmt.Sprintf("%s:get:%s", h.baseCacheKey, id)
+
+	output, err := JsonCache(JsonCacheInput[queries.RelatedCommentResponse]{
+		Ctx:        ctx,
+		CacheKey:   cacheKey,
+		Client:     h.cache,
+		Expiration: h.cacheExpiration,
+		Log:        h.log,
+		Fn: func(sCtx context.Context) (queries.RelatedCommentResponse, error) {
+			return h.store.Get(sCtx, id)
+		},
+	})
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -96,20 +110,31 @@ func (h *commentsHandler) list(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	cacheKey := fmt.Sprintf("%s:list:%s:%s", h.baseCacheKey, input.Parent, input.Referrer)
-	var output []queries.CommentResponse
-	if err := GetJSONCache(ctx, h.cache, cacheKey, &output); err != nil {
-		LogCacheErr("GetJSONCache", "commentsHandler.list", err)
+	page := GetPage(c)
+	cacheKey := fmt.Sprintf("%s:list:%s:%s:%d", h.baseCacheKey, input.Referrer, input.Parent, page)
 
-		output, err = h.store.List(ctx, input.Parent, url.QueryEscape(input.Referrer), h.pagination, GetPage(c))
-		if err != nil {
-			NotFound(c, "")
-			return
-		}
-		if err := SetJSONCacheEx(ctx, h.cache, cacheKey, h.cacheExpiration, output); err != nil {
-			LogCacheErr("SetJSONCacheEx", "commentsHandler.list", err)
-		}
+	output, err := JsonCache(JsonCacheInput[[]queries.CommentResponse]{
+		Ctx:        ctx,
+		CacheKey:   cacheKey,
+		Client:     h.cache,
+		Expiration: h.cacheExpiration,
+		Log:        h.log,
+		Fn: func(sCtx context.Context) ([]queries.CommentResponse, error) {
+			return h.store.List(sCtx, input.Parent, url.QueryEscape(input.Referrer), h.pagination, page)
+		},
+	})
+	if err != nil {
+		NotFound(c, "")
+		return
 	}
+
+	SetPageHeader(c, CacheMaxPageInput{
+		ctx:        ctx,
+		client:     h.cache,
+		name:       "comments-list",
+		pagination: h.pagination,
+		getMaxPage: h.store.MaxListPage,
+	})
 	c.JSON(http.StatusOK, output)
 }
 
@@ -121,25 +146,46 @@ func (h *commentsHandler) fullList(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	cacheKey := fmt.Sprintf("%s:full:%s", h.baseCacheKey, userID)
-	var output []queries.RelatedCommentResponse
-	if err := GetJSONCache(ctx, h.cache, cacheKey, &output); err != nil {
-		LogCacheErr("GetJSONCache", "commentsHandler.fullList", err)
-		output, err = h.store.FullList(ctx, userID, h.pagination, GetPage(c))
-		if err != nil {
-			NotFound(c, "")
-			return
-		}
-		if err := SetJSONCacheEx(ctx, h.cache, cacheKey, h.cacheExpiration, output); err != nil {
-			LogCacheErr("SetJSONCacheEx", "commentsHandler.fullList", err)
-		}
+	page := GetPage(c)
+	cacheKey := fmt.Sprintf("%s:full:%s:%d", h.baseCacheKey, userID, page)
 
+	var output []queries.RelatedCommentResponse
+	var err error
+	if userID == "" {
+		output, err = h.store.FullList(ctx, userID, h.pagination, page)
+	} else {
+		output, err = JsonCache(JsonCacheInput[[]queries.RelatedCommentResponse]{
+			Ctx:        ctx,
+			CacheKey:   cacheKey,
+			Client:     h.cache,
+			Expiration: h.cacheExpiration,
+			Log:        h.log,
+			Fn: func(sCtx context.Context) ([]queries.RelatedCommentResponse, error) {
+				return h.store.FullList(sCtx, userID, h.pagination, page)
+			},
+		})
 	}
+
+	if err != nil {
+		NotFound(c, "")
+		return
+	}
+	SetPageHeader(c, CacheMaxPageInput{
+		ctx:        ctx,
+		client:     h.cache,
+		name:       "comments-fullList",
+		pagination: h.pagination,
+		getMaxPage: h.store.MaxFullListPage,
+	})
 	c.JSON(http.StatusOK, output)
 }
 
 func (h *commentsHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
+	userID := claims.ID
+	if HasPermissions(nil, claims.PermissionType, queries.Admin) {
+		userID = ""
+	}
 	id := c.Param("id")
 
 	ctx := c.Request.Context()
@@ -153,9 +199,21 @@ func (h *commentsHandler) delete(c *gin.Context) {
 		Forbidden(c, "")
 		return
 	}
-	if err := h.store.Delete(ctx, output.ID); err != nil {
+	referrer, err := h.store.Delete(ctx, output.ID)
+	if err != nil {
 		BadRequest(c, "")
 		return
+	}
+	err = background.SendCacheCleanr(ctx, h.cache, background.CacheCleanerMessage{
+		CacheDB: cache.PublicCache,
+		Keys: []string{
+			fmt.Sprintf("%s:get:%s", h.baseCacheKey, id),
+			fmt.Sprintf("%s:list:%s", h.baseCacheKey, referrer),
+			fmt.Sprintf("%s:full:%s", h.baseCacheKey, userID),
+		},
+	})
+	if err != nil {
+		h.log.Warn("commentsHandler.delete", "error", err)
 	}
 	c.Status(http.StatusNoContent)
 }
