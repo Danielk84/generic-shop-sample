@@ -11,7 +11,7 @@ const icon = {
     },
     footer: {
       send: 'common/footer/send-icon.svg',
-    }
+    },
   },
   ui: {
     button: {
@@ -26,6 +26,10 @@ const icon = {
     },
   },
   pages: {
+    auth: {
+      eyeOn: 'pages/auth/eye-on-icon.svg',
+      eyeOff: 'pages/auth/eye-off-icon.svg',
+    },
     basket: {
       close: 'pages/basket/close-icon.svg',
       plus: 'pages/basket/plus-icon.svg',
@@ -34,8 +38,13 @@ const icon = {
     products: {
       close: 'pages/products/close-icon.svg',
       fullScreen: 'pages/products/full-screen-icon.svg',
-    }
-  }
+    },
+    panel: {
+      products: {
+        upload: 'pages/panel/products/upload-icon.svg',
+      },
+    },
+  },
 } as const
 
 export default icon
