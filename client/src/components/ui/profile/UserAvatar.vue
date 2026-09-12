@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue';
+import { defineAsyncComponent } from 'vue'
 
-const ImageFrameCard = defineAsyncComponent(() => import('@/components/card/ImageFrameCard.vue'))
+const ImageFrameCard = defineAsyncComponent(
+  () => import('@/components/card/ImageFrameCard.vue'),
+)
 
 const props = defineProps<{ img?: string }>()
 </script>

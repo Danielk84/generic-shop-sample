@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue';
+import { defineAsyncComponent } from 'vue'
 
-import icons from '@/utils/icons';
+import icons from '@/utils/icons'
 
-const BaseIcon = defineAsyncComponent(() => import("@/components/ui/BaseIcon.vue"))
+const BaseIcon = defineAsyncComponent(
+  () => import('@/components/ui/BaseIcon.vue'),
+)
 </script>
 
 <template>

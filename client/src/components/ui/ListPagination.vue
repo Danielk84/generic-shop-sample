@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { defineAsyncComponent, onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { defineAsyncComponent, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 
 import icons from '@/utils/icons'
 import { range } from '@/utils/helper'
-const BaseIcon = defineAsyncComponent(() => import('@/components/ui/BaseIcon.vue'))
+const BaseIcon = defineAsyncComponent(
+  () => import('@/components/ui/BaseIcon.vue'),
+)
 
 const props = defineProps<{ last: number }>()
 const emits = defineEmits<{
-  (e: 'changePage', page: number): void,
+  (e: 'changePage', page: number): void
 }>()
 const route = useRoute()
 
@@ -18,14 +20,13 @@ const pageRange = (page: number, last: number) => {
   const windowSize = 3
   let start = Math.max(1, page - 1)
   let end = Math.min(last, start + windowSize - 1)
-  
+
   if (end - start < windowSize - 1) {
     start = Math.max(1, end - windowSize + 1)
   }
-  
+
   return range(start, end + 1)
 }
-
 
 const setPage = (value: number) => {
   if (value > props.last || value < 1) {
@@ -51,8 +52,8 @@ watch(page, async (newValue: number) => {
   <div class="pagination">
     <button
       class="main-btn btn"
-      v-bind:class="{ 'off': page === 1 }"
-      @click="setPage(page - 1)"  
+      v-bind:class="{ off: page === 1 }"
+      @click="setPage(page - 1)"
     >
       <BaseIcon
         :icon="icons.ui.pagination.previous"
@@ -63,7 +64,7 @@ watch(page, async (newValue: number) => {
     <div v-for="i of pageRange(page, props.last)" :key="i">
       <button
         class="btn item"
-        v-bind:class="{ 'select': i === page }"
+        v-bind:class="{ select: i === page }"
         @click="setPage(i)"
       >
         {{ i }}
@@ -71,7 +72,7 @@ watch(page, async (newValue: number) => {
     </div>
     <button
       class="main-btn btn item"
-      v-bind:class="{ 'off': page === props.last || props.last === 0 }"
+      v-bind:class="{ off: page === props.last || props.last === 0 }"
       @click="setPage(page + 1)"
     >
       <BaseIcon

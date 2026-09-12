@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { defineAsyncComponent, ref } from 'vue'
 
-const SearchBox = defineAsyncComponent(() => import('@/components/ui/search/SearchBox.vue'))
-const ListPagination = defineAsyncComponent(() => import('@/components/ui/ListPagination.vue'))
+const SearchBox = defineAsyncComponent(
+  () => import('@/components/ui/search/SearchBox.vue'),
+)
+const ListPagination = defineAsyncComponent(
+  () => import('@/components/ui/ListPagination.vue'),
+)
 const page = ref<number>(1)
 
 const items = ref([])
@@ -19,11 +23,14 @@ const items = ref([])
         <span>But it is empty!</span>
       </h2>
     </div>
-    <div v-else class="items">
-    </div>
+    <div v-else class="items"></div>
     <ListPagination
-      :last=0
-      @change-page="(newValue: number) => { page = newValue }"
+      :last="0"
+      @change-page="
+        (newValue: number) => {
+          page = newValue
+        }
+      "
     />
   </div>
 </template>

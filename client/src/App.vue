@@ -1,38 +1,38 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue';
+import { computed, type Component } from 'vue'
+import { RouterView, useRoute } from 'vue-router'
 
-const NavBar = defineAsyncComponent(() => import('@/components/common/nav-bar/NavBar.vue'))
-const FooterBlock = defineAsyncComponent(() => import('@/components/common/footer/FooterBlock.vue'))
+import DefaultLayout from '@/layout/DefaultLayout.vue'
+import { setLayout, type LayoutName } from '@/layout/layout'
+
+const route = useRoute()
+
+const layoutList = computed<LayoutName[]>(() => {
+  const result: LayoutName[] = []
+
+  // max layout components
+  for (let count = 0; count < 3; count++) {
+    const layout = route.meta[`layout_${count}`]
+    if (layout === undefined) {
+      break
+    }
+    result.push(layout as LayoutName)
+  }
+
+  return result
+})
+
+const comp = computed<Component>(() => {
+  return setLayout(layoutList.value, DefaultLayout)
+})
 </script>
 
 <template>
-  <div class="base">
-    <header>
-      <NavBar />
-    </header>
-    <div class="page">
-      <main>
-        <RouterView />
-      </main>
-      <footer>
-        <FooterBlock />
-      </footer>
-    </div>
-  </div>
+  <component :is="comp">
+    <RouterView />
+  </component>
 </template>
 
 <style scoped>
 @reference "@/styles/index.css";
-
-.base > .page {
-  @apply pt-22 max-w-screen min-h-screen flex flex-col gap-30;
-}
-
-.base > .page > main {
-  @apply w-screen h-full relative;
-}
-
-.base > .page > footer {
-  @apply w-screen h-full z-40 relative;
-}
 </style>

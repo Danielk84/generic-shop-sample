@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue'
 
 import { imageOnLoadHook } from '@/components/card/hooks'
 import type { ImageFrameCardProps } from '@/components/card/types'
+
+const backendUrl = import.meta.env.VITE_BACKEND_URL
 
 const props = defineProps<ImageFrameCardProps>()
 
@@ -20,15 +22,12 @@ onUnmounted(async () => {
 </script>
 
 <template>
-  <div
-    class="img-frame"
-    ref="bgRef"
-  >
+  <div class="img-frame" ref="bgRef">
     <div class="img-box c-flex-all-center">
       <img
         v-if="typeof img === 'string'"
         ref="imgRef"
-        :src="props.img"
+        :src="`${backendUrl}/static/${props.img}`"
         :alt="props.alt"
         loading="lazy"
       />

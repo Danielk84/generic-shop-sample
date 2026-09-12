@@ -4,8 +4,12 @@ import { defineAsyncComponent } from 'vue'
 import icons from '@/utils/icons'
 import type { ImageFrameCardProps } from '@/components/card/types'
 
-const BaseIcon = defineAsyncComponent(() => import('@/components/ui/BaseIcon.vue'))
-const ImageFrameCard = defineAsyncComponent(() => import('@/components/card/ImageFrameCard.vue'))
+const BaseIcon = defineAsyncComponent(
+  () => import('@/components/ui/BaseIcon.vue'),
+)
+const ImageFrameCard = defineAsyncComponent(
+  () => import('@/components/card/ImageFrameCard.vue'),
+)
 
 const props = defineProps<ImageFrameCardProps>()
 const emits = defineEmits<{
@@ -16,10 +20,7 @@ const emits = defineEmits<{
 <template>
   <div class="full-screen">
     <div class="tools-bar">
-      <button
-        class="close-btn"
-        @click="emits('destroy')"  
-      >
+      <button class="close-btn" @click="emits('destroy')">
         <BaseIcon :icon="icons.pages.products.close" />
       </button>
     </div>

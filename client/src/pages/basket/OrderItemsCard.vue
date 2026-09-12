@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { defineAsyncComponent, ref } from 'vue';
+import { defineAsyncComponent, ref } from 'vue'
 
 import icons from '@/utils/icons'
 import type { OrderItemsCardProps } from '@/pages/basket/types'
 
-const BaseIcon = defineAsyncComponent(() => import('@/components/ui/BaseIcon.vue'))
-const ImageFrameCard = defineAsyncComponent(() => import('@/components/card/ImageFrameCard.vue'))
+const BaseIcon = defineAsyncComponent(
+  () => import('@/components/ui/BaseIcon.vue'),
+)
+const ImageFrameCard = defineAsyncComponent(
+  () => import('@/components/card/ImageFrameCard.vue'),
+)
 
 const props = defineProps<{ data: OrderItemsCardProps }>()
 const emits = defineEmits<{
@@ -24,7 +28,7 @@ function saveChange() {
 <template>
   <div class="order-item">
     <button class="remove-btn c-flex-all-center">
-      <BaseIcon :icon="icons.pages.basket.close"/>
+      <BaseIcon :icon="icons.pages.basket.close" />
     </button>
     <div class="order-info">
       <div class="img">
@@ -44,10 +48,12 @@ function saveChange() {
           <div class="change-box c-flex-all-center">
             <button
               class="change-btn change-box-item"
-              @click="() => {
-                count -= 1;
-                isSaved = false
-              }"
+              @click="
+                () => {
+                  count -= 1
+                  isSaved = false
+                }
+              "
             >
               <BaseIcon
                 :icon="icons.pages.basket.minus"
@@ -58,10 +64,12 @@ function saveChange() {
             <span class="change-box-item">{{ count }}</span>
             <button
               class="change-btn change-box-item"
-              @click="() => {
-                count += 1;
-                isSaved = false
-              }"
+              @click="
+                () => {
+                  count += 1
+                  isSaved = false
+                }
+              "
             >
               <BaseIcon
                 :icon="icons.pages.basket.plus"
@@ -148,7 +156,7 @@ function saveChange() {
 
 .sub-item .info {
   @apply flex flex-row gap-4;
-} 
+}
 
 .sub-item h3 {
   @apply w-fit h-fit text-nowrap;

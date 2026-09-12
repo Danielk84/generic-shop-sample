@@ -1,18 +1,16 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue';
+import { defineAsyncComponent } from 'vue'
 
 import icons from '@/utils/icons'
 
-const BaseIcon = defineAsyncComponent(() => import('@/components/ui/BaseIcon.vue'))
+const BaseIcon = defineAsyncComponent(
+  () => import('@/components/ui/BaseIcon.vue'),
+)
 </script>
 
 <template>
   <div class="subscribe-box">
-    <input
-      id="subscribe-input"
-      type="text"
-      placeholder="person@email.com"
-    />
+    <input id="subscribe-input" type="text" placeholder="person@email.com" />
     <button class="subscribe-btn c-flex-all-center">
       <BaseIcon
         :icon="icons.common.footer.send"

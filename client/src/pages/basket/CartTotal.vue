@@ -6,7 +6,7 @@ const props = defineProps<{ data: CartToralProps }>()
 function dashIfUndefined(v?: number) {
   if (v) return v
   return '-'
-} 
+}
 </script>
 
 <template>

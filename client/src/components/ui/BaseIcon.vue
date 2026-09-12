@@ -1,19 +1,18 @@
 <script setup lang="ts">
 import { defineAsyncComponent, computed } from 'vue'
 
-import { getCssVar } from '@/utils/helper';
-import type { Icon } from '@/components/ui/types';
+import { getCssVar } from '@/utils/helper'
+import type { Icon } from '@/components/ui/types'
 
-const props = withDefaults(
-  defineProps<Icon>(),
-  {
-    size: '24px',
-    strokeColor: '--color-default-icon',
-    fillColor: '--color-default-icon',
-  },
+const props = withDefaults(defineProps<Icon>(), {
+  size: '24px',
+  strokeColor: '--color-default-icon',
+  fillColor: '--color-default-icon',
+})
+
+const icon = defineAsyncComponent(
+  () => import(/* @vite-ignore */ `../../assets/icons/${props.icon}`),
 )
-
-const icon = defineAsyncComponent(() => import( /* @vite-ignore */ `../../assets/icons/${props.icon}`))
 
 const style = computed(() => ({
   strokeColor: getCssVar(props.strokeColor),

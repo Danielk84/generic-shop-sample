@@ -4,10 +4,10 @@ export interface ImageFrameCardProps {
   tag?: string
 }
 
-export interface ProductCardProps extends ImageFrameCardProps{
+export interface ProductCardProps extends ImageFrameCardProps {
   to: string
   title: string
-  price: string
+  price: number
 }
 
 export interface BlogCardProps {

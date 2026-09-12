@@ -1,14 +1,26 @@
 <script setup lang="ts">
-import { defineAsyncComponent, onBeforeUnmount, ref, watch } from 'vue';
+import {
+  computed,
+  defineAsyncComponent,
+  onBeforeUnmount,
+  ref,
+  watch,
+} from 'vue'
+import { useRoute } from 'vue-router'
 
 import icons from '@/utils/icons'
+import { setCallbackURL } from '@/utils/helper'
 
-const BaseIcon = defineAsyncComponent(() => import('@/components/ui/BaseIcon.vue'))
+const BaseIcon = defineAsyncComponent(
+  () => import('@/components/ui/BaseIcon.vue'),
+)
+
+const route = useRoute()
+const callbackUrl = computed(() => setCallbackURL(route.fullPath))
 
 const showUp = ref<boolean>(false)
 
 let closeTimout: ReturnType<typeof setTimeout> | null = null
-
 
 function cancelClose() {
   if (closeTimout) {
@@ -22,7 +34,7 @@ function scheduleClose() {
   closeTimout = setTimeout(() => {
     showUp.value = false
     closeTimout = null
-  }, 3000);
+  }, 3000)
 }
 
 watch(showUp, (v) => {
@@ -36,19 +48,26 @@ onBeforeUnmount(() => {
 
 <template>
   <div
-      class="profile-dropdown"
-      @mouseleave="scheduleClose"  
-      @mouseenter="cancelClose"
+    class="profile-dropdown"
+    @mouseleave="scheduleClose"
+    @mouseenter="cancelClose"
   >
     <button class="btn c-flex-all-center" @click="showUp = !showUp">
       <slot>Click me</slot>
       <BaseIcon :icon="icons.common.navBar.dropdown" />
     </button>
-    <div
-      class="dropdown-content"
-      :class="{ 'show': showUp }">
+    <div class="dropdown-content" :class="{ show: showUp }">
       <div class="content c-flex-all-center">
-        <RouterLink to="/">User</RouterLink>
+        <RouterLink
+          :to="{
+            name: 'auth',
+            query: {
+              callback_url: callbackUrl,
+            },
+          }"
+        >
+          User
+        </RouterLink>
         <RouterLink to="/">Vendor</RouterLink>
         <RouterLink to="/">Admin</RouterLink>
       </div>

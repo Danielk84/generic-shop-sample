@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue';
+import { defineAsyncComponent } from 'vue'
 
 import icons from '@/utils/icons'
 import type { ProductCardProps } from '@/components/card/types'
 
-const BaseIcon = defineAsyncComponent(() => import('@/components/ui/BaseIcon.vue'))
-const ImageFrameCard = defineAsyncComponent(() => import('@/components/card/ImageFrameCard.vue'))
+const BaseIcon = defineAsyncComponent(
+  () => import('@/components/ui/BaseIcon.vue'),
+)
+const ImageFrameCard = defineAsyncComponent(
+  () => import('@/components/card/ImageFrameCard.vue'),
+)
 
 const props = defineProps<{ data: ProductCardProps }>()
 </script>
@@ -22,7 +26,7 @@ const props = defineProps<{ data: ProductCardProps }>()
       <div class="price">
         <span>{{ props.data.price }}</span>
         <button class="add-product">
-          <BaseIcon :icon="icons.card.plusCircle" size="19px"/>
+          <BaseIcon :icon="icons.card.plusCircle" size="19px" />
         </button>
       </div>
     </div>
@@ -33,11 +37,15 @@ const props = defineProps<{ data: ProductCardProps }>()
 @reference "@/styles/index.css";
 
 .product-card {
-  @apply w-70 h-93 gap-10;
+  @apply p-4 w-90 h-120 gap-10 overflow-hidden
+    hover:shadow-[0px_0px_20px_5px]
+    shadow shadow-card-product-shadow
+    transform duration-150
+    rounded-2xl;
 }
 
 .product-card > .banner {
-  @apply w-full h-90/100;
+  @apply w-full h-80/100;
 }
 
 .product-card > .content {

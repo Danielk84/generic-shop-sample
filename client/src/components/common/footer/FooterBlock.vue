@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue';
+import { defineAsyncComponent } from 'vue'
 
-const SubscribeBox = defineAsyncComponent(() => import('@/components/common/footer/SubscribeBox.vue'))
-const BaseFooter = defineAsyncComponent(() => import('@/components/common/footer/BaseFooter.vue'))
+const SubscribeBox = defineAsyncComponent(
+  () => import('@/components/common/footer/SubscribeBox.vue'),
+)
+const BaseFooter = defineAsyncComponent(
+  () => import('@/components/common/footer/BaseFooter.vue'),
+)
 </script>
 
 <template>

@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from 'vue'
 
-const SearchBox = defineAsyncComponent(() => import('@/components/ui/search/SearchBox.vue'))
+const SearchBox = defineAsyncComponent(
+  () => import('@/components/ui/search/SearchBox.vue'),
+)
+const LatestProducts = defineAsyncComponent(
+  () => import('@/pages/landing/LastestProducts.vue'),
+)
+const PopularProducts = defineAsyncComponent(
+  () => import('@/pages/landing/PopularProducts.vue'),
+)
 </script>
 
 <template>
@@ -9,15 +17,14 @@ const SearchBox = defineAsyncComponent(() => import('@/components/ui/search/Sear
     <div class="landing-banner c-flex-all-center">
       <div class="banner-content c-flex-all-center">
         <h1 class="c-flex-all-center">
-          <span>
-            Crafting Comfort, Redifining Spaces.
-          </span>
-          <span>
-            Your Home, Your Signature Style.
-          </span>
+          <span> Crafting Comfort, Redifining Spaces. </span>
+          <span> Your Home, Your Signature Style. </span>
         </h1>
         <p>
-          Lorem, ipsum dolor sit amet consectetur adipisicing elit. Exercitationem ipsam velit temporibus animi natus, autem molestias aperiam dolorum! Sint excepturi molestias nemo eligendi ducimus autem atque quo magni voluptatum cupiditate.
+          Lorem, ipsum dolor sit amet consectetur adipisicing elit.
+          Exercitationem ipsam velit temporibus animi natus, autem molestias
+          aperiam dolorum! Sint excepturi molestias nemo eligendi ducimus autem
+          atque quo magni voluptatum cupiditate.
         </p>
       </div>
       <div class="banner-search">
@@ -25,7 +32,8 @@ const SearchBox = defineAsyncComponent(() => import('@/components/ui/search/Sear
       </div>
     </div>
     <div class="landing-content c-flex-all-center">
-      
+      <LatestProducts />
+      <PopularProducts />
     </div>
   </div>
 </template>
@@ -44,11 +52,12 @@ const SearchBox = defineAsyncComponent(() => import('@/components/ui/search/Sear
 }
 
 .landing-page > .landing-banner > .banner-content {
-  @apply text-landing-p-text w-50/100 flex-col gap-5;
+  @apply text-landing-p-text w-50/100 flex-col gap-10;
 }
 
 .landing-page > .landing-banner > .banner-content > h1 {
-  @apply text-5xl flex-col;
+  @apply text-5xl flex-col font-secondary-default
+    w-full h-full text-center;
 }
 
 .landing-page > .landing-banner > .banner-content > p {
@@ -57,10 +66,10 @@ const SearchBox = defineAsyncComponent(() => import('@/components/ui/search/Sear
 
 .landing-page > .landing-banner > .banner-search {
   @apply w-100 h-fit;
-} 
+}
 
 .landing-page > .landing-content {
-  @apply w-full h-fit z-10
+  @apply w-full h-fit z-10 flex-col
     rounded-t-4xl pt-20 gap-10
     bg-landing-p-secondary-bg;
 }

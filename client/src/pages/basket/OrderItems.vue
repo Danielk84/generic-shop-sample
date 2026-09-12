@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue';
+import { defineAsyncComponent } from 'vue'
 
- import type { OrderItemsCardProps } from '@/pages/basket/types'
+import type { OrderItemsCardProps } from '@/pages/basket/types'
 
-
-const OrderItemsCard = defineAsyncComponent(() => import('@/pages/basket/OrderItemsCard.vue'))
+const OrderItemsCard = defineAsyncComponent(
+  () => import('@/pages/basket/OrderItemsCard.vue'),
+)
 
 const props = defineProps<{ orders: OrderItemsCardProps[] }>()
 </script>
@@ -14,19 +15,20 @@ const props = defineProps<{ orders: OrderItemsCardProps[] }>()
     <div class="title c-flex-all-center">
       <span>Products</span>
     </div>
-    <div
-      v-if="props.orders.length === 0"
-      class="empty c-flex-all-center"
-    >
+    <div v-if="props.orders.length === 0" class="empty c-flex-all-center">
       <span>empty!</span>
     </div>
     <div v-else class="orders">
-      <OrderItemsCard v-for="i of props.orders" :key="i.name" :data="{
-        name: i.name,
-        price: i.price,
-        count: i.count,
-        total: i.total,
-      }" />
+      <OrderItemsCard
+        v-for="i of props.orders"
+        :key="i.name"
+        :data="{
+          name: i.name,
+          price: i.price,
+          count: i.count,
+          total: i.total,
+        }"
+      />
     </div>
   </div>
 </template>

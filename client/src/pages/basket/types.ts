@@ -1,4 +1,4 @@
-import type { ImageFrameCardProps } from '@/components/card/types';
+import type { ImageFrameCardProps } from '@/components/card/types'
 
 export interface CartToralProps {
   totalItem?: number

@@ -2,26 +2,22 @@
 import { defineAsyncComponent, ref } from 'vue'
 
 import icons from '@/utils/icons'
-import type { ImageFrameListProps } from '@/pages/products/types'
-import type { ImageFrameCardProps } from '@/components/card/types'
+import type { ProductImageResponse } from '@/contracts/products/response.interface'
 
-const ImageFrameCard = defineAsyncComponent(() => import('@/components/card/ImageFrameCard.vue'))
-const FullScreenImage = defineAsyncComponent(() => import('@/pages/products/FullScreenImage.vue'))
-const BaseIcon = defineAsyncComponent(() => import('@/components/ui/BaseIcon.vue'))
-
-const props = withDefaults(
-  defineProps<{ data: ImageFrameListProps }>(),
-  {
-    data: (): ImageFrameListProps => ({
-      images: [],
-    }),
-  }
+const ImageFrameCard = defineAsyncComponent(
+  () => import('@/components/card/ImageFrameCard.vue'),
+)
+const FullScreenImage = defineAsyncComponent(
+  () => import('@/components/common/products/FullScreenImage.vue'),
+)
+const BaseIcon = defineAsyncComponent(
+  () => import('@/components/ui/BaseIcon.vue'),
 )
 
-const showUp = ref<ImageFrameCardProps>(
-  props.data.images.length === 0 ?
-    {} as ImageFrameCardProps:
-    props.data.images[0]
+const props = defineProps<{ data: ProductImageResponse[] }>()
+
+const showUp = ref<ProductImageResponse>(
+  props.data.length === 0 ? ({} as ProductImageResponse) : props.data[0],
 )
 
 const fullScreen = ref<boolean>(false)
@@ -30,21 +26,15 @@ const fullScreen = ref<boolean>(false)
 <template>
   <div class="image-frame-list c-flex-all-center">
     <div class="list">
-      <div v-for="i in props.data.images" :key="i.img" class="base-img item">
-        <button
-          class="btn"
-          @click="showUp = i"
-        >
-          <ImageFrameCard :img="i.img" :alt="i.alt" />
+      <div v-for="i in props.data" :key="i.img_path" class="base-img item">
+        <button class="btn" @click="showUp = i">
+          <ImageFrameCard :img="i.img_path" :alt="i.id" />
         </button>
       </div>
     </div>
     <div class="show-up">
-      <button
-        class="base-img btn"
-        @click="fullScreen = true"
-      >
-        <ImageFrameCard :img="showUp.img" :alt="showUp.alt" />
+      <button class="base-img btn" @click="fullScreen = true">
+        <ImageFrameCard :img="showUp.img_path" :alt="showUp.id" />
         <div class="full-screen-btn">
           <BaseIcon
             :icon="icons.pages.products.fullScreen"
@@ -57,8 +47,8 @@ const fullScreen = ref<boolean>(false)
     </div>
     <div v-if="fullScreen">
       <FullScreenImage
-        :img="showUp.img"
-        :alt="showUp.alt"
+        :img="showUp.img_path"
+        :alt="showUp.id"
         @destroy="fullScreen = false"
       />
     </div>

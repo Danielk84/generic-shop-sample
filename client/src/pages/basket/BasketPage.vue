@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue';
+import { defineAsyncComponent } from 'vue'
 
-const OrderItems = defineAsyncComponent(() => import('@/pages/basket/OrderItems.vue'))
+const OrderItems = defineAsyncComponent(
+  () => import('@/pages/basket/OrderItems.vue'),
+)
 // const CardTotal = defineAsyncComponent(() => import('@/pages/basket/CartTotal.vue'))
 </script>
 
@@ -18,6 +20,4 @@ const OrderItems = defineAsyncComponent(() => import('@/pages/basket/OrderItems.
 
 <style scoped>
 @reference "@/styles/index.css";
-
-
 </style>
