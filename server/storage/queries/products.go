@@ -32,6 +32,7 @@ type ProductSummaryResponse struct {
 	ID      string    `json:"id"`
 	Name    string    `json:"name"`
 	Price   int64     `json:"price"`
+	ImgPath string    `json:"img_path"`
 	PubDate time.Time `json:"pub_date"`
 }
 
@@ -77,7 +78,7 @@ type productRepository struct {
 }
 
 type ProductStore interface {
-	Create(ctx context.Context, product CreateProductRequest) error
+	Create(ctx context.Context, product CreateProductRequest) (string, error)
 
 	List(ctx context.Context, pagination, page int) ([]ProductSummaryResponse, error)
 	MostView(ctx context.Context, pagination, page int) ([]ProductSummaryResponse, error)
@@ -100,32 +101,34 @@ func NewProductStore(session database.Session, log logger.Logger) ProductStore {
 	return &productRepository{session, log}
 }
 
-func (p *productRepository) Create(ctx context.Context, product CreateProductRequest) (err error) {
+func (p *productRepository) Create(ctx context.Context, product CreateProductRequest) (item string, err error) {
 	const q = `INSERT INTO product_s.products(name, description, common_detail)
-		VALUES (@Name, @Description, @CommonDetail::JSONB)`
+		VALUES (@Name, @Description, @CommonDetail::JSONB)
+		RETURNING id`
 	args := pgx.NamedArgs{
 		"Name":         product.Name,
 		"Description":  product.Description,
 		"CommonDetail": product.CommonDetail,
 	}
-	if err = execOne(ctx, p.session, q, args); err != nil {
+	if err = p.session.QueryRow(ctx, q, args).Scan(&item); err != nil {
 		p.log.Debug("ProductRepository.Create", "error", err)
 	}
 	return
 }
 
 func (p *productRepository) List(ctx context.Context, pagination, page int) (items []ProductSummaryResponse, err error) {
-	const q = `SELECT id, name, price, pub_date
-		FROM product_s.products
-		WHERE is_active = true
+	const q = `SELECT p.id, p.name, p.price, p.pub_date, COALESCE(i.img_path, '') as img_path
+		FROM product_s.products AS p
+		LEFT JOIN product_s.product_images
+			ON p.id = i.product_id AND i.pos = 0
+		WHERE p.is_active = true
 		ORDER BY
-			pub_date DESC,
-			available_quantity DESC,
-			price,
-			is_available DESC
+			p.pub_date DESC,
+			p.available_quantity DESC,
+			p.price,
+			p.is_available DESC
 		LIMIT $1
 		OFFSET $2`
-
 	items, err = list[ProductSummaryResponse](ctx, p.session, q, pagination, getOffsetFromPageNum(pagination, page))
 	if err != nil {
 		p.log.Debug("productRepository.List", "error", err)
@@ -135,15 +138,17 @@ func (p *productRepository) List(ctx context.Context, pagination, page int) (ite
 }
 
 func (p *productRepository) MostView(ctx context.Context, pagination, page int) (items []ProductSummaryResponse, err error) {
-	const q = `SELECT id, name, price, pub_date
-		FROM product_s.products
-		WHERE is_active = true
+	const q = `SELECT p.id, p.name, p.price, p.pub_date, COALESCE(i.img_path, '') as img_path
+		FROM product_s.products AS p
+		LEFT JOIN products.product_images AS i
+			ON p.id = i.product_id AND i.pos = 0
+		WHERE p.is_active = true
 		ORDER BY
-			view_counter DESC,
-			pub_date DESC,
-			available_quantity DESC,
-			price,
-			is_available DESC
+			p.view_counter DESC,
+			p.pub_date DESC,
+			p.available_quantity DESC,
+			p.price,
+			p.is_available DESC
 		LIMIT $1
 		OFFSET $2`
 	items, err = list[ProductSummaryResponse](ctx, p.session, q, pagination, getOffsetFromPageNum(pagination, page))
@@ -166,9 +171,14 @@ func (p *productRepository) MaxPage(ctx context.Context, pagination int) (count 
 }
 
 func (p *productRepository) AdminList(ctx context.Context, pagination, page int) (items []ProductStatusResponse, err error) {
-	const q = `SELECT id, name, price, pub_date, available_quantity, is_available, is_active
-		FROM product_s.products
-		ORDER BY pub_date DESC, is_active
+	const q = `SELECT
+			p.id, p.name, p.price,
+			p.pub_date, p.available_quantity, p.is_available,
+			p.is_active, COALESCE(i.img_path, '') as img_path
+		FROM product_s.products AS p
+		LEFT JOIN product_s.product_images AS i
+			ON p.id = i.product_id AND i.pos = 0
+		ORDER BY p.pub_date DESC, p.is_active
 		LIMIT @Limit
 		OFFSET @Offset`
 	args := pgx.NamedArgs{
@@ -352,9 +362,9 @@ func (p *productImagesRepository) Create(ctx context.Context, productID, imgPath
 		return ErrFullCapacity
 	}
 
-	const createProductImageQuery = `INSERT INTO product_s.product_images(product_id, img_path)
-		VALUES ($1::UUID, $2)`
-	if err = execOne(ctx, p.session, createProductImageQuery, productID, imgPath); err != nil {
+	const createProductImageQuery = `INSERT INTO product_s.product_images(product_id, pos, img_path)
+		VALUES ($1::UUID, $2, $3)`
+	if err = execOne(ctx, p.session, createProductImageQuery, productID, count, imgPath); err != nil {
 		p.log.Debug("ProductImagesRepository.Create", "error", err)
 	}
 	return

@@ -4,6 +4,7 @@ import (
 	"context"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/database"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -73,33 +74,49 @@ func NewPCStore(session database.Session, log logger.Logger) PCStore {
 
 func (p *pcRepository) SetTags(ctx context.Context, id string, tags []string) (err error) {
 	const q = `DELETE FROM product_s.products_categories
-		WHERE product_id = $1::UUID`
+		WHERE product_id = $1::UUID AND tag = ANY($2::text[])`
+	items, _ := p.List(ctx, id)
 
-	tagsLen := len(tags)
-	if tagsLen == 0 {
-		p.log.Debug("pcRepository.SetTags",
-			"error", "return nil: empty tag list")
-		return
+	newTags := []string{}
+	for _, t := range tags {
+		if !slices.Contains(items, t) {
+			newTags = append(newTags, t)
+		}
 	}
-	err = pgx.BeginFunc(ctx, p.session, func(tx pgx.Tx) error {
-		if _, err := tx.Exec(ctx, q, id); err != nil {
-			p.log.Debug("pcRepository.SetTags", "error", err)
-			return err
+	deleteTags := []string{}
+	for _, t := range items {
+		if !slices.Contains(tags, t) {
+			deleteTags = append(deleteTags, t)
 		}
-		_, err := tx.CopyFrom(ctx,
-			pgx.Identifier{"product_s", "products_categories"},
-			[]string{"product_id", "tag"},
-			pgx.CopyFromSlice(tagsLen, func(i int) ([]any, error) {
-				return []any{id, tags[i]}, nil
-			}),
-		)
+	}
+
+	newTagsSize := len(newTags)
+	deleteTagsSize := len(deleteTags)
+	if newTagsSize > 0 || deleteTagsSize > 0 {
+		err = pgx.BeginFunc(ctx, p.session, func(tx pgx.Tx) error {
+			if newTagsSize > 0 {
+				_, err := tx.CopyFrom(ctx,
+					pgx.Identifier{"product_s", "products_categories"},
+					[]string{"product_id", "tag"},
+					pgx.CopyFromSlice(newTagsSize, func(i int) ([]any, error) {
+						return []any{id, tags[i]}, nil
+					}),
+				)
+				if err != nil {
+					return err
+				}
+			}
+			if deleteTagsSize > 0 {
+				_, err := tx.Exec(ctx, q, id, deleteTags)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		})
 		if err != nil {
-			p.log.Debug("pcRepository.SetTags", "error", err)
+			p.log.Debug("PCRepository.SetTags", "error", err)
 		}
-		return err
-	})
-	if err != nil {
-		p.log.Debug("PCRepository.SetTags", "error", err)
 	}
 	return
 }

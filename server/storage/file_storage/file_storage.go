@@ -174,14 +174,18 @@ func (f *fileManager) Delete(ctx context.Context, key string) error {
 	if err != nil {
 		var apiErr smithy.APIError
 		if !errors.As(err, &apiErr) {
-			f.log.Error("fileManager.Delete", "error", err)
+			f.log.Error("fileManager.Delete",
+				"key", key,
+				"error", err)
 			return err
 		}
 		switch apiErr.(type) {
 		case *types.NotFound:
 			return nil
 		default:
-			f.log.Error("fileManager.Delete", "error", err)
+			f.log.Error("fileManager.Delete",
+				"key", key,
+				"error", err)
 			return err
 		}
 	}

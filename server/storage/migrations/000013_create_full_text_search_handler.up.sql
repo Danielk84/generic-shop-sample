@@ -77,6 +77,6 @@ CREATE OR REPLACE TRIGGER _record_products_changes_products_t
     EXECUTE FUNCTION full_text_search_s.record_products_changes();
 
 CREATE OR REPLACE TRIGGER _record_products_changes_categories_t
-    AFTER INSERT OR UPDATE ON product_s.products_categories
+    AFTER INSERT OR UPDATE OR DELETE ON product_s.products_categories
     FOR EACH ROW
     EXECUTE FUNCTION full_text_search_s.record_products_changes();

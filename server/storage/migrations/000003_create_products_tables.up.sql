@@ -37,6 +37,7 @@ CREATE TABLE product_s.products_categories (
 CREATE TABLE product_s.product_images (
     id UUID NOT NULL PRIMARY KEY DEFAULT uuidv7(),
     product_id UUID NOT NULL REFERENCES product_s.products(id) ON DELETE CASCADE,
+    pos INTEGER NOT NULL DEFAULT 0,
     img_path TEXT NOT NULL UNIQUE
 );
 

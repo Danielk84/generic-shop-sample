@@ -48,7 +48,7 @@ type CreateUserRequest struct {
 type UserInfoRequest struct {
 	FirstName    string `json:"first_name" binding:"required,min=1,max=50"`
 	LastName     string `json:"last_name" binding:"required,min=1,max=60"`
-	NationalCode string `json:"national_code" binding:"required,length=10"`
+	NationalCode string `json:"national_code" binding:"required,len=10"`
 }
 
 type RegisterUserRequest struct {
@@ -62,7 +62,7 @@ type UserResponse struct {
 	Name           string `json:"name"`
 	PermissionType int32  `json:"permission_type"`
 	IsActive       bool   `json:"is_active"`
-	IsVerified     string `json:"is_verified"`
+	IsVerified     bool   `json:"is_verified"`
 }
 
 type UserInfoResponse struct {
@@ -83,11 +83,12 @@ type UserStore interface {
 	IsUserExists(ctx context.Context, email string) bool
 	IsValidUser(ctx context.Context, user ValidUserRequest) bool
 
-	Create(ctx context.Context, user CreateUserRequest) error
+	Create(ctx context.Context, user CreateUserRequest) (string, error)
 	Register(ctx context.Context, user RegisterUserRequest) error
 	List(ctx context.Context, pagination, page int) ([]UserResponse, error)
 	MaxPage(ctx context.Context, pagination int) (int, error)
 	Get(ctx context.Context, email string) (UserInfoResponse, error)
+	GetByEmail(ctx context.Context, email string) (UserInfoResponse, error)
 	Delete(ctx context.Context, id, email string) error
 
 	UpdatePermission(ctx context.Context, id string, user UserPermissionRequest) error
@@ -144,7 +145,7 @@ func (u *userRepository) IsValidUser(ctx context.Context, user ValidUserRequest)
 	return true
 }
 
-func (u *userRepository) Create(ctx context.Context, user CreateUserRequest) (err error) {
+func (u *userRepository) Create(ctx context.Context, user CreateUserRequest) (item string, err error) {
 	const q = `INSERT INTO user_s.users (email, permission_type, is_active)
 			VALUES (@Email, @PermissionType, @IsActive)
 			RETURNING id`
@@ -153,7 +154,7 @@ func (u *userRepository) Create(ctx context.Context, user CreateUserRequest) (er
 		"PermissionType": user.PermissionType,
 		"IsActive":       user.IsActive,
 	}
-	if err = execOne(ctx, u.session, q, args); err != nil {
+	if err = u.session.QueryRow(ctx, q, args).Scan(&item); err != nil {
 		u.log.Debug("UserRepository.Create", "error", err)
 	} else {
 		u.log.Info("UserRepository.Create", "email", user.Email)
@@ -208,8 +209,8 @@ func (u *userRepository) Get(ctx context.Context, id string) (item UserInfoRespo
 	const q = `SELECT
 			id, (first_name || ' ' || last_name) as name,
 			permission_type, is_active, is_verified,
-			COALESCE(email, ''), is_v_email,
-			COALESCE(phone_number, ''), is_v_phone_number,
+			COALESCE(email, '') AS email, is_v_email,
+			COALESCE(phone_number, '') AS phone_number, is_v_phone_number,
 			national_code
 		FROM user_s.users
 		WHERE id = $1::UUID
@@ -217,6 +218,23 @@ func (u *userRepository) Get(ctx context.Context, id string) (item UserInfoRespo
 	item, err = get[UserInfoResponse](ctx, u.session, q, id)
 	if err != nil {
 		u.log.Debug("UserRepository.Get", "error", err)
+	}
+	return
+}
+
+func (u *userRepository) GetByEmail(ctx context.Context, email string) (item UserInfoResponse, err error) {
+	const q = `SELECT
+			id, (first_name || ' ' || last_name) as name,
+			permission_type, is_active, is_verified,
+			COALESCE(email, '') AS email, is_v_email,
+			COALESCE(phone_number, '') AS phone_number, is_v_phone_number,
+			national_code
+		FROM user_s.users
+		WHERE email = $1
+		LIMIT 1`
+	item, err = get[UserInfoResponse](ctx, u.session, q, email)
+	if err != nil {
+		u.log.Debug("UserRepository.GetByEmail", "error", err)
 	}
 	return
 }
@@ -439,10 +457,10 @@ func (s *shopRepository) Get(ctx context.Context, userID string) (item ShopInfoR
 	const q = `SELECT
 			u.id, (u.first_name || ' ' || u.last_name) as name
 			u.permission_type, u.is_active, u.is_verified,
-			COALESCE(u.email, ''), u.is_v_email,
-			COALESCE(u.phone_numner, ''), u.is_v_phone_number,
+			COALESCE(u.email, '') AS email, u.is_v_email,
+			COALESCE(u.phone_numner, '') AS phone_number, u.is_v_phone_number,
 
-			COALESCE(s.brand, ''), s.shop_addr, s.zip_code,
+			COALESCE(s.brand, '') AS brand, s.shop_addr, s.zip_code,
 			s.business_code, COALESCE(s.phone_number, '') as shop_phone_number
 			s.img_path, s.bio
 		FROM user_s.users as u LEFT JOIN user_s.shop as s on u.id = s.user_id
@@ -454,7 +472,10 @@ func (s *shopRepository) Get(ctx context.Context, userID string) (item ShopInfoR
 }
 
 func (s *shopRepository) List(ctx context.Context, pagination, page int) (items []ShopResponse, err error) {
-	const q = `SELECT user_id, COALESCE(brand, ''), COALESCE(phone_number, ''), is_shop
+	const q = `SELECT
+			user_id, COALESCE(brand, '') AS brand,
+			COALESCE(phone_number, '') AS phone_number,
+			is_shop
 		FROM user_s.shop
 		ORDER is_verified
 		LIMIT $1

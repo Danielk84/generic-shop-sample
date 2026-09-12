@@ -115,9 +115,14 @@ func (m *manager) newAdmin(cmd *cobra.Command, args []string) error {
 		}
 		return fmt.Errorf("failed to validate input, %s", err)
 	}
-	if err = store.Create(cmd.Context(), user); err != nil {
+	ctx := cmd.Context()
+	userID, err := store.Create(ctx, user)
+	if err != nil {
 		return fmt.Errorf("failed to create admin, %s", err)
 
+	}
+	if err = store.VerifyEmail(ctx, userID, true); err != nil {
+		return fmt.Errorf("failed to verify email, %s", err)
 	}
 	return nil
 }

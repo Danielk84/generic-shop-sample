@@ -74,11 +74,14 @@ func (h *productsHandler) create(c *gin.Context) {
 		return
 	}
 
-	if err := h.productStore.Create(c.Request.Context(), input); err != nil {
+	productID, err := h.productStore.Create(c.Request.Context(), input)
+	if err != nil {
 		BadRequest(c, "")
 		return
 	}
-	Created(c, "")
+	c.JSON(http.StatusCreated, gin.H{
+		"productID": productID,
+	})
 }
 
 func (h *productsHandler) list(c *gin.Context) {
@@ -395,6 +398,8 @@ func (h *productImagesHandler) create(c *gin.Context) {
 		return
 	}
 	if err := h.imagesStore.Create(ctx, productID, resultPath); err != nil {
+		_ = h.fileStore.Delete(ctx, resultPath)
+
 		NotFound(c, "")
 		return
 	}

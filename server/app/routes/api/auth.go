@@ -38,7 +38,7 @@ func LoginRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 		{http.MethodPost, "/is-user-exists", []gin.HandlerFunc{h.isUserExists}},
 		{http.MethodPost, "/login", []gin.HandlerFunc{h.login}},
 		{http.MethodPost, "/register", []gin.HandlerFunc{h.register}},
-		{http.MethodGet, "/refresh", []gin.HandlerFunc{h.refresh}},
+		{http.MethodPost, "/refresh", []gin.HandlerFunc{h.refresh}},
 		{http.MethodGet, "/healthz", []gin.HandlerFunc{h.healthz}},
 	})
 	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(deps, log)}, []RouteSpec{
@@ -47,7 +47,7 @@ func LoginRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 }
 
 type randKeyRequest struct {
-	PassKey string `json:"pass_key" binding:"required,length=7"`
+	PassKey string `json:"pass_key" binding:"required,len=8"`
 }
 
 type loginRequest struct {
@@ -131,7 +131,7 @@ func (h *authHandler) login(c *gin.Context) {
 		BadRequest(c, "Invalid pass-key")
 		return
 	}
-	user, err := h.store.Get(ctx, input.Email)
+	user, err := h.store.GetByEmail(ctx, input.Email)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -171,7 +171,7 @@ func (h *authHandler) login(c *gin.Context) {
 		}
 	}
 
-	c.SetCookie("__Host-Http-Refresh", refreshKey, int(maxAge), "/", "", true, true)
+	c.SetCookie("__Host-Http-Refresh", refreshToken, int(maxAge), "/", "", true, true)
 	c.JSON(http.StatusOK, gin.H{"token": authToken})
 }
 
@@ -254,6 +254,16 @@ func (h *authHandler) getAuthToken(ctx context.Context, user queries.UserInfoRes
 func (h *authHandler) logout(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	ctx := c.Request.Context()
+
+	refreshToken, err := c.Cookie("__Host-Http-Refresh")
+	if err != nil {
+		Forbidden(c, "")
+	}
+	refreshKey := fmt.Sprintf("refresh:%s", refreshToken)
+	if err := h.cache.Del(ctx, refreshKey).Err(); err != nil {
+		LogCacheErr("Del", "authHandler.logout", err)
+	}
+
 	cacheKey := fmt.Sprintf("login:%s", claims.ID)
 	if err := h.cache.Del(ctx, cacheKey).Err(); err != nil {
 		LogCacheErr("Del", "authHandler.logout", err)
