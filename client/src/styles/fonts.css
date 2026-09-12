@@ -1,0 +1,9 @@
+@font-face {
+  font-family: 'Delius-Regular';
+  src: url('/fonts/Delius-Regular.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'ValleySans-Regular';
+  src: url('/fonts/ValleySans-Regular.ttf') format('truetype');
+}

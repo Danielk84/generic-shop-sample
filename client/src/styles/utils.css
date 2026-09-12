@@ -2,4 +2,48 @@
   .c-flex-all-center {
     @apply flex justify-center items-center;
   }
+
+  .c-is-pending {
+    @apply opacity-50 cursor-not-allowed;
+  }
+
+  /* generic form style. */
+  .c-clean-input {
+    @apply w-full h-full text-xl
+      focus:outline-none;
+  }
+  .c-form-bg {
+    @apply bg-c-form-bg text-c-form-text
+      shadow-[0_0_30px_10px]
+      shadow-c-form-shadow;
+  }
+  .c-form-error-shadow {
+    @apply shadow-c-form-shadow-error;
+  }
+  .c-form {
+    @apply flex flex-col;
+  }
+  .c-form .c-form-item {
+    @apply h-42;
+  }
+  .c-form .c-form-label {
+    @apply text-lg font-light px-4;
+  }
+  .c-form .c-form-input {
+    @apply outline-4
+      focus:brightness-120
+      p-4 outline-c-form-outline
+      rounded-xl h-15 w-full text-xl;
+  }
+  .c-form .c-form-btn {
+    @apply my-10 hover:brightness-90 cursor-pointer
+      font-bold rounded-xl h-15 w-full text-xl
+      bg-c-form-btn
+      text-c-form-btn-text;
+  }
+  .c-form .c-form-error {
+    @apply py-2 px-4 text-wrap font-bold
+      rounded-xl max-h-3 w-full text-sm
+      text-c-form-error;
+  }
 }
