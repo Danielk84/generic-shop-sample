@@ -4,7 +4,7 @@ export const ProductProperty = z.record(z.string(), z.string())
 
 export const CreateProductRequest = z.object({
   name: z.string().min(4).max(256),
-  describtion: z.string(),
+  description: z.string(),
   common_detail: ProductProperty,
 })
 export type CreateProductInput = z.infer<typeof CreateProductRequest>
@@ -15,8 +15,8 @@ const ProductIDRequest = z.object({
 
 export const UpdateProductRequest = z
   .object({})
-  .extend(ProductIDRequest)
-  .extend(CreateProductRequest)
+  .extend(ProductIDRequest.shape)
+  .extend(CreateProductRequest.shape)
 export type UpdateProductInput = z.infer<typeof UpdateProductRequest>
 
 export const ProductVendorRequest = z.object({
@@ -26,7 +26,7 @@ export const ProductVendorRequest = z.object({
 export type ProductVendorInput = z.infer<typeof ProductVendorRequest>
 
 export const ProductPropertyRequest = z.object({
-  property: ProductProperty
+  property: ProductProperty,
 })
 
 export const ProductVariantDetailRequet = z
@@ -34,12 +34,14 @@ export const ProductVariantDetailRequet = z
     price: z.number().min(0),
     variant_detail: z.array(ProductPropertyRequest),
   })
-  .extend(ProductPropertyRequest)
-export type ProductVariantDetailInput = z.infer<typeof ProductVariantDetailRequet>
+  .extend(ProductPropertyRequest.shape)
+export type ProductVariantDetailInput = z.infer<
+  typeof ProductVariantDetailRequet
+>
 
 export const UpdateProductVendor = z
   .object({})
-  .extend(ProductIDRequest)
-  .extend(ProductVendorRequest)
-  .extend(ProductPropertyRequest)
+  .extend(ProductIDRequest.shape)
+  .extend(ProductVendorRequest.shape)
+  .extend(ProductPropertyRequest.shape)
 export type UpdateProductVendorInput = z.infer<typeof UpdateProductVendor>

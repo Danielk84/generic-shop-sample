@@ -1,4 +1,4 @@
-import * as z from "zod"
+import * as z from 'zod'
 
 export const CommentRequest = z.object({
   parent: z.uuid().optional(),

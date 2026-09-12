@@ -1,10 +1,13 @@
+import { ProductProperty } from './request.schema'
+
 export type ProductProperty = Record<string, string>
 
 export interface ProductSummaryResponse {
   id: string
   name: string
   price: number
-  pubDate: string
+  img_path: string
+  pub_date: string
 }
 
 export interface ProductStatusResponse extends ProductSummaryResponse {
@@ -13,15 +16,21 @@ export interface ProductStatusResponse extends ProductSummaryResponse {
   is_active: boolean
 }
 
-export interface ProductResponse extends ProductStatusResponse{
-  descriptions: string
-  common_detail: ProductProperty
-  variant_detail: Array<ProductProperty>
-}
-
 export interface ProductVendor {
   user_id: string
   quantity: number
+}
+
+export interface ProductVariantDetail {
+  property: ProductProperty
+  price: number
+  vendors: ProductVendor[]
+}
+
+export interface ProductResponse extends ProductStatusResponse {
+  descriptions: string
+  common_detail: ProductProperty
+  variant_detail: ProductVariantDetail[]
 }
 
 export interface Product {
@@ -32,6 +41,6 @@ export interface Product {
 }
 
 export interface ProductImageResponse {
-	id: string
+  id: string
   img_path: string
 }

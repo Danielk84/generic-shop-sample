@@ -9,7 +9,7 @@ export const PermissionType = {
 } as const
 
 export const EmailAddrRequest = z.object({
-  email: z.email().min(10).max(254)
+  email: z.email().min(10).max(254),
 })
 export type EmailAddrInput = z.infer<typeof EmailAddrRequest>
 
@@ -26,14 +26,8 @@ export const UserPermissionRequest = z
   .object({
     is_active: z.boolean(),
   })
-  .extend(PermissionRequest)
+  .extend(PermissionRequest.shape)
 export type UserPermissionInput = z.infer<typeof UserPermissionRequest>
-
-export const CreateUserRequest = z
-  .object()
-  .extend(EmailAddrRequest)
-  .extend(UserPermissionRequest)
-export type CreateUserInput = z.infer<typeof CreateUserRequest>
 
 export const UserInfoRequest = z.object({
   first_name: z.string().min(1).max(50),
@@ -42,9 +36,16 @@ export const UserInfoRequest = z.object({
 })
 export type UserInfoInput = z.infer<typeof UserInfoRequest>
 
+export const RegisterUserRequest = z
+  .object({})
+  .extend(EmailAddrRequest.shape)
+  .extend(PhoneNumberRequest.shape)
+  .extend(UserInfoRequest.shape)
+export type CreateUserInput = z.infer<typeof RegisterUserRequest>
+
 // shop model
 export const ShopPhoneNumberRequest = z.object({
-  phone_number: z.string().max(15)
+  phone_number: z.string().max(15),
 })
 export type ShopPhoneNumberInput = z.infer<typeof ShopPhoneNumberRequest>
 

@@ -1,4 +1,7 @@
-import type { ProductProperty, ProductVendor } from "../products/response.interface"
+import type {
+  ProductProperty,
+  ProductVendor,
+} from '../products/response.interface'
 
 export interface OrderID {
   id: string
@@ -16,9 +19,8 @@ export interface OrderUserInfo {
   zip_code: string
 }
 
-export interface OrderResponse extends
-  OrderSummaryResponse,
-  OrderSummaryResponse {
+export interface OrderResponse
+  extends OrderSummaryResponse, OrderSummaryResponse {
   items_total: number
   total_bill: number
   is_verified: boolean
