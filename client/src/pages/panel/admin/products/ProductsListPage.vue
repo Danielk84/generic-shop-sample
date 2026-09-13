@@ -12,7 +12,7 @@ const ImageFrameCard = defineAsyncComponent(
   () => import('@/components/card/ImageFrameCard.vue'),
 )
 const ListPagination = defineAsyncComponent(
-  () => import('@/components/ui/ListPagination.vue')
+  () => import('@/components/ui/ListPagination.vue'),
 )
 
 const store = useStore()
@@ -52,7 +52,7 @@ watch(
 
 const setActiveMutation = useMutation({
   mutationKey: ['admin-products-set-active'],
-  mutationFn: async (input: {id: string, status: boolean}) => {
+  mutationFn: async (input: { id: string; status: boolean }) => {
     return api.put(
       `products/set-active/${input.id}`,
       { activate: input.status },
@@ -75,10 +75,7 @@ const setActiveMutation = useMutation({
 <template>
   <div class="products-list-page">
     <div class="options">
-      <RouterLink
-        class="redirect-btn"
-        :to="{ name: 'admin-product-create' }"
-      >
+      <RouterLink class="redirect-btn" :to="{ name: 'admin-product-create' }">
         Create
       </RouterLink>
     </div>
@@ -99,12 +96,14 @@ const setActiveMutation = useMutation({
             class="set-btn true-btn"
             :class="{
               'false-btn': item.is_active,
-              'c-is-pending': setActiveMutation.isPending
+              'c-is-pending': setActiveMutation.isPending,
             }"
-            @click="setActiveMutation.mutate({
-              id: item.id,
-              status: !item.is_active,
-            })"
+            @click="
+              setActiveMutation.mutate({
+                id: item.id,
+                status: !item.is_active,
+              })
+            "
           >
             Active
           </button>
@@ -126,9 +125,11 @@ const setActiveMutation = useMutation({
     <div class="pagination">
       <ListPagination
         :last="maxPage"
-        @change-page="(p: number) => {
-          page = p
-        }"
+        @change-page="
+          (p: number) => {
+            page = p
+          }
+        "
       />
     </div>
   </div>

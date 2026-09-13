@@ -1,47 +1,47 @@
 const icon = {
   card: {
-    plusCircle: 'card/plus-circle-icon.svg',
+    plusCircle: 'card/PlusCircleIcon.vue',
   },
   common: {
     navBar: {
-      infinity: 'ui/nav-bar/infinity-icon.svg',
-      profile: 'ui/nav-bar/profile-icon.svg',
-      shoppingBag: 'ui/nav-bar/shopping-bag-icon.svg',
-      dropdown: 'ui/nav-bar/dropdown-icon.svg',
+      infinity: 'common/nav-bar/InfinityIcon.vue',
+      profile: 'common/nav-bar/ProfileIcon.vue',
+      shoppingBag: 'common/nav-bar/ShoppingBagIcon.vue',
+      dropdown: 'common/nav-bar/DropdownIcon.vue',
     },
     footer: {
-      send: 'common/footer/send-icon.svg',
+      send: 'common/footer/SendIcon.vue',
     },
   },
   ui: {
     button: {
-      back: 'ui/back-arrow-icon.svg',
+      back: 'ui/BackArrowIcon.vue',
     },
     search: {
-      btn: 'ui/search/search-icon.svg',
+      btn: 'ui/search/SearchIcon.vue',
     },
     pagination: {
-      next: 'ui/pagination/next-icon.svg',
-      previous: 'ui/pagination/previous-icon.svg',
+      next: 'ui/pagination/NextIcon.vue',
+      previous: 'ui/pagination/PreviousIcon.vue',
     },
   },
   pages: {
     auth: {
-      eyeOn: 'pages/auth/eye-on-icon.svg',
-      eyeOff: 'pages/auth/eye-off-icon.svg',
+      eyeOn: 'pages/auth/EyeOnIcon.vue',
+      eyeOff: 'pages/auth/EyeOffIcon.vue',
     },
     basket: {
-      close: 'pages/basket/close-icon.svg',
-      plus: 'pages/basket/plus-icon.svg',
-      minus: 'pages/basket/minus-icon.svg',
+      close: 'pages/basket/CloseIcon.vue',
+      plus: 'pages/basket/PlusIcon.vue',
+      minus: 'pages/basket/MinusIcon.vue',
     },
     products: {
-      close: 'pages/products/close-icon.svg',
-      fullScreen: 'pages/products/full-screen-icon.svg',
+      close: 'pages/products/CloseIcon.vue',
+      fullScreen: 'pages/products/FullScreenIcon.vue',
     },
     panel: {
       products: {
-        upload: 'pages/panel/products/upload-icon.svg',
+        upload: 'pages/panel/products/UploadIcon.vue',
       },
     },
   },
