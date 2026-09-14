@@ -8,11 +8,51 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'home',
-      component: () => import('@/pages/landing/LandingPage.vue'),
       meta: {
         layout_0: 'FooterBlockLayout',
       },
+      children: [
+        {
+          path: '/',
+          name: 'home',
+          component: () => import('@/pages/landing/LandingPage.vue'),
+        },
+        {
+          path: '/400',
+          name: 'error-bad-request',
+          component: () => import('@/pages/error/BadRequestPage.vue'),
+        },
+        {
+          path: '/401',
+          name: 'error-unauthorized',
+          component: () => import('@/pages/error/UnauthorizedPage.vue'),
+        },
+        {
+          path: '/403',
+          name: 'error-forbidden',
+          component: () => import('@/pages/error/ForbiddenPage.vue'),
+        },
+        {
+          path: '/404',
+          name: 'error-not-found',
+          component: () => import('@/pages/error/NotFoundPage.vue'),
+        },
+        {
+          path: '/422',
+          name: 'error-unprocessable-content',
+          component: () => import('@/pages/error/UnprocessableContentPage.vue'),
+        },
+        {
+          path: '/429',
+          name: 'error-too-many-requests',
+          component: () => import('@/pages/error/TooManyRequestsPage.vue'),
+        },
+        {
+          path: '/500',
+          name: 'error-internal-server-error',
+          component: () => import('@/pages/error/InternalServerErrorPage.vue'),
+        },
+      ],
     },
     {
       path: '/products',

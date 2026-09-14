@@ -13,27 +13,30 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config as RetryConfig | undefined
 
+    const store = useStore()
     if (
       error.response?.status !== 401 ||
       !originalRequest ||
       originalRequest._retry ||
       originalRequest.url?.includes('auth/refresh')
     ) {
+      store.setIsAuth(false)
       return Promise.reject(error)
     }
 
     originalRequest._retry = true
 
-    const store = useStore()
     if (!(await store.refreshAccessKey())) {
+      store.setIsAuth(false)
       return Promise.reject(error)
     }
 
     const headers = AxiosHeaders.from(originalRequest.headers)
-    headers.set('Authorization', `Bearer ${store.getAccessToken}`)
+    headers.set('Authorization', `${store.getAccessToken}`)
 
     originalRequest.headers = headers
 
+    store.setIsAuth(true)
     return api(originalRequest)
   },
 )

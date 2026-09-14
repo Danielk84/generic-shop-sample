@@ -51,7 +51,7 @@ export function errorStatusHandler(
         router.push('/')
       }
       break
-    case axios.HttpStatusCode.UnprocessableEntity:
+    case axios.HttpStatusCode.UnprocessableContent:
       if (typeof handlers?.unprocessableEntity === 'function') {
         handlers.unprocessableEntity()
       } else {

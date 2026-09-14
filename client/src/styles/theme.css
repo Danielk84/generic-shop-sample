@@ -72,7 +72,7 @@
 
   /* components/common/NavBar.vue */
   --color-nav-bar-bg: var(--c-v-5);
-  --color-nav-bar-border: var(--c-v-4);
+  --color-nav-bar-border: var(--c-v-3);
 
   /* components/common/footer */
   --color-footer-bg: var(--c-v-1);
@@ -118,6 +118,9 @@
   /* pages/landing/ProductsView.vue */
   --color-products-view-line: var(--c-v-4);
   --color-products-view-link: var(--c-v-11);
+
+  /* pages/error */
+  --color-error-p-msg: var(--c-v-11);
 
   /* pages/products/ImageFrameList.vue */
   --color-img-frame-list-border: #000000;

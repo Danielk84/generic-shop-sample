@@ -47,7 +47,7 @@ watch(
       <p>{{ data.available_quantity }}</p>
       <p>{{ data.is_available }}</p>
       <p>{{ data.is_active }}</p>
-      <p>{{ data.descriptions }}</p>
+      <p>{{ data.description }}</p>
       <p>{{ data.common_detail }}</p>
       <p>{{ data.variant_detail }}</p>
     </div>

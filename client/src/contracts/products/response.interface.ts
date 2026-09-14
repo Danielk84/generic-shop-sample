@@ -28,7 +28,7 @@ export interface ProductVariantDetail {
 }
 
 export interface ProductResponse extends ProductStatusResponse {
-  descriptions: string
+  description: string
   common_detail: ProductProperty
   variant_detail: ProductVariantDetail[]
 }

@@ -10,6 +10,7 @@ interface State {
   user: {
     email: string
     accessToken: string
+    isAuth: boolean
   }
   claims: AuthClaims
 }
@@ -19,6 +20,7 @@ export const useStore = defineStore('store', {
     user: {
       email: '',
       accessToken: '',
+      isAuth: false,
     },
     claims: {
       id: '',
@@ -46,6 +48,9 @@ export const useStore = defineStore('store', {
     setAccessToken(token: string) {
       this.user.accessToken = token
       this.setClaims(token)
+    },
+    setIsAuth(status: boolean) {
+      this.user.isAuth = status
     },
     async refreshAccessKey(): Promise<boolean> {
       const res = await api.post<AccessTokenResponse>('auth/refresh')
