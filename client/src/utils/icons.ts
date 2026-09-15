@@ -12,6 +12,9 @@ const icon = {
     footer: {
       send: 'common/footer/SendIcon.vue',
     },
+    loading: {
+      loading: 'common/loading/LoadingIcon.vue',
+    },
   },
   ui: {
     button: {
@@ -26,6 +29,9 @@ const icon = {
     },
   },
   pages: {
+    landing: {
+      rightArrow: 'pages/landing/RightArrowIcon.vue',
+    },
     auth: {
       eyeOn: 'pages/auth/EyeOnIcon.vue',
       eyeOff: 'pages/auth/EyeOffIcon.vue',

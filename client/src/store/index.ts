@@ -13,6 +13,7 @@ interface State {
     isAuth: boolean
   }
   claims: AuthClaims
+  loading: boolean
 }
 
 export const useStore = defineStore('store', {
@@ -27,6 +28,7 @@ export const useStore = defineStore('store', {
       email: '',
       permission_type: 4, // blocked user
     },
+    loading: false,
   }),
   getters: {
     getEmail: (state) => state.user.email,
@@ -70,6 +72,9 @@ export const useStore = defineStore('store', {
       } else {
         this.claims = claims
       }
+    },
+    setLoadingStatus(status: boolean) {
+      this.loading = status
     },
   },
 })
