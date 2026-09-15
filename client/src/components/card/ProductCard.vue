@@ -15,7 +15,12 @@ const props = defineProps<{ data: ProductCardProps }>()
 </script>
 
 <template>
-  <RouterLink :to="props.data.to" class="product-card">
+  <RouterLink
+    :to="props.data.to"
+    draggable="false"
+    @dragstart.prevent
+    class="product-card"
+  >
     <div class="banner c-flex-all-center">
       <ImageFrameCard :img="props.data.img" :tag="props.data.tag" />
     </div>
@@ -37,7 +42,7 @@ const props = defineProps<{ data: ProductCardProps }>()
 @reference "@/styles/index.css";
 
 .product-card {
-  @apply p-4 w-90 h-120 gap-10 overflow-hidden
+  @apply p-4 w-90 h-120 gap-5 overflow-hidden
     hover:shadow-[0px_0px_20px_5px]
     shadow shadow-card-product-shadow
     transform duration-150

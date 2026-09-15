@@ -98,3 +98,21 @@ export function formatDate(input: string) {
     timeStyle: 'short',
   }).format(new Date(input))
 }
+
+export function useTimer(
+  fn: () => void,
+  timout?: number,
+) {
+  let timer: number | undefined = undefined;
+  return {
+    start() {
+      if (timer === undefined) {
+        timer = setInterval(fn, timout)
+      }
+    },
+    end() {
+      clearInterval(timer)
+      timer = undefined
+    }
+  }
+}

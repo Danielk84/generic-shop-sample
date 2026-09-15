@@ -70,6 +70,10 @@
   --color-c-form-error: var(--c-v-11);
   --color-c-form-shadow-error: var(--c-v-11);
 
+  /* layout/DefaultLayout.vue */
+  --color-default-layout-bg: var(--c-v-7);
+  --color-default-layout-text: var(--c-v-1);
+
   /* components/common/NavBar.vue */
   --color-nav-bar-bg: var(--c-v-5);
   --color-nav-bar-border: var(--c-v-3);
@@ -82,6 +86,9 @@
   --color-footer-btn: var(--c-v-1);
   --color-footer-icon: var(--c-v-7);
   --color-footer-placeholder: var(--c-v-5);
+
+  /* components/common/loading */
+  --color-loading-color: var(--c-v-13);
 
   /* components/ui/BaseIcon.vue */
   --color-default-icon: var(--c-v-2);
@@ -111,7 +118,8 @@
   --color-card-product-shadow: var(--c-v-10);
 
   /* pages/landing/LandingPage.vue */
-  --color-landing-p-primary-bg: var(--c-v-3);
+  --color-landing-p-primary-bg-1: var(--c-v-3);
+  --color-landing-p-primary-bg-2: var(--c-v-1);
   --color-landing-p-secondary-bg: var(--c-v-7);
   --color-landing-p-text: var(--c-v-6);
 

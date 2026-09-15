@@ -30,6 +30,8 @@ onUnmounted(async () => {
         :src="`${backendUrl}/static/${props.img}`"
         :alt="props.alt"
         loading="lazy"
+        draggable="false"
+        @dragstart.prevent
       />
     </div>
     <div v-if="typeof tag == 'string'" class="tag">

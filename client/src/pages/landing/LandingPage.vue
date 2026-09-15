@@ -18,13 +18,13 @@ const PopularProducts = defineAsyncComponent(
       <div class="banner-content c-flex-all-center">
         <h1 class="c-flex-all-center">
           <span> Crafting Comfort, Redifining Spaces. </span>
-          <span> Your Home, Your Signature Style. </span>
+          <span> Discover Things You'll Love. </span>
         </h1>
         <p>
-          Lorem, ipsum dolor sit amet consectetur adipisicing elit.
-          Exercitationem ipsam velit temporibus animi natus, autem molestias
-          aperiam dolorum! Sint excepturi molestias nemo eligendi ducimus autem
-          atque quo magni voluptatum cupiditate.
+          Shop thoughtfully selected products designed to make everyday life
+          better. From everyday essentials to unique finds, discover quality
+          products, simple shopping, and a seamless experience all in one place.
+          Our most loved products, chosen by shoppers like you.
         </p>
       </div>
       <div class="banner-search">
@@ -43,7 +43,9 @@ const PopularProducts = defineAsyncComponent(
 
 .landing-page {
   @apply w-screen h-full relative -top-25
-    bg-landing-p-primary-bg;
+    bg-radial
+    from-landing-p-primary-bg-1 from-0%
+    to-landing-p-primary-bg-2 to-100%;
 }
 
 .landing-page > .landing-banner {
@@ -56,8 +58,8 @@ const PopularProducts = defineAsyncComponent(
 }
 
 .landing-page > .landing-banner > .banner-content > h1 {
-  @apply text-5xl flex-col font-secondary-default
-    w-full h-full text-center;
+  @apply text-5xl font-extrabold flex-col font-secondary-default
+    w-full h-full text-center leading-16;
 }
 
 .landing-page > .landing-banner > .banner-content > p {
