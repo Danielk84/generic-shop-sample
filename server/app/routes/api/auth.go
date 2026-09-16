@@ -22,9 +22,10 @@ import (
 
 func LoginRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
+	cache := deps.Cache.GetCache(cache.UsersCache)
 	h := authHandler{
 		store:    queries.NewUserStore(deps.DB.GetSession(), log),
-		cache:    deps.Cache.GetCache(cache.UsersCache),
+		cache:    cache,
 		log:      log,
 		jwtToken: auth.JWTToken{Log: log, JWTSecretKey: []byte(deps.Config.JWTSecretKey)},
 
@@ -33,8 +34,14 @@ func LoginRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 		registerKeyExpiration: 10 * time.Minute,
 	}
 
-	rl := md.NewRateLimiter(deps.Ctx, 10, 30*time.Minute, 60*time.Second)
-	RegisterRoutesWith(router, []gin.HandlerFunc{rl.RateLimiterMiddleware()}, []RouteSpec{
+	rateLimiter := md.NewRateLimiter(deps.Ctx, md.RateLimiter{
+		Cache:        cache,
+		Log:          log,
+		Scope:        "auth",
+		RequestLimit: deps.Config.APIRateLimiter.AuthRT,
+		TTL:          deps.Config.APIRateLimiter.AuthTTL,
+	})
+	RegisterRoutesWith(router, []gin.HandlerFunc{rateLimiter}, []RouteSpec{
 		{http.MethodPost, "/is-user-exists", []gin.HandlerFunc{h.isUserExists}},
 		{http.MethodPost, "/login", []gin.HandlerFunc{h.login}},
 		{http.MethodPost, "/register", []gin.HandlerFunc{h.register}},

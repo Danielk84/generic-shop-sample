@@ -10,7 +10,6 @@ import (
 	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/cache_query"
 	"generic-shop-sample/storage/queries"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -41,12 +40,18 @@ func (s *server) run() {
 func (s *server) setMiddlewares() {
 	rlogWriter := logger.CreateLogFile(s.deps.Config.RequestLoggerFilepath)
 	s.app.OpenWriter = append(s.app.OpenWriter, rlogWriter)
-	rl := md.NewRateLimiter(s.deps.Ctx, 500, 10*time.Minute, 30*time.Minute)
+	rateLimiter := md.NewRateLimiter(s.deps.Ctx, md.RateLimiter{
+		Cache:        s.deps.Cache.GetCache(cache.PublicCache),
+		Log:          logger.GetLogger(),
+		Scope:        "main",
+		RequestLimit: s.deps.Config.APIRateLimiter.ServerRT,
+		TTL:          s.deps.Config.APIRateLimiter.ServerTTL,
+	})
 
 	s.app.Router.Use(
 		md.RequestLoggerMiddleware(rlogWriter),
 		gin.Recovery(),
-		rl.RateLimiterMiddleware(),
+		rateLimiter,
 	)
 }
 

@@ -7,7 +7,6 @@ import (
 	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/queries"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,17 +14,23 @@ import (
 func SearchRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
 	session := deps.DB.GetSession()
+	cache := deps.Cache.GetCache(cache.ProductsCache)
 	h := searchHandler{
 		store:        queries.NewSearchStore(session, log),
 		productStore: queries.NewProductStore(session, log),
-		cache:        deps.Cache.GetCache(cache.ProductsCache),
+		cache:        cache,
 		log:          log,
 		pagination:   deps.Config.Pagination,
 	}
 
-	rl := md.NewRateLimiter(deps.Ctx, 50, 30*time.Minute, 60*time.Second)
-
-	RegisterRoutesWith(router, []gin.HandlerFunc{rl.RateLimiterMiddleware()}, []RouteSpec{
+	rateLimiter := md.NewRateLimiter(deps.Ctx, md.RateLimiter{
+		Cache:        cache,
+		Log:          log,
+		Scope:        "search",
+		RequestLimit: deps.Config.APIRateLimiter.SearchRT,
+		TTL:          deps.Config.APIRateLimiter.SearchTTL,
+	})
+	RegisterRoutesWith(router, []gin.HandlerFunc{rateLimiter}, []RouteSpec{
 		{http.MethodPost, "/", []gin.HandlerFunc{h.search}},
 	})
 	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(deps, log)}, []RouteSpec{

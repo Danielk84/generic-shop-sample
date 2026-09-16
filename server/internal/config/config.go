@@ -11,12 +11,13 @@ import (
 )
 
 type Config struct {
-	App          AppConfig          `yaml:"app"`
-	Auth         AuthConfig         `yaml:"auth"`
-	EmailBroker  EmailBrokerConfig  `yaml:"email_broker"`
-	ProductImage ProductImageConfig `yaml:"product_image"`
-	Payment      PaymentConfig      `yaml:"payment"`
-	FileStore    FileStorageConfig  `yaml:"file_upload"`
+	App            AppConfig            `yaml:"app"`
+	Auth           AuthConfig           `yaml:"auth"`
+	EmailBroker    EmailBrokerConfig    `yaml:"email_broker"`
+	ProductImage   ProductImageConfig   `yaml:"product_image"`
+	Payment        PaymentConfig        `yaml:"payment"`
+	FileStore      FileStorageConfig    `yaml:"file_upload"`
+	APIRateLimiter APIRateLimiterConfig `yaml:"api_rate_limiter"`
 
 	RequestLoggerFilepath string `yaml:"request_logger_filepath" binding:"required,filepath"`
 
@@ -66,6 +67,26 @@ type AwsS3Config struct {
 	Secret   string `yaml:"secret" binding:"required"`
 	Region   string `yaml:"region" binding:"required"`
 	Endpoint string `yaml:"endpoint" binding:"required,http_url"`
+}
+
+// RT or RateLimiter used for counting requests.
+// Expire is base on minute.
+type APIRateLimiterConfig struct {
+	// cmd/server/server.go
+	ServerRT  int `yaml:"server_rt" binding:"required"`
+	ServerTTL int `yaml:"server_ttl" binding:"required"`
+
+	// routes/api/auth.go
+	AuthRT  int `yaml:"auth_rt" binding:"required"`
+	AuthTTL int `yaml:"auth_ttl" binding:"required"`
+
+	// routes/api/payment.go
+	PaymentRT  int `yaml:"payment_rt" binding:"required"`
+	PaymentTTL int `yaml:"payment_ttl" binding:"required"`
+
+	// routes/api/search.go
+	SearchRT  int `yaml:"search_rt" binding:"required"`
+	SearchTTL int `yaml:"search_ttl" binding:"required"`
 }
 
 func (c *Config) ReadFile(fp string) error {

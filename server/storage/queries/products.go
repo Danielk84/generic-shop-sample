@@ -117,9 +117,9 @@ func (p *productRepository) Create(ctx context.Context, product CreateProductReq
 }
 
 func (p *productRepository) List(ctx context.Context, pagination, page int) (items []ProductSummaryResponse, err error) {
-	const q = `SELECT p.id, p.name, p.price, p.pub_date, COALESCE(i.img_path, '') as img_path
+	const q = `SELECT p.id, p.name, p.price, p.pub_date, COALESCE(i.img_path, '') AS img_path
 		FROM product_s.products AS p
-		LEFT JOIN product_s.product_images
+		LEFT JOIN product_s.product_images AS i
 			ON p.id = i.product_id AND i.pos = 0
 		WHERE p.is_active = true
 		ORDER BY
@@ -138,7 +138,7 @@ func (p *productRepository) List(ctx context.Context, pagination, page int) (ite
 }
 
 func (p *productRepository) MostView(ctx context.Context, pagination, page int) (items []ProductSummaryResponse, err error) {
-	const q = `SELECT p.id, p.name, p.price, p.pub_date, COALESCE(i.img_path, '') as img_path
+	const q = `SELECT p.id, p.name, p.price, p.pub_date, COALESCE(i.img_path, '') AS img_path
 		FROM product_s.products AS p
 		LEFT JOIN products.product_images AS i
 			ON p.id = i.product_id AND i.pos = 0

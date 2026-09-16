@@ -2,118 +2,69 @@ package middlewares
 
 import (
 	"context"
+	"fmt"
+	"generic-shop-sample/internal/logger"
+	"generic-shop-sample/storage/cache"
 	"net/http"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 )
 
-func NewRateLimiter(ctx context.Context, requestLimit int, timePeriod, cleanupPeriod time.Duration) *RateLimter {
-	if timePeriod == 0 || cleanupPeriod == 0 {
-		panic("timePeriod or cleanupPeriod must be non-zero")
-	}
+func NewRateLimiter(ctx context.Context, rt RateLimiter) gin.HandlerFunc {
+	ttl := time.Duration(rt.TTL) * time.Minute
+	rt.retryAfter = strconv.Itoa(rt.TTL)
 
-	rl := &RateLimter{
-		ctx:           ctx,
-		ipRLs:         make(map[string]*ipRateLimiter),
-		requestLimit:  requestLimit,
-		timePeriod:    timePeriod,
-		cleanupPeriod: cleanupPeriod,
-	}
-
-	go rl.removeExpired()
-
-	return rl
-}
-
-type RateLimter struct {
-	mu            sync.Mutex
-	ctx           context.Context
-	ipRLs         map[string]*ipRateLimiter
-	requestLimit  int
-	timePeriod    time.Duration
-	cleanupPeriod time.Duration
-}
-
-func (rl *RateLimter) RateLimiterMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		host := c.ClientIP()
-		ipRL := rl.createOrGetInfo(host)
-		if ipRL.allow(rl.requestLimit, rl.timePeriod) {
-			c.Next()
+		cacheKey := rt.genKey(c.ClientIP())
+		var output int
+		err := rt.Cache.Get(ctx, cacheKey).Scan(&output)
+		if err != nil && err != redis.Nil {
+			rt.Log.Warn("NewRateLimiter:Get", "error", err)
+			rt.limiterResponse(c)
 			return
+
 		}
-
-		retryAfter := strconv.Itoa(int(rl.timePeriod.Seconds()))
-		c.Header("Retry-After", retryAfter)
-		c.String(http.StatusTooManyRequests, "Too many requests, try later.")
-	}
-}
-
-func (rl *RateLimter) createOrGetInfo(ip string) *ipRateLimiter {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-
-	if ipRL, ok := rl.ipRLs[ip]; ok {
-		return ipRL
-	}
-
-	ipRL := &ipRateLimiter{startTime: time.Now(), maxRequest: rl.requestLimit}
-	rl.ipRLs[ip] = ipRL
-
-	return ipRL
-}
-
-func (rl *RateLimter) removeExpired() {
-	ticker := time.NewTicker(rl.cleanupPeriod)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-rl.ctx.Done():
-			return
-		case <-ticker.C:
-			rl.mu.Lock()
-
-			now := time.Now()
-			for key, value := range rl.ipRLs {
-				if now.Sub(value.startTime) >= rl.timePeriod {
-					delete(rl.ipRLs, key)
-				}
+		if output < rt.RequestLimit {
+			args := redis.SetArgs{}
+			// check if key already exists.
+			if output == 0 {
+				args.TTL = ttl
+			} else {
+				args.KeepTTL = true
 			}
-
-			rl.mu.Unlock()
+			err = rt.Cache.SetArgs(ctx, cacheKey, output+1, args).Err()
+			if err != nil {
+				rt.Log.Warn("NewRateLimiter:SetArgs", "error", err)
+				rt.limiterResponse(c)
+				return
+			}
+			c.Next()
+		} else {
+			rt.Log.Debug("NewRateLimiter",
+				"cacheKey", cacheKey,
+				"error", "limited ip")
+			rt.limiterResponse(c)
 		}
 	}
 }
 
-// GetLen return the number of stored IP entries, mainly for unit testing.
-func (rl *RateLimter) GetLen() int {
-	rl.mu.Lock()
-	defer rl.mu.Unlock()
-	return len(rl.ipRLs)
+type RateLimiter struct {
+	Cache        cache.CacheClient
+	Log          logger.Logger
+	Scope        string
+	RequestLimit int
+	TTL          int
+	retryAfter   string
 }
 
-type ipRateLimiter struct {
-	mu         sync.Mutex
-	startTime  time.Time
-	maxRequest int
+func (r RateLimiter) genKey(ip string) string {
+	return fmt.Sprintf("rate-limiter:%s:%s", r.Scope, ip)
 }
 
-func (ipRL *ipRateLimiter) allow(rl int, tp time.Duration) bool {
-	ipRL.mu.Lock()
-	defer ipRL.mu.Unlock()
-
-	if time.Since(ipRL.startTime) > tp {
-		ipRL.startTime = time.Now()
-		ipRL.maxRequest = rl
-	}
-
-	if ipRL.maxRequest > 0 {
-		ipRL.maxRequest--
-		return true
-	}
-	return false
+func (r RateLimiter) limiterResponse(c *gin.Context) {
+	c.Header("Retry-After", r.retryAfter)
+	c.String(http.StatusTooManyRequests, "Too many requests, try later.")
 }

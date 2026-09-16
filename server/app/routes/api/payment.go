@@ -25,8 +25,9 @@ func PaymentRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 
 	session := deps.DB.GetSession()
 	log := logger.GetLogger()
+	cache := deps.Cache.GetCache(cache.PaymentCache)
 	ph := paymentHandler{
-		cache:       deps.Cache.GetCache(cache.PaymentCache),
+		cache:       cache,
 		userStore:   queries.NewUserStore(session, log),
 		orderStore:  queries.NewOrderStore(session, log),
 		zpGateway:   payment.NewZarinPalGateway(addr, &http.Client{Timeout: 10 * time.Second}),
@@ -35,8 +36,14 @@ func PaymentRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 		log:         log,
 	}
 
-	rl := md.NewRateLimiter(deps.Ctx, 10, 30*time.Minute, 60*time.Second)
-	router.Use(rl.RateLimiterMiddleware())
+	rateLimiter := md.NewRateLimiter(deps.Ctx, md.RateLimiter{
+		Cache:        cache,
+		Log:          log,
+		Scope:        "payment",
+		RequestLimit: deps.Config.APIRateLimiter.PaymentRT,
+		TTL:          deps.Config.APIRateLimiter.PaymentTTL,
+	})
+	router.Use(rateLimiter)
 	router.GET("/callback", ph.callback)
 	router.POST("/:id", md.AuthMiddleware(deps, log), ph.init)
 }

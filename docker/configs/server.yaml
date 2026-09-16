@@ -37,6 +37,16 @@ file_upload:
     region: "us-east-1"
     endpoint: "http://storage:8333"
 
+api_rate_limiter:
+  server_rt: 1000000
+  server_ttl: 60
+  auth_rt: 5000
+  auth_ttl: 60
+  payment_rt: 100
+  payment_ttl: 10
+  search_rt: 100
+  search_ttl: 5
+
 request_logger_filepath: "./logs/request.log"
 
 database_url: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database:5432/${POSTGRES_DB}
