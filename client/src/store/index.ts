@@ -30,10 +30,13 @@ export const useStore = defineStore('store', {
     },
     loading: false,
   }),
+  persist: {
+    storage: sessionStorage,
+  },
   getters: {
     getEmail: (state) => state.user.email,
     getAccessToken: (state) => {
-      return state.user.accessToken
+      return 'Bearer ' + state.user.accessToken
     },
     hasAccessToken: (state) => {
       console.log(state.user.accessToken !== '')

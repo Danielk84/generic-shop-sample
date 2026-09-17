@@ -15,7 +15,9 @@ export const useNotificationStore = defineStore('notification', {
   state: () => ({
     notifications: [] as Notification[],
   }),
-
+  persist: {
+    storage: sessionStorage,
+  },
   actions: {
     show(message: string, type: NotificationType = 'info', duration = 3000) {
       const id = randKey()

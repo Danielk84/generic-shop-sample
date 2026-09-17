@@ -35,28 +35,43 @@ export function errorStatusHandler(
       if (typeof handlers?.badRequest === 'function') {
         handlers.badRequest()
       } else {
-        router.push('/')
+        router.push('/400')
       }
       break
     case axios.HttpStatusCode.Unauthorized:
-      router.push('/')
+      router.push('/401')
       break
     case axios.HttpStatusCode.Forbidden:
-      router.push('/')
+      router.push('/403')
       break
     case axios.HttpStatusCode.NotFound:
       if (typeof handlers?.notFound === 'function') {
         handlers.notFound()
       } else {
-        router.push('/')
+        router.push('/404')
       }
       break
     case axios.HttpStatusCode.UnprocessableContent:
       if (typeof handlers?.unprocessableEntity === 'function') {
         handlers.unprocessableEntity()
       } else {
-        router.push('/')
+        router.push('/422')
       }
+      break
+    case axios.HttpStatusCode.TooManyRequests:
+      if (typeof handlers?.tooManyRequests === 'function') {
+        handlers.tooManyRequests()
+      } else {
+        router.push('/429')
+      }
+      break
+    case axios.HttpStatusCode.InternalServerError:
+      if (typeof handlers?.internalServerError === 'function') {
+        handlers.internalServerError()
+      } else {
+        router.push('/500')
+      }
+      break
   }
 }
 
@@ -99,11 +114,8 @@ export function formatDate(input: string) {
   }).format(new Date(input))
 }
 
-export function useTimer(
-  fn: () => void,
-  timout?: number,
-) {
-  let timer: number | undefined = undefined;
+export function useTimer(fn: () => void, timout?: number) {
+  let timer: number | undefined = undefined
   return {
     start() {
       if (timer === undefined) {
@@ -113,6 +125,6 @@ export function useTimer(
     end() {
       clearInterval(timer)
       timer = undefined
-    }
+    },
   }
 }

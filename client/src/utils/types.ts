@@ -5,6 +5,8 @@ export interface StatusHandlers {
   badRequest?: () => void
   notFound?: () => void
   unprocessableEntity?: () => void
+  tooManyRequests?: () => void
+  internalServerError?: () => void
 }
 
 export type RetryConfig = InternalAxiosRequestConfig & {
