@@ -57,7 +57,6 @@ func (s *server) setMiddlewares() {
 
 func (s *server) setRoutes() {
 	routes.APIRouter(s.deps, s.app.Router.Group("/api"))
-	routes.StaticRouter(s.deps, s.app.Router.Group("/static"))
 }
 
 func (s *server) setBackgroundTask() {

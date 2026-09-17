@@ -22,8 +22,5 @@ func APIRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	api.VendorOrderRouter(deps, router.Group("/vendors"))
 	api.SearchRouter(deps, router.Group("/search"))
 	api.IssuesRouter(deps, router.Group("/issues"))
-}
-
-func StaticRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
-	api.FileRouter(deps, router.Group("/"))
+	api.FileRouter(deps, router.Group("/static"))
 }

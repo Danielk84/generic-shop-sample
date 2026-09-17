@@ -50,11 +50,18 @@ func (f *fileHandler) getImgs(c *gin.Context) {
 	for _, m := range f.mimetypes {
 		s := strings.Split(m, "/")
 		if len(s) != 2 {
+			f.log.Debug("fileHandler.getImgs",
+				"mimetype", s,
+				"error", "failed to slplit mimetype")
 			continue
 		}
-		if _, found := strings.CutPrefix(filepath, s[1]); found {
+		if _, found := strings.CutSuffix(filepath, s[1]); found {
 			mimetype = m
 			break
+		} else {
+			f.log.Debug("fileHandler.getImgs",
+				"mimetype", s,
+				"error", "not matched file type")
 		}
 	}
 	if mimetype == "" {
