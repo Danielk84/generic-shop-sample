@@ -21,6 +21,7 @@ func APIRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	api.PaymentRouter(deps, router.Group("/payment"))
 	api.VendorOrderRouter(deps, router.Group("/vendors"))
 	api.SearchRouter(deps, router.Group("/search"))
+	api.IssuesRouter(deps, router.Group("/issues"))
 }
 
 func StaticRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {

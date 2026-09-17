@@ -1,0 +1,9 @@
+CREATE TABLE user_s.issues (
+    id UUID PRIMARY KEY DEFAULT uuidv7(),
+    user_id UUID REFERENCES user_s.users(id) ON DELETE RESTRICT,
+
+    req VARCHAR(5000) NOT NULL DEFAULT '',
+    res VARCHAR(5000) NOT NULL DEFAULT '',
+
+    is_done BOOLEAN NOT NULL DEFAULT FALSE
+);

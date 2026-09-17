@@ -46,6 +46,8 @@ api_rate_limiter:
   payment_ttl: 10
   search_rt: 100
   search_ttl: 5
+  issues_rt: 10
+  issues_ttl: 60
 
 request_logger_filepath: "./logs/request.log"
 

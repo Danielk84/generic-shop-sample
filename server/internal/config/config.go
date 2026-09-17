@@ -87,6 +87,10 @@ type APIRateLimiterConfig struct {
 	// routes/api/search.go
 	SearchRT  int `yaml:"search_rt" binding:"required"`
 	SearchTTL int `yaml:"search_ttl" binding:"required"`
+
+	// routes/api/issues.go
+	IssuesRT  int `yaml:"issues_rt" binding:"required"`
+	IssuesTTL int `yaml:"issues_ttl" binding:"required"`
 }
 
 func (c *Config) ReadFile(fp string) error {

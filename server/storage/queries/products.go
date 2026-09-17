@@ -163,7 +163,7 @@ func (p *productRepository) MaxPage(ctx context.Context, pagination int) (count 
 		FROM product_s.products
 		WHERE is_active = TRUE`
 	if err = p.session.QueryRow(ctx, q).Scan(&count); err != nil {
-		p.log.Debug("productRepository.MaxPage")
+		p.log.Debug("productRepository.MaxPage", "error", err)
 		return
 	}
 	count = count / pagination
