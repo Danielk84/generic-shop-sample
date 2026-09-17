@@ -9,7 +9,7 @@ app:
   addr: ":8080"
 
 auth:
-  auth_expiration: 24
+  auth_expiration: 1439 # 24 Hour
 
 email_broker:
   from_email: "noreply@example.com"

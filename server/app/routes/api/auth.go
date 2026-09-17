@@ -12,6 +12,7 @@ import (
 	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/queries"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -178,7 +179,17 @@ func (h *authHandler) login(c *gin.Context) {
 		}
 	}
 
-	c.SetCookie("__Host-Http-Refresh", refreshToken, int(maxAge), "/", "", true, true)
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:        "__Host-Http-Refresh",
+		Value:       url.QueryEscape(refreshToken),
+		MaxAge:      int(maxAge.Seconds()),
+		Path:        "/",
+		Domain:      "",
+		SameSite:    http.SameSiteStrictMode,
+		Secure:      true,
+		HttpOnly:    true,
+		Partitioned: true,
+	})
 	c.JSON(http.StatusOK, gin.H{"token": authToken})
 }
 
