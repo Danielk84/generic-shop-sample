@@ -39,7 +39,6 @@ export const useStore = defineStore('store', {
       return 'Bearer ' + state.user.accessToken
     },
     hasAccessToken: (state) => {
-      console.log(state.user.accessToken !== '')
       return state.user.accessToken !== ''
     },
     getClaims: (state) => {

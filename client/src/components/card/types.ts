@@ -2,6 +2,7 @@ export interface ImageFrameCardProps {
   img?: string
   alt?: string
   tag?: string
+  loading?: "lazy" | "eager" | undefined
 }
 
 export interface ProductCardProps extends ImageFrameCardProps {

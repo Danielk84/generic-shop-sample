@@ -185,5 +185,6 @@ func SetPageHeader(c *gin.Context, maxPage CacheMaxPageInput) {
 	if err != nil {
 		return
 	}
+	c.Header("Access-Control-Expose-Headers", "X-Max-Page")
 	c.Header("X-Max-Page", strconv.Itoa(count))
 }

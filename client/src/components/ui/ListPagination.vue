@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { defineAsyncComponent, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { defineAsyncComponent, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import icons from '@/utils/icons'
 import { range } from '@/utils/helper'
@@ -12,11 +12,13 @@ const props = defineProps<{ last: number }>()
 const emits = defineEmits<{
   (e: 'changePage', page: number): void
 }>()
+
 const route = useRoute()
+const router = useRouter()
 
-const page = ref<number>(0)
+const page = ref<number>(1)
 
-const pageRange = (page: number, last: number) => {
+function pageRange(page: number, last: number) {
   const windowSize = 3
   let start = Math.max(1, page - 1)
   let end = Math.min(last, start + windowSize - 1)
@@ -28,28 +30,47 @@ const pageRange = (page: number, last: number) => {
   return range(start, end + 1)
 }
 
-const setPage = (value: number) => {
+function setPage(value: number) {
   if (value > props.last || value < 1) {
     return
   }
   page.value = value
 }
 
-onMounted(async () => {
-  page.value = Number(route.query.page)
-  if (isNaN(page.value) || page.value > props.last || page.value < 1) {
+function syncPageFromRoute() {
+  const p = Number(route.query.page)
+  if (!Number.isInteger(p) || p < 1) {
     page.value = 1
+    return
   }
-  emits('changePage', page.value)
-})
 
-watch(page, async (newValue: number) => {
-  emits('changePage', newValue)
-})
+  if (props.last > 1 && p > props.last) {
+    page.value = props.last
+    return
+  }
+
+  page.value = p
+}
+
+watch(
+  () => [route.query.page, props.last],
+  () => {
+    syncPageFromRoute()
+    emits('changePage', page.value)
+  },
+  { immediate: true },
+)
+
+watch(
+  page,
+  async (v: number) => {
+    router.push({ name: 'admin-products-list', query: { page: v } })
+  },
+)
 </script>
 
 <template>
-  <div class="pagination">
+  <div class="pagination" v-if="props.last > 1">
     <button
       class="main-btn btn"
       v-bind:class="{ off: page === 1 }"
@@ -72,7 +93,7 @@ watch(page, async (newValue: number) => {
     </div>
     <button
       class="main-btn btn item"
-      v-bind:class="{ off: page === props.last || props.last === 0 }"
+      :class="{ off: page === props.last || props.last === 0 }"
       @click="setPage(page + 1)"
     >
       <BaseIcon

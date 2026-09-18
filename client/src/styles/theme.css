@@ -102,12 +102,12 @@
   --color-search-box-placeholder: var(--c-v-6);
 
   /* components/ui/ListPagination.vue */
-  --color-pagination-btn: #000000;
-  --color-pagination-icon: #ffffff;
-  --color-pagination-border: #000000;
-  --color-pagination-default-text: #000000;
-  --color-pagination-select-bg: #000000;
-  --color-pagination-select-text: #ffffff;
+  --color-pagination-btn: var(--c-v-1);
+  --color-pagination-icon: var(--c-v-7);
+  --color-pagination-border: var(--c-v-1);
+  --color-pagination-default-text: var(--c-v-1);
+  --color-pagination-select-bg: var(--c-v-1);
+  --color-pagination-select-text: var(--c-v-7);
 
   /* components/card/ImageFrame.vue */
   --color-img-frame-card-bg: var(--c-v-1);

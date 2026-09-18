@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { defineAsyncComponent, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { useMutation, useQuery } from '@tanstack/vue-query'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 import api from '@/utils/api'
 import { useStore } from '@/store'
@@ -16,24 +16,29 @@ const ListPagination = defineAsyncComponent(
 )
 
 const store = useStore()
+const route = useRoute()
 const router = useRouter()
 
-const page = ref<number>(1)
-const maxPage = ref<number>(0)
+const page = ref<number | null>(null)
+const maxPage = ref<number>(1)
 
 const { data, error, refetch } = useQuery({
-  queryKey: ['admin-products-list'],
+  queryKey: ['admin-products-list', page.value],
+  enabled: computed(() => page.value !== null),
   queryFn: async () =>
     api.get<ProductStatusResponse[]>('products/admin', {
       params: {
-        page,
+        page: page.value,
       },
       headers: {
         Authorization: store.getAccessToken,
       },
     }),
   select: (res) => {
-    maxPage.value = res.headers['X-Max-Page']
+    const mp = Number(res.headers['x-max-page'])
+    if (mp !== undefined) {
+      maxPage.value = mp
+    }
     return res.data
   },
 })
@@ -42,7 +47,14 @@ watch(
   error,
   (err) => {
     if (err !== null) {
-      errorStatusHandler(err, router)
+      errorStatusHandler(err, router, {
+        notFound() {
+          const p = route.query?.page
+          if (p !== null && Number(p) > 1) {
+            router.back()
+          }
+        },
+      })
     }
   },
   {
@@ -85,7 +97,7 @@ const setActiveMutation = useMutation({
     <div v-else v-for="item in data" class="list c-flex-all-center">
       <div class="item">
         <div class="img-frame">
-          <ImageFrameCard :img="item.img_path" />
+          <ImageFrameCard :img="item.img_path" loading="eager" />
         </div>
         <div class="content">
           <h2>{{ item.name }}</h2>
@@ -96,7 +108,7 @@ const setActiveMutation = useMutation({
             class="set-btn true-btn"
             :class="{
               'false-btn': item.is_active,
-              'c-is-pending': setActiveMutation.isPending,
+              'c-is-pending': !setActiveMutation.isPending,
             }"
             @click="
               setActiveMutation.mutate({
@@ -169,13 +181,19 @@ const setActiveMutation = useMutation({
 }
 
 .products-list-page .img-frame {
-  @apply size-82 rounded-2xl overflow-hidden;
+  @apply size-82 rounded-2xl overflow-hidden
+    basis-3/7;
 }
 
 .products-list-page .content {
-  @apply flex flex-col gap-4
+  @apply flex flex-col gap-2
     border-l px-4
-    border-panel-products-shadow;
+    border-panel-products-shadow
+    basis-4/7;
+}
+
+.content h2 {
+  @apply font-bold;
 }
 
 .products-list-page .set-btn {
