@@ -44,8 +44,10 @@ func AuthMiddleware(deps *app.ServiceDeps, log logger.Logger) gin.HandlerFunc {
 				EmailAddrRequest:  queries.EmailAddrRequest{Email: claims.Email},
 				PermissionRequest: queries.PermissionRequest{PermissionType: claims.PermissionType}})
 		if !isValid {
-			log.Debug("AuthMiddleware:invalid user", "email", claims.Email)
-			c.AbortWithStatus(http.StatusNotFound)
+			log.Error("AuthMiddleware:invalid user",
+				"email", claims.Email,
+				"note", "user has valid jwt but does not exists?!")
+			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}
 		cacheKey := fmt.Sprintf("login:%s", claims.ID)
@@ -56,7 +58,7 @@ func AuthMiddleware(deps *app.ServiceDeps, log logger.Logger) gin.HandlerFunc {
 			log.Debug("AuthMiddleware:exists",
 				"error", err,
 				"count", count)
-			c.AbortWithStatus(http.StatusNotFound)
+			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 		ctx = context.WithValue(ctx, userKey, claims)

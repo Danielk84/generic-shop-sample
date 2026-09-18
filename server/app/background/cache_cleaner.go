@@ -80,7 +80,7 @@ func (c *CacheCleaner) Start(ctx context.Context) {
 
 var _ = (*CacheCleaner)(nil)
 
-func SendCacheCleanr(ctx context.Context, cache cache.CacheClient, cc CacheCleanerMessage) error {
+func SendCacheCleaner(ctx context.Context, cache cache.CacheClient, cc CacheCleanerMessage) error {
 	msg, err := json.Marshal(cc)
 	if err != nil {
 		return fmt.Errorf("failed to encode CacheCleanerMessage, %s", err)

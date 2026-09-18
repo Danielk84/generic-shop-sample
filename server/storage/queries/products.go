@@ -166,7 +166,7 @@ func (p *productRepository) MaxPage(ctx context.Context, pagination int) (count 
 		p.log.Debug("productRepository.MaxPage", "error", err)
 		return
 	}
-	count = count / pagination
+	count = getPageSize(count, pagination)
 	return
 }
 

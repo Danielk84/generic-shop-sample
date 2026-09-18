@@ -172,7 +172,7 @@ func CacheMaxPage(c CacheMaxPageInput) (count int, err error) {
 		if count, err = c.getMaxPage(c.ctx, c.pagination); err != nil {
 			return
 		}
-		if err = c.client.Set(c.ctx, cacheKey, count, time.Hour).Err(); err != nil {
+		if err = c.client.Set(c.ctx, cacheKey, count, 10*time.Minute).Err(); err != nil {
 			LogCacheErr("Set", "CacheMaxPage", err)
 			err = nil
 		}

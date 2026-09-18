@@ -89,7 +89,7 @@ func (v *vendorOrderRepository) MaxPage(userID string) MaxPageType {
 			v.log.Debug("vendorOrderRepository.MaxPage", "error", err)
 			return
 		}
-		count = count / pagination
+		count = getPageSize(count, pagination)
 		return
 	}
 }

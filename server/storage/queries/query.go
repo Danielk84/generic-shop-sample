@@ -86,6 +86,14 @@ func getMaxPage(
 			"error", err)
 		return
 	}
-	count = count / pagination
+	count = getPageSize(count, pagination)
 	return
+}
+
+func getPageSize(count, pagination int) int {
+	count = count / pagination
+	if count%pagination > 0 {
+		count++
+	}
+	return count
 }

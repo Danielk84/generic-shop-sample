@@ -331,7 +331,7 @@ func (h *productsHandler) setActive(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
-	err := background.SendCacheCleanr(ctx, h.publicCache, background.CacheCleanerMessage{
+	err := background.SendCacheCleaner(ctx, h.publicCache, background.CacheCleanerMessage{
 		CacheDB: cache.ProductsCache,
 		Keys: []string{
 			fmt.Sprintf("%s:%s", h.baseCacheKey, id),

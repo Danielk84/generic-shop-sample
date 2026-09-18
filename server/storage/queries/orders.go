@@ -117,7 +117,7 @@ func (o *orderRepository) MaxCustomerListPage(userID string) MaxPageType {
 			o.log.Debug("orderRepository.MaxCustomerListPage", "error", err)
 			return
 		}
-		count = count / pagination
+		count = getPageSize(count, pagination)
 		return
 	}
 }
@@ -354,7 +354,7 @@ func (o *orderItemsRepository) MaxCustomerListPage(id OrderID) MaxPageType {
 			o.log.Debug("orderItemsRepository.MaxCustomerListPage", "error", err)
 			return
 		}
-		count = count / pagination
+		count = getPageSize(count, pagination)
 		return
 	}
 }
@@ -390,7 +390,7 @@ func (o *orderItemsRepository) MaxAdminListPage(orderID string) MaxPageType {
 			o.log.Debug("orderItemsRepository.MaxAdminListPage", "error", err)
 			return
 		}
-		count = count / pagination
+		count = getPageSize(count, pagination)
 		return
 	}
 }

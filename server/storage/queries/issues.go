@@ -117,7 +117,7 @@ func (i *issuesRepository) UserMaxPage(userID string) MaxPageType {
 			i.log.Debug("issuesRepository.UserMaxPage", "error", err)
 			return
 		}
-		count = count / pagination
+		count = getPageSize(count, pagination)
 		return
 	}
 }

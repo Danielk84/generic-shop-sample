@@ -204,7 +204,7 @@ func (h *commentsHandler) delete(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	err = background.SendCacheCleanr(ctx, h.cache, background.CacheCleanerMessage{
+	err = background.SendCacheCleaner(ctx, h.cache, background.CacheCleanerMessage{
 		CacheDB: cache.PublicCache,
 		Keys: []string{
 			fmt.Sprintf("%s:get:%s", h.baseCacheKey, id),

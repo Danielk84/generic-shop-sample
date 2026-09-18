@@ -132,7 +132,7 @@ func (c *commentRepository) MaxListPage(ctx context.Context, pagination int) (co
 		c.log.Debug("commentRepository.MaxListPage", "error", err)
 		return
 	}
-	count = count / pagination
+	count = getPageSize(count, pagination)
 	return
 }
 
