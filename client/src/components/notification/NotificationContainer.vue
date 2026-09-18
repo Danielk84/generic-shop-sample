@@ -25,7 +25,7 @@ const notifications = useNotificationStore()
 @reference "@/styles/index.css";
 
 .notifications-container {
-  @apply fixed z-70 w-screen h-fit overflow-hidden
+  @apply fixed z-70 w-fit h-fit overflow-hidden
     flex flex-col items-end gap-5 p-10;
 }
 

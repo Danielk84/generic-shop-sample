@@ -38,6 +38,11 @@ const router = createRouter({
           component: () => import('@/pages/error/NotFoundPage.vue'),
         },
         {
+          path: '/413',
+          name: 'error-content-too-large',
+          component: () => import('@/pages/error/ContentTooLarge.vue'),
+        },
+        {
           path: '/422',
           name: 'error-unprocessable-content',
           component: () => import('@/pages/error/UnprocessableContentPage.vue'),
@@ -110,14 +115,14 @@ const router = createRouter({
       path: '/panel',
       meta: {
         layout_0: 'BaseFooterLayout',
-        // layout_1: 'HasAccessTokenLayout',
+        layout_1: 'HasAccessTokenLayout',
       },
       children: [
         {
           path: '/panel/admin',
-          // meta: {
-          //   permissions_list: [PermissionType.Admin],
-          // },
+          meta: {
+            permissions_list: [PermissionType.Admin],
+          },
           children: [
             {
               path: '/panel/admin/',
@@ -179,6 +184,12 @@ const router = createRouter({
           ],
         },
       ],
+    },
+    {
+      path: '/:pathMatch(.*)*',
+      redirect: {
+        name: 'error-not-found',
+      },
     },
   ],
 })

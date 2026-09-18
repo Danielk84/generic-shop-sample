@@ -40,7 +40,6 @@ services:
         read_only: true
       - backend-deps:/go
       - backend-build-cache:/root/.cache/go-build
-      - backend-upload:/app/upload
       - backend-logs:/app/logs
     networks:
       - server
@@ -146,7 +145,6 @@ services:
 volumes:
   backend-deps:
   backend-build-cache:
-  backend-upload:
   backend-logs:
   database-data:
   storage-data:

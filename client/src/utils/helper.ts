@@ -51,6 +51,13 @@ export function errorStatusHandler(
         router.push('/404')
       }
       break
+    case axios.HttpStatusCode.ContentTooLarge:
+      if (typeof handlers?.contentTooLarge === 'function') {
+        handlers.contentTooLarge()
+      } else {
+        router.push('/413')
+      }
+      break
     case axios.HttpStatusCode.UnprocessableContent:
       if (typeof handlers?.unprocessableEntity === 'function') {
         handlers.unprocessableEntity()

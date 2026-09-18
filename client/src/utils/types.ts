@@ -4,6 +4,7 @@ export interface StatusHandlers {
   notAxiosError?: () => void
   badRequest?: () => void
   notFound?: () => void
+  contentTooLarge?: () => void
   unprocessableEntity?: () => void
   tooManyRequests?: () => void
   internalServerError?: () => void
