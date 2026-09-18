@@ -21,7 +21,7 @@ const router = useRouter()
 const route = useRoute()
 const productID = route.params.productID
 if (productID === undefined || productID === '') {
-  router.push('/')
+  router.push('/404')
 }
 
 const errorMsg = ref<string>('')

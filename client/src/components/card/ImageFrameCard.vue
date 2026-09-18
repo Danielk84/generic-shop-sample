@@ -27,7 +27,7 @@ onUnmounted(async () => {
       <img
         v-if="typeof img === 'string'"
         ref="imgRef"
-        :src="`${backendUrl}/static/${props.img}`"
+        :src="`${backendUrl}/api/static/imgs/${props.img}`"
         :alt="props.alt"
         loading="lazy"
         draggable="false"

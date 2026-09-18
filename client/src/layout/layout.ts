@@ -19,8 +19,8 @@ export const setLayout = (layer: LayoutName[], base: Component): Component => {
     name: 'DynamicLayout',
 
     setup(_, { slots }) {
-      return () => {
-        return h(base, null, {
+      return () =>
+        h(base, null, {
           default: () =>
             layer.reduce((child: Component, layoutName: LayoutName) => {
               const Layout = layouts[layoutName]
@@ -32,7 +32,6 @@ export const setLayout = (layer: LayoutName[], base: Component): Component => {
               })
             }, slots.default?.() ?? []),
         })
-      }
     },
   })
 }

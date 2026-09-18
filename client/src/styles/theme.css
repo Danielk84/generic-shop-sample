@@ -75,8 +75,8 @@
   --color-default-layout-text: var(--c-v-1);
 
   /* components/common/NavBar.vue */
-  --color-nav-bar-bg: var(--c-v-5);
-  --color-nav-bar-border: var(--c-v-3);
+  --color-nav-bar-bg: var(--c-v-6);
+  --color-nav-bar-border: var(--c-v-1);
 
   /* components/common/footer */
   --color-footer-bg: var(--c-v-1);
@@ -161,12 +161,12 @@
   --color-auth-p-icon: var(--c-v-7);
 
   /* notification/NotificationContainer.vue */
-  --color-notification-bg: #ffffff;
-  --color-notification-text: #000000;
-  --color-notification-success: #26ff0e;
-  --color-notification-error: #ff0000;
-  --color-notification-warning: #ffe137;
-  --color-notification-info: #7b53ff;
+  --color-notification-bg: var(--c-v-6);
+  --color-notification-text: var(--c-v-1);
+  --color-notification-success: var(--nord-aurora-4);
+  --color-notification-error: var(--c-v-11);
+  --color-notification-warning: var(--c-v-12);
+  --color-notification-info: var(--c-v-15);
 
   /* components/card/TagCard.vue */
   --color-tag-card-text: var(--c-v-1);

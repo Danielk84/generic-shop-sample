@@ -9,11 +9,6 @@
     viewBox="0 0 512 512"
     xml:space="preserve"
   >
-    <style type="text/css">
-      .st0 {
-        fill: #000000;
-      }
-    </style>
     <g>
       <polygon
         class="st0"

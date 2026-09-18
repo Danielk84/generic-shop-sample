@@ -8,14 +8,14 @@ const notifications = useNotificationStore()
   <div class="notifications-container">
     <TransitionGroup name="notification">
       <div
-        v-for="notification in notifications.notifications"
+        v-for="notification in notifications.Notify"
         :key="notification.id"
         class="item c-flex-all-center"
         :class="`item-${notification.type}`"
       >
         <span>{{ notification.message }}</span>
 
-        <button @click="notifications.remove(notification.id)">×</button>
+        <button @click="notifications.remove(notification.id)">x</button>
       </div>
     </TransitionGroup>
   </div>
@@ -25,19 +25,29 @@ const notifications = useNotificationStore()
 @reference "@/styles/index.css";
 
 .notifications-container {
-  @apply fixed w-screen h-fit overflow-hidden
-    flex items-center justify-end gap-5;
+  @apply fixed z-70 w-screen h-fit overflow-hidden
+    flex flex-col items-end gap-5 p-10;
 }
 
 .notifications-container .item {
-  @apply rounded-2xl w-100 h-20
-    text-ellipsis text-2xl font-bold
+  @apply rounded-2xl w-100 h-20 p-4
     bg-notification-bg
     text-notification-text
-    border-4;
+    flex items-center justify-between
+    border-t-6 border
+    hover:brightness-95;
 }
 
-.notifications-container .item-sucess {
+.notifications-container span {
+  @apply truncate font-bold;
+}
+
+.notifications-container button {
+  @apply p-2 w-fit h-full flex
+    items-start cursor-pointer;
+}
+
+.notifications-container .item-success {
   @apply border-notification-success;
 }
 

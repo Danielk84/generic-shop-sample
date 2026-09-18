@@ -18,8 +18,17 @@ export const useNotificationStore = defineStore('notification', {
   persist: {
     storage: sessionStorage,
   },
+  getters: {
+    Notify(): Notification[] {
+      return this.notifications.reverse()
+    },
+  },
   actions: {
-    show(message: string, type: NotificationType = 'info', duration = 3000) {
+    show(
+      message: string,
+      type: NotificationType = 'info',
+      duration = 3000,
+    ): string {
       const id = randKey()
       this.notifications.push({
         id,
@@ -33,22 +42,23 @@ export const useNotificationStore = defineStore('notification', {
           this.remove(id)
         }, duration)
       }
+      return id
     },
 
-    success(message: string, duration = 3000) {
-      this.show(message, 'success', duration)
+    success(message: string, duration = 3000): string {
+      return this.show(message, 'success', duration)
     },
 
-    error(message: string, duration = 5000) {
-      this.show(message, 'error', duration)
+    error(message: string, duration = 5000): string {
+      return this.show(message, 'error', duration)
     },
 
-    warning(message: string, duration = 4000) {
-      this.show(message, 'warning', duration)
+    warning(message: string, duration = 4000): string {
+      return this.show(message, 'warning', duration)
     },
 
-    info(message: string, duration = 3000) {
-      this.show(message, 'info', duration)
+    info(message: string, duration = 3000): string {
+      return this.show(message, 'info', duration)
     },
 
     remove(id: string) {

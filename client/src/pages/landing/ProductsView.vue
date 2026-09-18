@@ -9,7 +9,7 @@ const ProductCard = defineAsyncComponent(
   () => import('@/components/card/ProductCard.vue'),
 )
 const BaseIcon = defineAsyncComponent(
-  () => import('@/components/ui/BaseIcon.vue')
+  () => import('@/components/ui/BaseIcon.vue'),
 )
 
 const props = defineProps<{
@@ -54,7 +54,7 @@ function onPointerUp(event: PointerEvent) {
 }
 
 const scrollStep = 15
-const scrollTimeout = 24 
+const scrollTimeout = 24
 const goForward = useTimer(() => {
   const element = scrollBoxRef.value
   if (!element) return
@@ -85,7 +85,6 @@ const goForward = useTimer(() => {
       @pointermove="onPointerMove"
       @pointerup="onPointerUp"
       @pointercancel="onPointerUp"
-      
       class="products"
       :class="{ 'is-draging': isDragging }"
     >
@@ -148,7 +147,6 @@ const goForward = useTimer(() => {
 
 .products-view .products {
   scrollbar-width: none;
-  
 
   @apply flex flex-row items-start
     gap-10 p-10 w-full h-fit
