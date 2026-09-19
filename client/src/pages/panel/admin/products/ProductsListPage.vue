@@ -142,6 +142,7 @@ const setActiveMutation = useMutation({
     <div class="pagination">
       <ListPagination
         :last="maxPage"
+        page-name="admin-products-list"
         @change-page="
           (p: number) => {
             page = p

@@ -8,7 +8,10 @@ const BaseIcon = defineAsyncComponent(
   () => import('@/components/ui/BaseIcon.vue'),
 )
 
-const props = defineProps<{ last: number }>()
+const props = defineProps<{
+  last: number
+  pageName: string
+}>()
 const emits = defineEmits<{
   (e: 'changePage', page: number): void
 }>()
@@ -64,7 +67,8 @@ watch(
 watch(
   page,
   async (v: number) => {
-    router.push({ name: 'admin-products-list', query: { page: v } })
+    window.scroll(0, 0)
+    router.push({ name: props.pageName, query: { page: v } })
   },
 )
 </script>

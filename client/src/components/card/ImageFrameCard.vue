@@ -25,6 +25,7 @@ onMounted(async () => {
   <div class="img-frame" ref="bgRef">
     <div class="img-box c-flex-all-center">
       <img
+        v-if="typeof props.img === 'string' && props.img !== ''"
         ref="imgRef"
         :src="`${backendUrl}/api/static/imgs/${props.img}`"
         :alt="props.alt"
