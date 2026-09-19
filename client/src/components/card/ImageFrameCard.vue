@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUpdated } from 'vue'
 
 import { imageOnLoadHook } from '@/components/card/hooks'
 import type { ImageFrameCardProps } from '@/components/card/types'
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL
 
-const props = defineProps<ImageFrameCardProps>()
+const props = withDefaults(
+  defineProps<ImageFrameCardProps>(),
+  { loading: 'lazy' },
+)
 
 const imgRef = ref<HTMLImageElement | null>(null)
 const bgRef = ref<HTMLDivElement | null>(null)
@@ -16,20 +19,16 @@ const onload = imageOnLoadHook(imgRef, bgRef)
 onMounted(async () => {
   imgRef.value?.addEventListener('load', onload)
 })
-onUnmounted(async () => {
-  imgRef.value?.removeEventListener('load', onload)
-})
 </script>
 
 <template>
   <div class="img-frame" ref="bgRef">
     <div class="img-box c-flex-all-center">
       <img
-        v-if="typeof img === 'string'"
         ref="imgRef"
         :src="`${backendUrl}/api/static/imgs/${props.img}`"
         :alt="props.alt"
-        loading="lazy"
+        :loading="props.loading"
         draggable="false"
         @dragstart.prevent
       />

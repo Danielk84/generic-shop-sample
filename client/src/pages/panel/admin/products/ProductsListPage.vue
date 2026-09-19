@@ -94,7 +94,12 @@ const setActiveMutation = useMutation({
     <div v-if="data === undefined" class="empty-product c-flex-all-center">
       <p>There are not any products.</p>
     </div>
-    <div v-else v-for="item in data" class="list c-flex-all-center">
+    <div
+      v-else
+      v-for="item in data"
+      :key="item.id"
+      class="list c-flex-all-center"
+    >
       <div class="item">
         <div class="img-frame">
           <ImageFrameCard :img="item.img_path" loading="eager" />
