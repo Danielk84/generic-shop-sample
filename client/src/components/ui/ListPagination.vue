@@ -64,13 +64,10 @@ watch(
   { immediate: true },
 )
 
-watch(
-  page,
-  async (v: number) => {
-    window.scroll(0, 0)
-    router.push({ name: props.pageName, query: { page: v } })
-  },
-)
+watch(page, async (v: number) => {
+  window.scroll(0, 0)
+  router.push({ name: props.pageName, query: { page: v } })
+})
 </script>
 
 <template>

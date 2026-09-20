@@ -17,6 +17,12 @@ import type { StatusResponse } from '@/contracts/response.interface'
 const BaseIcon = defineAsyncComponent(
   () => import('@/components/ui/BaseIcon.vue'),
 )
+const BackBtn = defineAsyncComponent(
+  () => import('@/components/ui/button/BackBtn.vue'),
+)
+const CountdownTimer = defineAsyncComponent(
+  () => import('@/pages/auth/CountdownTimer.vue'),
+)
 
 const router = useRouter()
 const store = useStore()
@@ -66,6 +72,16 @@ const onClick = async (event: MouseEvent) => {
 <template>
   <div class="register-page c-flex-all-center">
     <div class="register-box c-form-bg">
+      <div class="flex justify-between w-full">
+        <BackBtn
+          page-name="auth"
+          :icon="{
+            fillColor: '--color-auth-back-btn',
+            strokeColor: '--color-auth-back-btn',
+          }"
+        />
+        <CountdownTimer :remaining-minutes="10" />
+      </div>
       <form class="c-form">
         <div class="c-form-item">
           <label class="c-form-label" for="pass-key"> Pass Key: </label>

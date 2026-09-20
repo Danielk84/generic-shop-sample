@@ -14,6 +14,12 @@ import type { AccessTokenResponse } from '@/contracts/auth/response.interface'
 const BaseIcon = defineAsyncComponent(
   () => import('@/components/ui/BaseIcon.vue'),
 )
+const BackBtn = defineAsyncComponent(
+  () => import('@/components/ui/button/BackBtn.vue'),
+)
+const CountdownTimer = defineAsyncComponent(
+  () => import('@/pages/auth/CountdownTimer.vue'),
+)
 
 const router = useRouter()
 const route = useRoute()
@@ -82,9 +88,19 @@ const onClick = async (event: MouseEvent) => {
 <template>
   <div class="login-page c-flex-all-center">
     <div
-      class="login-box c-form-bg"
+      class="login-box c-form-bg c-flex-all-center flex-col"
       :class="{ 'to-c-form-shadow-error': isError }"
     >
+      <div class="flex justify-between w-full">
+        <BackBtn
+          page-name="auth"
+          :icon="{
+            fillColor: '--color-auth-back-btn',
+            strokeColor: '--color-auth-back-btn',
+          }"
+        />
+        <CountdownTimer :remaining-minutes="2" />
+      </div>
       <form class="c-form">
         <div class="c-form-item">
           <label class="c-form-label" for="pass-key"> pass key: </label>

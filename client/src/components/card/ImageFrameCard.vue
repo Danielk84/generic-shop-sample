@@ -1,15 +1,14 @@
 <script setup lang="ts">
-import { ref, onMounted, onUpdated } from 'vue'
+import { ref, onMounted } from 'vue'
 
 import { imageOnLoadHook } from '@/components/card/hooks'
 import type { ImageFrameCardProps } from '@/components/card/types'
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL
 
-const props = withDefaults(
-  defineProps<ImageFrameCardProps>(),
-  { loading: 'lazy' },
-)
+const props = withDefaults(defineProps<ImageFrameCardProps>(), {
+  loading: 'lazy',
+})
 
 const imgRef = ref<HTMLImageElement | null>(null)
 const bgRef = ref<HTMLDivElement | null>(null)

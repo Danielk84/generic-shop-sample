@@ -155,10 +155,10 @@
   --color-basket-orders-title-text: #ffffff;
 
   /* pages/auth */
-  --color-eye-icon: var(--c-v-7);
-
-  /* pages/auth/AuthPage.vue */
   --color-auth-p-icon: var(--c-v-7);
+  --color-eye-icon: var(--c-v-7);
+  --color-timer-text: var(--c-v-13);
+  --color-auth-back-btn: var(--c-v-7);
 
   /* notification/NotificationContainer.vue */
   --color-notification-bg: var(--c-v-6);
@@ -188,14 +188,17 @@
   --color-categories-p-border: var(--c-v-1);
 
   /* pages/panel/admin/products */
+  --color-panel-products-back-icon: var(--c-v-7);
   --color-panel-products-create-btn: var(--c-v-15);
   --color-panel-products-ture-btn: var(--c-v-14);
-  --color-panel-products-false-btn: var(--c-v-10);
+  --color-panel-products-false-btn: var(--c-v-11);
   --color-panel-products-btn-text: var(--c-v-1);
   --color-panel-products-border: var(--c-v-1);
   --color-panel-products-shadow: var(--c-v-9);
   --color-panel-products-add-property-btn: var(--c-v-10);
   --color-panel-products-add-property-btn-text: var(--c-v-7);
+  --color-panel-products-next-btn: var(--c-v-13);
+  --color-panel-products-next-text: var(--c-v-1);
 
   /* components/common/products/ProductView.vue */
   --color-common-product-view-border: var(--c-v-1);
