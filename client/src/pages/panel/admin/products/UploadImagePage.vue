@@ -131,7 +131,7 @@ const onChange = async (event: Event) => {
 }
 
 .upload-image-page .show-box {
-  @apply w-full border-b-2;
+  @apply w-full border-b-2 p-2;
 }
 
 .upload-image-page .add-img-btn {
