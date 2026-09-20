@@ -65,11 +65,17 @@ type UpdateProductVendor struct {
 }
 
 type ProductResponse struct {
-	ProductStatusResponse
-	Description   string                 `json:"description"`
-	CommonDetail  ProductProperty        `json:"common_detail"`
-	VariantDetail []ProductVariantDetail `json:"variant_detail"`
-	ViewCounter   int64                  `json:"view_counter"`
+	ID                string                 `json:"id"`
+	Name              string                 `json:"name"`
+	Price             int64                  `json:"price"`
+	PubDate           time.Time              `json:"pub_date"`
+	AvailableQuantity int32                  `json:"available_quantity"`
+	IsAvailable       bool                   `json:"is_available"`
+	IsActive          bool                   `json:"is_active"`
+	Description       string                 `json:"description"`
+	CommonDetail      ProductProperty        `json:"common_detail"`
+	VariantDetail     []ProductVariantDetail `json:"variant_detail"`
+	ViewCounter       int64                  `json:"view_counter"`
 }
 
 type productRepository struct {

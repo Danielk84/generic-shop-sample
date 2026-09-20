@@ -67,7 +67,7 @@ const setActiveMutation = useMutation({
   mutationFn: async (input: { id: string; status: boolean }) => {
     return api.put(
       `products/set-active/${input.id}`,
-      { activate: input.status },
+      { accepted: input.status },
       {
         headers: {
           Authorization: store.getAccessToken,
@@ -87,7 +87,13 @@ const setActiveMutation = useMutation({
 <template>
   <div class="products-list-page">
     <div class="options">
-      <RouterLink class="redirect-btn" :to="{ name: 'admin-product-create' }">
+      <RouterLink
+        class="redirect-btn"
+        :to="{
+          name: 'admin-product-create',
+          query: { page: page },
+        }"
+      >
         Create
       </RouterLink>
     </div>
@@ -110,9 +116,9 @@ const setActiveMutation = useMutation({
           <p>Published: {{ formatDate(item.pub_date) }}</p>
           <p>Quantity: {{ item.available_quantity }}</p>
           <button
-            class="set-btn true-btn"
+            class="set-btn true-btn cursor-pointer"
             :class="{
-              'false-btn': item.is_active,
+              'false-btn': !item.is_active,
               'c-is-pending': !setActiveMutation.isPending,
             }"
             @click="
@@ -125,12 +131,19 @@ const setActiveMutation = useMutation({
             Active
           </button>
           <div
-            class="set-btn true-btn cursor-none"
-            :class="{ 'false-btn': item.is_available }"
+            class="set-btn true-btn"
+            :class="{ 'false-btn': !item.is_available }"
           >
             <span>Available</span>
           </div>
-          <RouterLink class="set-btn base-btn" to="/">
+          <RouterLink
+            class="set-btn base-btn"
+            :to="{
+              name: 'admin-product-edit',
+              params: { productID: item.id },
+              query: { page: page },
+            }"
+          >
             <span>Edit</span>
           </RouterLink>
           <RouterLink class="set-btn base-btn" :to="`products/${item.id}`">
@@ -205,7 +218,7 @@ const setActiveMutation = useMutation({
 .products-list-page .set-btn {
   @apply w-40 h-10 rounded-2xl
     flex items-center justify-center
-    text-xl font-bold cursor-pointer
+    text-xl font-bold
     hover:brightness-120;
 }
 

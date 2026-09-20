@@ -174,7 +174,7 @@ const router = createRouter({
                     import('@/pages/panel/admin/products/UploadImagePage.vue'),
                 },
                 {
-                  path: '/panel/admin/products/edit',
+                  path: '/panel/admin/products/edit/:productID',
                   name: 'admin-product-edit',
                   component: () =>
                     import('@/pages/panel/admin/products/EditPage.vue'),

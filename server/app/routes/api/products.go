@@ -40,7 +40,7 @@ func ProductsRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 		{http.MethodDelete, "/:id", []gin.HandlerFunc{h.delete}},
 		{http.MethodGet, "/admin", []gin.HandlerFunc{h.adminList}},
 		{http.MethodGet, "/overview/:id", []gin.HandlerFunc{h.get}},
-		{http.MethodPut, "set-active/:id", []gin.HandlerFunc{h.setActive}},
+		{http.MethodPut, "/set-active/:id", []gin.HandlerFunc{h.setActive}},
 	})
 	router.GET("/:id", h.get)
 }

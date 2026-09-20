@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { defineAsyncComponent } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, type LocationQueryRaw } from 'vue-router'
 
 import icons from '@/utils/icons'
 import type { SVGIcon } from '@/components/ui/types'
@@ -9,7 +9,11 @@ const BaseIcon = defineAsyncComponent(
   () => import('@/components/ui/BaseIcon.vue'),
 )
 
-const props = defineProps<{ icon?: SVGIcon; pageName?: string }>()
+const props = defineProps<{
+  icon?: SVGIcon
+  pageName?: string
+  query?: LocationQueryRaw
+}>()
 const router = useRouter()
 
 function onClick(event: MouseEvent) {
@@ -20,7 +24,7 @@ function onClick(event: MouseEvent) {
   if (props.pageName === 'back-2') {
     router.go(-2)
   } else {
-    router.push({ name: props.pageName })
+    router.push({ name: props.pageName, query: props.query })
   }
 }
 </script>

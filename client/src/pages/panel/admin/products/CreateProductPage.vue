@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useMutation } from '@tanstack/vue-query'
 
 import api from '@/utils/api'
@@ -14,8 +14,10 @@ import {
 import type { ProductProperty } from '@/contracts/products/response.interface'
 
 const store = useStore()
+const route = useRoute()
 const router = useRouter()
 
+const callback_page = route.query.page
 const properties = ref<
   {
     key: string
@@ -48,6 +50,7 @@ const { mutateAsync, isPending } = useMutation({
     router.push({
       name: 'admin-product-upload-img',
       params: { productID: res.data.productID },
+      query: { page: callback_page },
       replace: true,
     })
   },

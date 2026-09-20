@@ -15,11 +15,15 @@ const ImageFrameList = defineAsyncComponent(
 const BaseIcon = defineAsyncComponent(
   () => import('@/components/ui/BaseIcon.vue'),
 )
+const BackBtn = defineAsyncComponent(
+  () => import('@/components/ui/button/BackBtn.vue'),
+)
 
 const store = useStore()
 const router = useRouter()
 const route = useRoute()
 const productID = route.params.productID
+const callback_page = route.query.page
 if (productID === undefined || productID === '') {
   router.push('/404')
 }
@@ -87,6 +91,7 @@ const onChange = async (event: Event) => {
 
 <template>
   <div class="upload-image-page">
+    <BackBtn page-name="admin-products-list" :query="{ page: callback_page }" />
     <div class="show-box">
       <div class="empty-box c-flex-all-center" v-if="data === undefined">
         <h2>There are not any images.</h2>

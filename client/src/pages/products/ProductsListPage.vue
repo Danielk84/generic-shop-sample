@@ -26,6 +26,7 @@ const items = ref([])
     <div v-else class="items"></div>
     <ListPagination
       :last="0"
+      page-name="products-list"
       @change-page="
         (newValue: number) => {
           page = newValue
