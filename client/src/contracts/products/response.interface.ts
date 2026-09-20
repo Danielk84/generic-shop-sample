@@ -27,10 +27,18 @@ export interface ProductVariantDetail {
   vendors: ProductVendor[]
 }
 
-export interface ProductResponse extends ProductStatusResponse {
+export interface ProductResponse {
+  id: string
+  name: string
+  price: number
+  pub_date: string
+  available_quantity: number
+  is_available: boolean
+  is_active: boolean
   description: string
   common_detail: ProductProperty
   variant_detail: ProductVariantDetail[]
+  view_counter: number
 }
 
 export interface Product {

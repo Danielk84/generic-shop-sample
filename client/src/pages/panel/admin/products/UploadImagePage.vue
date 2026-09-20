@@ -42,7 +42,10 @@ watch(
   (err) => {
     if (err !== null) {
       errorStatusHandler(err, router, {
-        notFound() {},
+        notFound() {
+          // empty block
+          return
+        },
       })
     }
   },
@@ -70,6 +73,10 @@ const { mutateAsync, isPending } = useMutation({
     errorStatusHandler(error, router, {
       badRequest() {
         errorMsg.value = 'Invalid image.'
+      },
+      notFound() {
+        errorMsg.value = 'invalid photo.'
+        return
       },
     })
   },

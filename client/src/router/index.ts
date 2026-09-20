@@ -179,6 +179,12 @@ const router = createRouter({
                   component: () =>
                     import('@/pages/panel/admin/products/EditPage.vue'),
                 },
+                {
+                  path: '/panel/admin/products/overview/:productID',
+                  name: 'admin-product-overview',
+                  component: () =>
+                    import('@/pages/panel/admin/products/OverviewPage.vue'),
+                },
               ],
             },
           ],

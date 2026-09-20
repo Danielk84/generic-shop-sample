@@ -5,6 +5,7 @@ import { defineAsyncComponent, watch } from 'vue'
 
 import api from '@/utils/api'
 import { errorStatusHandler } from '@/utils/helper'
+import { formatDate } from '@/utils/helper'
 import type {
   ProductResponse,
   ProductImageResponse,
@@ -41,7 +42,12 @@ watch(
   error,
   (err) => {
     if (err !== null) {
-      errorStatusHandler(err, router)
+      errorStatusHandler(err, router, {
+        notFound() {
+          // empty block
+          return
+        },
+      })
     }
   },
   {
@@ -62,44 +68,70 @@ watch(
       <div v-else class="img-box">
         <ImageFrameList :data="data" />
       </div>
-      <div></div>
-    </div>
-    <div class="options c-flex-all-center">
-      <div
-        v-for="item of props.data.variant_detail"
-        class="options-box c-flex-all-center"
-      >
-        <div
-          v-for="[key, value] of Object.entries(item.property)"
-          :key="key"
-          class="options-item"
-        >
-          <p class="options-key">
-            {{ key }}
-          </p>
-          <p class="options-value">
-            {{ value }}
-          </p>
+      <div class="title">
+        <div>
+          <h1 id="title">{{ props.data.name }}</h1>
         </div>
-        <p>Price {{ item.price }}</p>
-        <p>Quantity {{ getQuantity(item.vendors) }}</p>
+        <div class="w-full flex flex-col gap-4 items-center">
+          <p>View: {{ props.data.view_counter }}</p>
+          <hr />
+          <div class="price-box">
+            <h2>Price: {{ props.data.price }}</h2>
+            <span> | </span>
+            <h2>Available quantity: {{ props.data.available_quantity }}</h2>
+          </div>
+          <hr />
+          <h3>Published at: {{ formatDate(props.data.pub_date) }}</h3>
+        </div>
       </div>
     </div>
-    <div class="info">
-      <div
-        v-for="[key, value] of Object.entries(props.data.common_detail)"
-        :key="key"
-        class="info-item"
-      >
-        <p class="info-item">
-          {{ key }}
-        </p>
-        <p class="info-value">
-          {{ value }}
+    <div class="secondary-window">
+      <div class="options c-flex-all-center">
+        <div
+          v-for="item of props.data.variant_detail"
+          class="options-box c-flex-all-center"
+        >
+          <div
+            v-for="[key, value] of Object.entries(item.property)"
+            :key="key"
+            class="options-item"
+          >
+            <p class="options-key">
+              {{ key }}
+            </p>
+            <p class="options-value">
+              {{ value }}
+            </p>
+          </div>
+          <p>Price {{ item.price }}</p>
+          <p>Quantity {{ getQuantity(item.vendors) }}</p>
+        </div>
+      </div>
+      <div class="description">
+        <h2 id="description">
+          <span>Description</span>
+        </h2>
+        <p>
+          {{ props.data.description }}
         </p>
       </div>
+      <div class="info c-flex-all-center">
+        <table id="info">
+          <tr
+            v-for="[key, value] of Object.entries(props.data.common_detail)"
+            :key="key"
+          >
+            <td>
+              {{ key }}
+            </td>
+            <td class="td-value">
+              {{ value }}
+            </td>
+          </tr>
+        </table>
+      </div>
+      <div class="comments"></div>
     </div>
-    <div class="comments"></div>
   </div>
 </template>
 
@@ -107,15 +139,62 @@ watch(
 @reference "@/styles/index.css";
 
 .empty-product {
-  @appy text-2xl font-bold p-10 size-full;
+  @apply text-2xl font-bold p-10 size-full;
 }
 
 .product-view {
-  @apply w-screen min-h-full;
+  @apply w-screen min-h-full -mt-9
+    bg-linear-to-r from-c-product-view-bg-from to-c-product-view-bg-to
+    text-c-product-primary-text;
+}
+
+.product-view .secondary-window {
+  @apply mt-5 rounded-t-4xl pt-5 px-20
+    bg-c-product-bg-secondary
+    text-c-product-secondary-text;
+}
+
+.product-view .description {
+  @apply w-full h-fit p-10 border-t;
+}
+
+.description h2 {
+  @apply text-2xl font-bold;
+}
+
+.description p {
+  @apply text-center w-full p-5;
 }
 
 .product-view .intro {
-  @apply flex flex-row items-center justify-between p-8;
+  @apply size-full p-10
+    flex flex-row items-center justify-between;
+}
+
+.product-view .title {
+  @apply w-full h-120 basis-5/9 max-h-180
+    flex items-start justify-between flex-col gap-20
+    font-bold;
+}
+
+.title h1 {
+  @apply text-3xl p-10;
+}
+
+.title h2 {
+  @apply text-xl;
+}
+
+.title h3 {
+  @apply text-lg;
+}
+
+.title hr {
+  @apply border-b-2 w-full border-c-product-hr-border;
+}
+
+.title .price-box {
+  @apply w-full flex flex-row gap-2 justify-center;
 }
 
 .product-view .img-box {
@@ -141,6 +220,24 @@ watch(
 }
 
 .product-view .info {
-  @apply flex flex-col;
+  @apply w-full h-fit p-10
+    flex items-center justify-center
+    border-t;
+}
+
+.product-view table {
+  @apply flex flex-col gap-5 h-fit w-80/100;
+}
+
+.product-view tr {
+  @apply h-fit w-full flex flex-row;
+}
+
+.product-view td {
+  @apply w-full min-h-full p-5 basis-1/4 text-wrap;
+}
+
+.product-view .td-value {
+  @apply border-b basis-3/4;
 }
 </style>

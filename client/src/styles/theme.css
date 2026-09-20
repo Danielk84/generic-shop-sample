@@ -130,10 +130,6 @@
   /* pages/error */
   --color-error-p-msg: var(--c-v-11);
 
-  /* pages/products/ImageFrameList.vue */
-  --color-img-frame-list-border: #000000;
-  --color-img-frame-list-icon: #ffffff;
-
   /* pages/basket/CardTotal.vue */
   --color-basket-card-total-border: #000000;
   --color-basket-card-total-title: #a6a6a6;
@@ -200,6 +196,14 @@
   --color-panel-products-next-btn: var(--c-v-13);
   --color-panel-products-next-text: var(--c-v-1);
 
-  /* components/common/products/ProductView.vue */
-  --color-common-product-view-border: var(--c-v-1);
+  /* components/common/products */
+  --color-img-frame-list-border: var(--c-v-10);
+  --color-img-frame-list-icon: var(--c-v-11);
+  --color-common-product-view-border: var(--c-v-13);
+  --color-c-product-view-bg-from: var(--c-v-10);
+  --color-c-product-view-bg-to: var(--c-v-1);
+  --color-c-product-bg-secondary: var(--c-v-7);
+  --color-c-product-primary-text: var(--c-v-7);
+  --color-c-product-secondary-text: var(--c-v-1);
+  --color-c-product-hr-border: var(--c-v-13);
 }

@@ -146,7 +146,15 @@ const setActiveMutation = useMutation({
           >
             <span>Edit</span>
           </RouterLink>
-          <RouterLink class="set-btn base-btn" :to="`products/${item.id}`">
+          <RouterLink
+            class="set-btn base-btn"
+            :to="{
+              name: 'admin-product-overview',
+              params: {
+                productID: item.id,
+              },
+            }"
+          >
             <span>Overeview</span>
           </RouterLink>
         </div>
