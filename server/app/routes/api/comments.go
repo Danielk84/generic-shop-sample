@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"generic-shop-sample/app"
 	"generic-shop-sample/app/background"
@@ -18,7 +19,7 @@ import (
 
 func CommentsRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
-	ch := commentsHandler{
+	h := commentsHandler{
 		store:           queries.NewCommentStore(deps.DB.GetSession(), log),
 		cache:           deps.Cache.GetCache(cache.PublicCache),
 		baseCacheKey:    "comments",
@@ -27,14 +28,15 @@ func CommentsRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 		pagination:      deps.Config.Pagination,
 	}
 
-	router.GET("/", ch.list)
+	router.GET("/", h.list)
 
 	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(deps, log)}, []RouteSpec{
-		{http.MethodPost, "/", []gin.HandlerFunc{ch.create}},
-		{http.MethodGet, "/full", []gin.HandlerFunc{ch.fullList}},
-		{http.MethodGet, "/overview/:id", []gin.HandlerFunc{ch.get}},
-		{http.MethodPut, "/set-active/:id", []gin.HandlerFunc{ch.setActive}},
-		{http.MethodDelete, "/:id", []gin.HandlerFunc{ch.delete}},
+		{http.MethodPost, "/", []gin.HandlerFunc{h.create}},
+		{http.MethodGet, "/full", []gin.HandlerFunc{h.fullList}},
+		{http.MethodGet, "/find/:id", []gin.HandlerFunc{h.find}},
+		{http.MethodGet, "/overview/:id", []gin.HandlerFunc{h.get}},
+		{http.MethodPut, "/set-active/:id", []gin.HandlerFunc{h.setActive}},
+		{http.MethodDelete, "/:id", []gin.HandlerFunc{h.delete}},
 	})
 }
 
@@ -74,7 +76,7 @@ func (h *commentsHandler) create(c *gin.Context) {
 
 func (h *commentsHandler) get(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if !HasPermissions(nil, claims.PermissionType, queries.Admin) {
+	if HasPermissions(nil, claims.PermissionType, queries.BlockUser) {
 		Forbidden(c, "")
 		return
 	}
@@ -89,12 +91,23 @@ func (h *commentsHandler) get(c *gin.Context) {
 		Client:     h.cache,
 		Expiration: h.cacheExpiration,
 		Log:        h.log,
-		Fn: func(sCtx context.Context) (queries.RelatedCommentResponse, error) {
-			return h.store.Get(sCtx, id)
+		Fn: func(sCtx context.Context) (output queries.RelatedCommentResponse, err error) {
+			output, err = h.store.Get(sCtx, id)
+			if err != nil {
+				return
+			}
+			if output.UserID != claims.ID {
+				err = ErrForbiddenAccess
+			}
+			return
 		},
 	})
 	if err != nil {
-		NotFound(c, "")
+		if errors.Is(err, ErrForbiddenAccess) {
+			Forbidden(c, "")
+		} else {
+			NotFound(c, "")
+		}
 		return
 	}
 
@@ -180,6 +193,32 @@ func (h *commentsHandler) fullList(c *gin.Context) {
 	c.JSON(http.StatusOK, output)
 }
 
+func (h *commentsHandler) find(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
+		return
+	}
+
+	id := c.Param("id")
+	ctx := c.Request.Context()
+	page := GetPage(c)
+
+	output, err := h.store.Find(ctx, id, h.pagination, page)
+	if err != nil {
+		NotFound(c, "")
+		return
+	}
+
+	SetPageHeader(c, CacheMaxPageInput{
+		ctx:        ctx,
+		client:     h.cache,
+		name:       "comments-fullList",
+		pagination: h.pagination,
+		getMaxPage: h.store.MaxFullListPage,
+	})
+	c.JSON(http.StatusOK, output)
+}
+
 func (h *commentsHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	userID := claims.ID
@@ -195,7 +234,7 @@ func (h *commentsHandler) delete(c *gin.Context) {
 		return
 	}
 
-	if !HasPermissions(nil, claims.PermissionType, queries.Admin) {
+	if userID != "" && userID != output.UserID {
 		Forbidden(c, "")
 		return
 	}

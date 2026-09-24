@@ -25,6 +25,7 @@ type CommentResponse struct {
 
 type RelatedCommentResponse struct {
 	CommentResponse
+	UserID   string `json:"user_id"`
 	Parent   string `json:"parent"`
 	Referrer string `json:"referrer"`
 	IsActive bool   `json:"is_active"`
@@ -42,6 +43,7 @@ type CommentStore interface {
 	MaxListPage(ctx context.Context, pagination int) (int, error)
 	FullList(ctx context.Context, userID string, pagination, page int) ([]RelatedCommentResponse, error)
 	MaxFullListPage(ctx context.Context, pagination int) (int, error)
+	Find(ctx context.Context, id string, pagination, page int) ([]RelatedCommentResponse, error)
 	Delete(ctx context.Context, id string) (string, error)
 	SetActive(ctx context.Context, id string, isActive bool) error
 }
@@ -88,9 +90,9 @@ func (c *commentRepository) Create(ctx context.Context, userID, name string, com
 
 func (c *commentRepository) Get(ctx context.Context, id string) (item RelatedCommentResponse, err error) {
 	const q = `SELECT
-			id, COALESCE(name, 'deleted') AS name, pub_date,
-			COALESCE(parent::TEXT, '') AS parent, children_amount, referrer,
-			body, is_active
+			id, user_id, COALESCE(name, 'deleted') AS name,
+			pub_date, COALESCE(parent::TEXT, '') AS parent, children_amount,
+			referrer, body, is_active
 		FROM user_s.comments
 		WHERE id = $1::UUID`
 	item, err = get[RelatedCommentResponse](ctx, c.session, q, id)
@@ -136,11 +138,15 @@ func (c *commentRepository) MaxListPage(ctx context.Context, pagination int) (co
 	return
 }
 
-func (c *commentRepository) FullList(ctx context.Context, userID string, pagination, page int) (items []RelatedCommentResponse, err error) {
+func (c *commentRepository) FullList(
+	ctx context.Context,
+	userID string,
+	pagination, page int,
+) (items []RelatedCommentResponse, err error) {
 	const baseQuery = `SELECT
-			id, COALESCE(name, 'deleted') AS name, pub_date,
-			COALESCE(parent::TEXT, '') AS parent, children_amount, referrer,
-			body, is_active
+			id, user_id, COALESCE(name, 'deleted') AS name,
+			pub_date, COALESCE(parent::TEXT, '') AS parent, children_amount,
+			referrer, body, is_active
 		FROM user_s.comments`
 	const limitOffset = ` LIMIT @Limit OFFSET @Offset`
 	args := pgx.NamedArgs{
@@ -164,6 +170,33 @@ func (c *commentRepository) FullList(ctx context.Context, userID string, paginat
 
 func (c *commentRepository) MaxFullListPage(ctx context.Context, pagination int) (int, error) {
 	return getMaxPage(ctx, c.session, "user_s.comments", pagination)
+}
+
+func (c *commentRepository) Find(
+	ctx context.Context,
+	id string,
+	pagination, page int,
+) (items []RelatedCommentResponse, err error) {
+	const q = `SELECT
+			id, user_id, COALESCE(name, 'deleted') AS name,
+			pub_date, COALESCE(parent::TEXT, '') AS parent, children_amount,
+			referrer, body, is_active
+		FROM user_s.comments
+		WHERE
+			id = @ID::UUID OR
+			parent = @ID::UUID
+		ORDER BY parent DESC
+		LIMIT @Limit OFFSET @Offset`
+	args := pgx.NamedArgs{
+		"ID":     id,
+		"Limit":  pagination,
+		"Offset": getOffsetFromPageNum(pagination, page),
+	}
+	items, err = list[RelatedCommentResponse](ctx, c.session, q, args)
+	if err != nil {
+		c.log.Debug("CommentRepository.FullList", "error", err)
+	}
+	return
 }
 
 func (c *commentRepository) Delete(ctx context.Context, id string) (item string, err error) {

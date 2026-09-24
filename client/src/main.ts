@@ -1,4 +1,4 @@
-import { createApp } from 'vue'
+import { createApp, defineAsyncComponent } from 'vue'
 import { VueQueryPlugin } from '@tanstack/vue-query'
 
 import '@/styles/index.css'
@@ -16,6 +16,24 @@ app.use(pinia)
 app.use(router)
 app.use(VueQueryPlugin, {
   enableDevtoolsV6Plugin: true,
+})
+
+const globalComponents: Array<{
+  name: string
+  path: string
+}> = [
+  // used for recursion.
+  {
+    name: 'CommentsList',
+    path: 'components/common/comments/CommentsList',
+  },
+] as const
+
+globalComponents.forEach((v) => {
+  app.component(
+    v.name,
+    defineAsyncComponent(() => import(/* @vite-ignore */ `./${v.path}.vue`)),
+  )
 })
 
 app.mount('#app')

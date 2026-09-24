@@ -130,7 +130,16 @@ watch(
           </tr>
         </table>
       </div>
-      <div class="comments"></div>
+      <div class="comments">
+        <!-- global components, see 'main.ts' -->
+        <CommentsList
+          :isParent="true"
+          :relation="{
+            parent: '',
+            referrer: props.data.id,
+          }"
+        />
+      </div>
     </div>
   </div>
 </template>

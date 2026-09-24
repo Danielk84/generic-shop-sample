@@ -12,7 +12,7 @@ const route = useRoute()
 const router = useRouter()
 const id = route.params.id
 
-const { data, error } = useQuery({
+const { error } = useQuery({
   queryKey: ['product-page'],
   queryFn: async () => api.get<ProductResponse>(`products/${id}`),
   select: (res) => res.data,

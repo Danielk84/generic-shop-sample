@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineAsyncComponent, ref, watch } from 'vue'
+import { defineAsyncComponent, ref } from 'vue'
 
 import icons from '@/utils/icons'
 import { useTimer } from '@/utils/helper'

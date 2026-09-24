@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"generic-shop-sample/internal/auth"
 	"generic-shop-sample/internal/logger"
@@ -16,6 +17,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
+)
+
+var (
+	ErrForbiddenAccess = errors.New("error forbidden access")
 )
 
 type RouteSpec struct {

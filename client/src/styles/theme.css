@@ -61,6 +61,7 @@
   --font-secondary-default: 'Delius-Regular';
 
   /* styles/utils.css -> c-form */
+  --color-c-floating-box-shadow: var(--c-v-12);
   --color-c-form-bg: var(--c-v-1);
   --color-c-form-text: var(--c-v-7);
   --color-c-form-shadow: var(--c-v-8);
@@ -177,7 +178,6 @@
   --color-delete-tag-btn-text: var(--c-v-7);
 
   /* pages/panel/admin/categories/Categories.vue */
-  --color-categories-p-float-shadow: var(--c-v-12);
   --color-categories-p-float-bg: var(--c-v-7);
   --color-categories-p-float-text: var(--c-v-1);
   --color-categories-p-float-border: var(--c-v-10);
@@ -206,4 +206,13 @@
   --color-c-product-primary-text: var(--c-v-7);
   --color-c-product-secondary-text: var(--c-v-1);
   --color-c-product-hr-border: var(--c-v-13);
+
+  /* pages/panel/admin/comments */
+  --color-admin-comments-list-shadow: var(--c-v-10);
+  --color-admin-comments-list-active-btn: var(--c-v-14);
+  --color-admin-comments-list-off-btn: var(--c-v-11);
+  --color-admin-comments-list-delete-btn: var(--c-v-15);
+  --color-admin-comments-list-cancel-border: var(--c-v-9);
+  --color-admin-comments-list-s-text: var(--c-v-7);
+  --color-admin-comments-list-border: var(--c-v-1);
 }

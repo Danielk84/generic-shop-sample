@@ -25,8 +25,8 @@ function tagHandler(category: Category) {
 
 <template>
   <div class="categories-page">
-    <div v-if="showFloatingBox" class="floating-window c-flex-all-center">
-      <div class="floating-box c-flex-all-center">
+    <div v-if="showFloatingBox" class="c-floating-window c-flex-all-center">
+      <div class="delete-box c-floating-box c-flex-all-center">
         <h2>
           Are you sure for deleting tag
           <span class="text-nowrap">( {{ tag.tag }} )</span>?
@@ -70,17 +70,8 @@ function tagHandler(category: Category) {
   @apply w-screen min-h-screen p-4;
 }
 
-.categories-page .floating-window {
-  @apply z-60 fixed top-0 w-screen h-screen
-    backdrop-blur-xl;
-}
-
-.categories-page .floating-box {
-  @apply rounded-2xl p-4 flex-col
-    w-120 h-80 gap-20
-    shadow-categories-p-float-shadow
-    shadow-[0_0_20px_5px]
-    bg-categories-p-float-bg;
+.categories-page .delete-box {
+  @apply w-120 h-80 flex-col;
 }
 
 .floating-box h2 {

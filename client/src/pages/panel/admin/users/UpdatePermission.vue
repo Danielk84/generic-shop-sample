@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useMutation } from '@tanstack/vue-query'
 
 import api from '@/utils/api'
@@ -13,6 +13,7 @@ import { errorStatusHandler } from '@/utils/helper'
 
 const store = useStore()
 const route = useRoute()
+const router = useRouter()
 const id = route.params.id
 
 const { formData, errors, validate } = useValidator(UserPermissionRequest)
@@ -28,7 +29,7 @@ const { mutate, isPending } = useMutation({
   },
   onSuccess: () => {},
   onError: (error) => {
-    return errorStatusHandler(error)
+    return errorStatusHandler(error, router)
   },
 })
 

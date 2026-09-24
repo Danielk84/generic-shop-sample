@@ -187,6 +187,17 @@ const router = createRouter({
                 },
               ],
             },
+            {
+              path: '/panel/admin/comments',
+              children: [
+                {
+                  path: '/panel/admin/comments/',
+                  name: 'admin-comments-list',
+                  component: () =>
+                    import('@/pages/panel/admin/comments/CommentsList.vue'),
+                },
+              ],
+            },
           ],
         },
       ],

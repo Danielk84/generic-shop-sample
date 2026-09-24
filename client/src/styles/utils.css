@@ -7,6 +7,19 @@
     @apply opacity-50 cursor-not-allowed;
   }
 
+  .c-floating-box {
+    @apply rounded-2xl p-4
+      gap-20
+      shadow-c-floating-box-shadow
+      shadow-[0_0_20px_5px]
+      bg-categories-p-float-bg;
+  }
+
+  .c-floating-window {
+    @apply z-60 fixed top-0 w-screen h-screen
+      backdrop-blur-xl;
+  }
+
   /* generic form style. */
   .c-clean-input {
     @apply w-full h-full text-xl
