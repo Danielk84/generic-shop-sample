@@ -26,7 +26,7 @@ export const useStore = defineStore('store', {
     claims: {
       id: '',
       email: '',
-      permission_type: 4, // blocked user
+      permission_type: 3,
     },
     loading: false,
   }),
@@ -70,13 +70,21 @@ export const useStore = defineStore('store', {
       if (claims === undefined) {
         this.claims.id = ''
         this.claims.email = ''
-        this.claims.permission_type = 4
+        this.claims.permission_type = 3
       } else {
         this.claims = claims
       }
     },
     setLoadingStatus(status: boolean) {
       this.loading = status
+    },
+    logout() {
+      this.user.email = ''
+      this.user.accessToken = ''
+      this.user.isAuth = false
+      this.claims.id = ''
+      this.claims.email = ''
+      this.claims.permission_type = 4
     },
   },
 })

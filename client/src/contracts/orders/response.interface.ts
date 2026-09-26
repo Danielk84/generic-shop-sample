@@ -19,12 +19,11 @@ export interface OrderUserInfo {
   zip_code: string
 }
 
-export interface OrderResponse
-  extends OrderSummaryResponse, OrderSummaryResponse {
+export interface OrderResponse extends OrderSummaryResponse, OrderUserInfo {
   items_total: number
   total_bill: number
   is_verified: boolean
-  is_conformed: boolean
+  is_confirmed: boolean
   payment_summary: ProductProperty[]
 }
 
@@ -43,4 +42,9 @@ export interface OwnedOrderItemResponse extends OrderItem {
 
 export interface OrderItemResponse extends OwnedOrderItemResponse {
   property: ProductProperty
+}
+
+export interface DailySalesResponse {
+  date: string
+  count: number
 }

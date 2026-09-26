@@ -7,7 +7,8 @@ export interface CommentResponse {
 }
 
 export interface RelatedCommentResponse extends CommentResponse {
+  user_id: string
   parent: string
   referrer: string
-  is_active: string
+  is_active: boolean
 }

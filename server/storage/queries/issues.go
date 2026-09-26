@@ -32,7 +32,7 @@ type UpdateIssuesRequest struct {
 }
 
 type SetIssuesResRequest struct {
-	ID     string `json:"id" binding:"required,uuid"`
+	IssuesIDRequest
 	Res    string `json:"res" binding:"required,max=5000,min=1"`
 	IsDone bool   `json:"is_done" binding:"required"`
 }

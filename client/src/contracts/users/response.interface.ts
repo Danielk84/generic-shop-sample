@@ -8,9 +8,9 @@ export interface UserResponse {
 
 export interface UserDetailResponse extends UserResponse {
   email: string
-  is_v_email: string
+  is_v_email: boolean
   phone_number: string
-  is_v_phone_number: string
+  is_v_phone_number: boolean
   national_code: string
 }
 

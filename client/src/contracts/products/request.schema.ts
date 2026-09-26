@@ -29,14 +29,17 @@ export const ProductPropertyRequest = z.object({
   property: ProductProperty,
 })
 
-export const ProductVariantDetailRequet = z
-  .object({
-    price: z.number().min(0),
-    variant_detail: z.array(ProductPropertyRequest),
-  })
-  .extend(ProductPropertyRequest.shape)
+export const ProductVariantDetailRequest = z.object({
+  items: z.array(
+    z.object({
+      property: ProductProperty,
+      price: z.number().min(0),
+      vendors: z.array(ProductVendorRequest),
+    }),
+  ),
+})
 export type ProductVariantDetailInput = z.infer<
-  typeof ProductVariantDetailRequet
+  typeof ProductVariantDetailRequest
 >
 
 export const UpdateProductVendor = z

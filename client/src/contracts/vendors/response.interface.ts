@@ -9,6 +9,6 @@ export interface VendorOrderDelivere {
 }
 
 export interface VendorOrder extends VendorOrderDelivere {
-  quantity: string
+  quantity: number
   total_bill: number
 }

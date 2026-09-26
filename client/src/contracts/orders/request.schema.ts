@@ -16,6 +16,12 @@ export const OrderItemIDRequest = z
 export const OrderItemRequest = z
   .object({
     property: ProductProperty,
-    Price: z.number().min(0),
+    price: z.number().min(0),
   })
   .extend(OrderItem.shape)
+
+export const OrderUserInfoRequest = z.object({
+  address: z.string().min(4).max(1000),
+  zip_code: z.string().min(3).max(10),
+})
+export type OrderUserInfoInput = z.infer<typeof OrderUserInfoRequest>

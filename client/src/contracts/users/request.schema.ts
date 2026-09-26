@@ -4,8 +4,8 @@ import * as z from 'zod'
 export const PermissionType = {
   Admin: 0,
   Vendor: 1,
-  Customer: 3,
-  BlockUser: 4,
+  Customer: 2,
+  BlockUser: 3,
 } as const
 
 export const EmailAddrRequest = z.object({
