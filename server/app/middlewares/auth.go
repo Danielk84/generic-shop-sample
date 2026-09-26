@@ -34,7 +34,7 @@ func AuthMiddleware(deps *app.ServiceDeps, log logger.Logger) gin.HandlerFunc {
 		claims, err := jwtToken.Decoder(tokenString)
 		if err != nil {
 			log.Debug("AuthMiddleware:invalid token", "token", tokenString)
-			c.AbortWithStatus(http.StatusForbidden)
+			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 		ctx := c.Request.Context()
@@ -47,7 +47,7 @@ func AuthMiddleware(deps *app.ServiceDeps, log logger.Logger) gin.HandlerFunc {
 			log.Error("AuthMiddleware:invalid user",
 				"email", claims.Email,
 				"note", "user has valid jwt but does not exists?!")
-			c.AbortWithStatus(http.StatusForbidden)
+			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 		cacheKey := fmt.Sprintf("login:%s", claims.ID)

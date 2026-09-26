@@ -16,6 +16,7 @@ type searchRepository struct {
 type SearchStore interface {
 	Reindex(ctx context.Context, product_id string) error
 	Search(ctx context.Context, queryStr string, pagination, page int) ([]ProductSummaryResponse, error)
+	SearchAll(ctx context.Context, queryStr string, pagination, page int) ([]ProductSummaryResponse, error)
 	DeleteAll(ctx context.Context) error
 }
 
@@ -38,15 +39,18 @@ func (s *searchRepository) Search(
 	queryStr string,
 	pagination, page int,
 ) (items []ProductSummaryResponse, err error) {
-	const q = `SELECT id, name, price, pub_date
-		FROM product_s.products
-		WHERE is_active = true
+	const q = `SELECT p.id, p.name, p.price, p.pub_date,
+			COALESCE(i.img_path, '') AS img_path
+		FROM product_s.products AS p
+		LEFT JOIN product_s.product_images AS i
+			ON p.id = i.product_id AND i.pos = 0
+		WHERE p.is_active = true AND
+			p.__search @@ websearch_to_tsquery('simple', @QueryStr)
 		ORDER BY
-			pub_date DESC,
-			available_quantity DESC,
-			price,
-			is_available DESC
-		WHERE __search @@ websearch_to_tsquery('simple', @QueryStr)
+			p.pub_date DESC,
+			p.available_quantity DESC,
+			p.price,
+			p.is_available DESC
 		LIMIT @Limit
 		OFFSET @Offset`
 	args := pgx.NamedArgs{
@@ -57,6 +61,36 @@ func (s *searchRepository) Search(
 	items, err = list[ProductSummaryResponse](ctx, s.session, q, args)
 	if err != nil {
 		s.log.Debug("searchRepository.Search", "error", err)
+	}
+	return
+}
+
+func (s *searchRepository) SearchAll(
+	ctx context.Context,
+	queryStr string,
+	pagination, page int,
+) (items []ProductSummaryResponse, err error) {
+	const q = `SELECT p.id, p.name, p.price, p.pub_date,
+			COALESCE(i.img_path, '') AS img_path
+		FROM product_s.products AS p
+		LEFT JOIN product_s.product_images AS i
+			ON p.id = i.product_id AND i.pos = 0
+		WHERE p.__search @@ websearch_to_tsquery('simple', @QueryStr)
+		ORDER BY
+			p.pub_date DESC,
+			p.available_quantity DESC,
+			p.price,
+			p.is_available DESC
+		LIMIT @Limit
+		OFFSET @Offset`
+	args := pgx.NamedArgs{
+		"QueryStr": queryStr,
+		"Limit":    pagination,
+		"Offset":   getOffsetFromPageNum(pagination, page),
+	}
+	items, err = list[ProductSummaryResponse](ctx, s.session, q, args)
+	if err != nil {
+		s.log.Debug("searchRepository.SearchAll", "error", err)
 	}
 	return
 }

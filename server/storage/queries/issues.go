@@ -92,7 +92,7 @@ func (i *issuesRepository) UserList(
 	pagination, page int,
 ) (items []IssuesSummaryResponse, err error) {
 	const q = `SELECT id, user_id, is_done
-		FROM user_s.users
+		FROM user_s.issues
 		WHERE user_id = @UserID::UUID
 		LIMIT @Limit
 		OFFSET @Offset`
@@ -110,7 +110,7 @@ func (i *issuesRepository) UserList(
 
 func (i *issuesRepository) UserMaxPage(userID string) MaxPageType {
 	const q = `SELECT COUNT(*)
-		FROM user_s.users
+		FROM user_s.issues
 		WHERE user_id = $1::UUID`
 	return func(ctx context.Context, pagination int) (count int, err error) {
 		if err = i.session.QueryRow(ctx, q, userID).Scan(&count); err != nil {
@@ -127,7 +127,8 @@ func (i *issuesRepository) AdminList(
 	pagination, page int,
 ) (items []IssuesSummaryResponse, err error) {
 	const q = `SELECT id, user_id, is_done
-		FROM user_s.users
+		FROM user_s.issues
+		ORDER BY id
 		LIMIT @Limit
 		OFFSET @Offset`
 	args := pgx.NamedArgs{
@@ -142,7 +143,7 @@ func (i *issuesRepository) AdminList(
 }
 
 func (i *issuesRepository) AdminMaxPage(ctx context.Context, pagination int) (int, error) {
-	return getMaxPage(ctx, i.session, "user_s.users", pagination)
+	return getMaxPage(ctx, i.session, "user_s.issues", pagination)
 }
 
 func (i *issuesRepository) Get(ctx context.Context, id GetIssuesRequest) (item IssuesResponse, err error) {
@@ -166,7 +167,7 @@ func (i *issuesRepository) Update(ctx context.Context, issues UpdateIssuesReques
 		SET req = @Req
 		WHERE
 			is_done = FALSE AND
-			id = @ID:UUID AND
+			id = @ID::UUID AND
 			user_id = @UserID::UUID`
 	args := pgx.NamedArgs{
 		"Req":    issues.Req,

@@ -169,7 +169,7 @@ func (u *userRepository) Register(ctx context.Context, user RegisterUserRequest)
 			permission_type, is_active)
 		VALUES (
 			@Email, @PhoneNumber,
-			@FirstNumber, @LastNumber, @NationalCode,
+			@FirstName, @LastName, @NationalCode,
 			@PermissionType, @IsActive)`
 	args := pgx.NamedArgs{
 		"Email":          user.Email,

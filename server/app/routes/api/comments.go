@@ -41,7 +41,7 @@ func CommentsRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 }
 
 type RelatedCommentsRequest struct {
-	Parent   string `form:"parent" binding:"required,uuid"`
+	Parent   string `form:"parent" binding:"omitempty,uuid"`
 	Referrer string `form:"referrer" binding:"required,uuid"`
 }
 
@@ -96,7 +96,7 @@ func (h *commentsHandler) get(c *gin.Context) {
 			if err != nil {
 				return
 			}
-			if output.UserID != claims.ID {
+			if output.UserID != claims.ID && !HasPermissions(nil, claims.PermissionType, queries.Admin) {
 				err = ErrForbiddenAccess
 			}
 			return

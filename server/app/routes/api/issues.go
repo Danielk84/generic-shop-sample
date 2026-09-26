@@ -59,6 +59,11 @@ func (h *issuesHandler) create(c *gin.Context) {
 		return
 	}
 
+	if input.UserID != claims.ID {
+		Forbidden(c, "Invalid user.")
+		return
+	}
+
 	ctx := c.Request.Context()
 	output, err := h.store.Create(ctx, input)
 	if err != nil {
@@ -140,7 +145,7 @@ func (h *issuesHandler) get(c *gin.Context) {
 
 func (h *issuesHandler) update(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if !HasPermissions(c, queries.Customer, queries.Vendor) {
+	if !HasPermissions(c, claims.PermissionType, queries.Customer, queries.Vendor) {
 		return
 	}
 	var input queries.UpdateIssuesRequest

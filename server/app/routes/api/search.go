@@ -35,6 +35,7 @@ func SearchRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	})
 	RegisterRoutesWith(router, []gin.HandlerFunc{md.AuthMiddleware(deps, log)}, []RouteSpec{
 		{http.MethodGet, "/reindex/:product_id", []gin.HandlerFunc{h.reindex}},
+		{http.MethodPost, "/all", []gin.HandlerFunc{h.searchAll}},
 	})
 }
 
@@ -79,6 +80,32 @@ func (h *searchHandler) search(c *gin.Context) {
 		ctx:        ctx,
 		client:     h.cache,
 		name:       "search",
+		pagination: h.pagination,
+		getMaxPage: h.productStore.MaxPage,
+	})
+	c.JSON(http.StatusOK, output)
+}
+
+func (h *searchHandler) searchAll(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
+		return
+	}
+	var input searchRequest
+	if err := c.ShouldBindBodyWithJSON(&input); err != nil {
+		BadRequest(c, "")
+		return
+	}
+	ctx := c.Request.Context()
+	output, err := h.store.SearchAll(ctx, input.QueryStr, h.pagination, GetPage(c))
+	if err != nil {
+		NotFound(c, "")
+		return
+	}
+	SetPageHeader(c, CacheMaxPageInput{
+		ctx:        ctx,
+		client:     h.cache,
+		name:       "search-all",
 		pagination: h.pagination,
 		getMaxPage: h.productStore.MaxPage,
 	})
