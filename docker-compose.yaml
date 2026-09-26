@@ -67,7 +67,6 @@ services:
       timeout: 60s
       retries: 3
       start_period: 30s
-
   
   database:
     image: postgres:18-alpine3.24
