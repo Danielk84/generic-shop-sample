@@ -30,7 +30,7 @@ export function errorStatusHandler(
     return
   }
 
-  switch (err.request.status) {
+  switch (err.response?.status) {
     case axios.HttpStatusCode.BadRequest:
       if (typeof handlers?.badRequest === 'function') {
         handlers.badRequest()
@@ -39,10 +39,18 @@ export function errorStatusHandler(
       }
       break
     case axios.HttpStatusCode.Unauthorized:
-      router.push('/401')
+      if (typeof handlers?.unauthorized === 'function') {
+        handlers.unauthorized()
+      } else {
+        router.push('/401')
+      }
       break
     case axios.HttpStatusCode.Forbidden:
-      router.push('/403')
+      if (typeof handlers?.forbidden === 'function') {
+        handlers.forbidden()
+      } else {
+        router.push('/403')
+      }
       break
     case axios.HttpStatusCode.NotFound:
       if (typeof handlers?.notFound === 'function') {

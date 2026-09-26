@@ -3,6 +3,8 @@ import type { InternalAxiosRequestConfig } from 'axios'
 export interface StatusHandlers {
   notAxiosError?: () => void
   badRequest?: () => void
+  unauthorized?: () => void
+  forbidden?: () => void
   notFound?: () => void
   contentTooLarge?: () => void
   unprocessableEntity?: () => void
