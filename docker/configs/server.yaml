@@ -7,6 +7,12 @@ app:
     - "0.0.0.0"
   app_logger_filepath: "./logs/app.log"
   addr: ":8080"
+  origins:
+    - "http://localhost:5173"
+    - "https://localhost:5173"
+    - "http://127.0.0.1:5173"
+    - "https://127.0.0.1:5173"
+    - "https://www.example.com"
 
 auth:
   auth_expiration: 1439 # 24 Hour

@@ -49,7 +49,7 @@ func NewApp(ctx context.Context, config config.AppConfig) *App {
 func (a *App) Run() {
 	srv := &http.Server{
 		Addr:              a.config.Addr,
-		Handler:           http.TimeoutHandler(a.Router, 10*time.Second, "request timeout"),
+		Handler:           a.setMiddleware(),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       5 * time.Second,
 		WriteTimeout:      5 * time.Second,
@@ -76,6 +76,18 @@ func (a *App) Close() {
 			fmt.Fprintf(os.Stderr, "failed to close log writer: %s", err)
 		}
 	}
+}
+
+// This method just for http.Handler compatible middlewares,
+// for gin middlewares use setMiddleware in `cmd/server/server.go`.
+func (a *App) setMiddleware() (handler http.Handler) {
+	handler = http.TimeoutHandler(a.Router, 10*time.Second, "request timeout")
+	csrf := http.NewCrossOriginProtection()
+	for _, origin := range a.config.Origins {
+		csrf.AddTrustedOrigin(origin)
+	}
+	handler = csrf.Handler(handler)
+	return
 }
 
 type ServiceDeps struct {

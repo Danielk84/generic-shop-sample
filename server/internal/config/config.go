@@ -35,6 +35,7 @@ type AppConfig struct {
 	TrustedProxies     []string `yaml:"trusted_proxies" binding:"required,dive,required,ip"`
 	AppLoggerFilepath  string   `yaml:"app_logger_filepath" binding:"required,filepath"`
 	Addr               string   `yaml:"addr" binding:"required"`
+	Origins            []string `yaml:"origins" binding:"required,dive,required,url"`
 }
 
 type AuthConfig struct {
