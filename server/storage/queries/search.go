@@ -28,7 +28,7 @@ func (s *searchRepository) Reindex(ctx context.Context, product_id string) (err 
 	const q = `INSERT INTO full_text_search_s.products_changes(product_id)
 		VALUES ($1::UUID)
 		ON CONFLICT DO NOTHING`
-	if err = execOne(ctx, s.session, q, product_id); err != nil {
+	if _, err = s.session.Exec(ctx, q, product_id); err != nil {
 		s.log.Debug("searchRepository.Reindex", "error", err)
 	}
 	return
