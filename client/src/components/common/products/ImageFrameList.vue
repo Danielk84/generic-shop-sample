@@ -14,36 +14,46 @@ const BaseIcon = defineAsyncComponent(
   () => import('@/components/ui/BaseIcon.vue'),
 )
 
-const props = defineProps<{ data: ProductImageResponse[] }>()
+const props = defineProps<{ data: ProductImageResponse[] | undefined }>()
 
 const showUp = ref<ProductImageResponse>(
-  props.data.length === 0 ? ({} as ProductImageResponse) : props.data[0],
+  props.data === undefined || props.data.length === 0
+    ? ({} as ProductImageResponse)
+    : props.data[0],
 )
 
 const fullScreen = ref<boolean>(false)
 </script>
 
 <template>
-  <div class="image-frame-list c-flex-all-center">
+  <div v-if="props.data === undefined" class="empty-img-list c-flex-all-center">
+    There are not photo for Product.
+  </div>
+  <div v-else class="image-frame-list c-flex-all-center">
+    <div class="show-up">
+      <button
+        class="base-img size-full cursor-zoom-in"
+        @click="fullScreen = true"
+      >
+        <ImageFrameCard :img="showUp.img_path" :alt="showUp.id" />
+        <div class="full-screen-btn">
+          <BaseIcon
+            :icon="icons.common.products.fullScreen"
+            fill-color="--c-v-11"
+            stroke-color="--c-v-11"
+            fill-dark-color="--c-v-11"
+            stroke-dark-color="--c-v-11"
+            size="32px"
+          />
+        </div>
+      </button>
+    </div>
     <div class="list">
       <div v-for="i in props.data" :key="i.img_path" class="base-img item">
         <button class="btn" @click="showUp = i">
           <ImageFrameCard :img="i.img_path" :alt="i.id" />
         </button>
       </div>
-    </div>
-    <div class="show-up">
-      <button class="base-img btn" @click="fullScreen = true">
-        <ImageFrameCard :img="showUp.img_path" :alt="showUp.id" />
-        <div class="full-screen-btn">
-          <BaseIcon
-            :icon="icons.pages.products.fullScreen"
-            fill-color="--color-img-frame-list-icon"
-            stroke-color="--color-img-frame-list-icon"
-            size="32px"
-          />
-        </div>
-      </button>
     </div>
     <div v-if="fullScreen">
       <FullScreenImage
@@ -58,14 +68,24 @@ const fullScreen = ref<boolean>(false)
 <style scoped>
 @reference "@/styles/index.css";
 
+.empty-img-list {
+  @apply size-150 rounded-4xl border-4
+    border-t-(--c-v-12)
+    border-r-(--c-v-13)
+    border-b-(--c-v-14)
+    border-l-(--c-v-15)
+    bg-(--c-v-1)
+    text-(--c-v-11) font-bold text-2xl;
+}
+
 .image-frame-list {
-  @apply w-150 h-150 flex-row;
+  @apply w-150 h-150 flex-col;
 }
 
 .image-frame-list > .list {
-  @apply w-20/100 h-full
-    overflow-x-hidden overflow-y-scroll
-    flex flex-col flex-nowrap items-center gap-4;
+  @apply w-full h-20/100
+    overflow-y-hidden overflow-x-scroll
+    flex flex-row flex-nowrap items-center gap-4;
 }
 
 .image-frame-list > .list > .item {
@@ -77,11 +97,11 @@ const fullScreen = ref<boolean>(false)
 }
 
 .image-frame-list > .show-up {
-  @apply w-80/100 h-full;
+  @apply w-full h-80/100;
 }
 
 .image-frame-list .base-img {
-  @apply border rounded-xl border-img-frame-list-border
+  @apply border rounded-xl border-(--c-v-10)
     hover:brightness-80 relative;
 }
 
