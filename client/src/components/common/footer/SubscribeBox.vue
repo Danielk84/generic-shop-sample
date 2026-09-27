@@ -14,8 +14,8 @@ const BaseIcon = defineAsyncComponent(
     <button class="subscribe-btn c-flex-all-center">
       <BaseIcon
         :icon="icons.common.footer.send"
-        stroke-color="--color-footer-icon"
-        fill-color="--color-footer-icon"
+        stroke-color="--c-v-7"
+        fill-color="--c-v-7"
       />
     </button>
   </div>
@@ -26,21 +26,21 @@ const BaseIcon = defineAsyncComponent(
 
 .subscribe-box {
   @apply w-full h-14 flex flex-row
-    rounded-4xl p-1.5 bg-footer-input
-    border-2 border-footer-border;
+    rounded-4xl p-1.5 bg-(--c-v-3)
+    border-2 border-(--c-v-7);
 }
 
 .subscribe-box > input {
   @apply w-full h-full focus:outline-none
-    mx-3 text-footer-text text-xl;
+    mx-3 text-(--c-v-7) text-xl;
 }
 
 .subscribe-box > input::placeholder {
-  color: var(--color-footer-placeholder);
+  color: var(--c-v-5);
 }
 
 .subscribe-box > .subscribe-btn {
   @apply rounded-full w-fit h-fit
-    bg-footer-btn p-2 hover:cursor-pointer;
+    bg-(--c-v-1) p-2 hover:cursor-pointer;
 }
 </style>

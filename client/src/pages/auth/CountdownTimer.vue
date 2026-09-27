@@ -59,6 +59,6 @@ onBeforeUnmount(() => {
 
 .timer {
   @apply w-fit h-fit text-2xl font-bold gap-5 underline
-    text-timer-text;
+    text-(--c-v-13);
 }
 </style>

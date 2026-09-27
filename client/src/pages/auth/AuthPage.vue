@@ -100,8 +100,8 @@ const onClick = async (event: MouseEvent) => {
       <div class="info">
         <BackBtn
           :icon="{
-            strokeColor: '--color-auth-p-icon',
-            fillColor: '--color-auth-p-icon',
+            strokeColor: '--c-v-7',
+            fillColor: '--c-v-7',
           }"
         />
         <h1>

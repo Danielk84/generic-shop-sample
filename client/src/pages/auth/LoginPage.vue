@@ -89,14 +89,14 @@ const onClick = async (event: MouseEvent) => {
   <div class="login-page c-flex-all-center">
     <div
       class="login-box c-form-bg c-flex-all-center flex-col"
-      :class="{ 'to-c-form-shadow-error': isError }"
+      :class="{ 'c-form-error-shadow': isError }"
     >
       <div class="flex justify-between w-full">
         <BackBtn
           page-name="auth"
           :icon="{
-            fillColor: '--color-auth-back-btn',
-            strokeColor: '--color-auth-back-btn',
+            fillColor: '--c-v-7',
+            strokeColor: '--c-v-7',
           }"
         />
         <CountdownTimer :remaining-minutes="2" />
@@ -119,12 +119,12 @@ const onClick = async (event: MouseEvent) => {
               <BaseIcon
                 v-if="showPassword"
                 :icon="icons.pages.auth.eyeOn"
-                stroke-color="--color-eye-icon"
+                stroke-color="--c-v-7"
               />
               <BaseIcon
                 v-else
                 :icon="icons.pages.auth.eyeOff"
-                stroke-color="--color-eye-icon"
+                stroke-color="--c-v-7"
               />
             </button>
           </div>

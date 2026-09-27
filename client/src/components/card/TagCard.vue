@@ -6,19 +6,19 @@ import type { Category } from '@/contracts/categories/response.interface'
 
 const colorList: StyleValue = [
   {
-    backgroundColor: getCssVar('--color-tag-card-bg-1'),
+    backgroundColor: getCssVar('--c-v-11'),
   },
   {
-    backgroundColor: getCssVar('--color-tag-card-bg-2'),
+    backgroundColor: getCssVar('--c-v-12'),
   },
   {
-    backgroundColor: getCssVar('--color-tag-card-bg-3'),
+    backgroundColor: getCssVar('--c-v-13'),
   },
   {
-    backgroundColor: getCssVar('--color-tag-card-bg-4'),
+    backgroundColor: getCssVar('--c-v-14'),
   },
   {
-    backgroundColor: getCssVar('--color-tag-card-bg-5'),
+    backgroundColor: getCssVar('--c-v-15'),
   },
 ] as const
 
@@ -53,7 +53,7 @@ if (props.palette < 0) {
 .tag {
   @apply w-62.5 h-20 overflow-hidden
     text-xl font-bold rounded-2xl p-4
-    cursor-pointer
-    text-tag-card-text text-nowrap text-ellipsis;
+    cursor-pointer hover:brightness-110
+    text-(--c-v-1) text-nowrap text-ellipsis;
 }
 </style>

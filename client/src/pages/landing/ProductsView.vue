@@ -75,9 +75,9 @@ const goForward = useTimer(() => {
   </div>
   <div v-else class="products-view">
     <div class="label c-flex-all-center">
-      <h2>New Products</h2>
+      <h2>{{ props.title }}</h2>
       <div class="line"></div>
-      <RouterLink class="link" to="/"> See more... </RouterLink>
+      <RouterLink class="link" :to="props.to"> See more... </RouterLink>
     </div>
     <div
       ref="scrollBoxRef"
@@ -137,12 +137,12 @@ const goForward = useTimer(() => {
 
 .label > .line {
   @apply w-full h-fit border-2
-    border-products-view-line;
+    border-(--c-v-4) dark:border-(--c-v-7);
 }
 
 .label > .link {
   @apply text-2xl font-bold text-nowrap
-    text-products-view-link;
+    text-(--c-v-11);
 }
 
 .products-view .products {
@@ -175,7 +175,8 @@ const goForward = useTimer(() => {
 .moving-box .moving-btn {
   @apply p-3 rounded-full
     border
-    cursor-pointer bg-white;
+    cursor-pointer
+    bg-(--c-v-7) dark:bg-(--c-v-2);
 }
 
 .products-view .forward-box {

@@ -2,21 +2,32 @@
 import { defineAsyncComponent, computed } from 'vue'
 
 import { getCssVar } from '@/utils/helper'
+import { useStore } from '@/store'
 import type { Icon } from '@/components/ui/types'
 
 const props = withDefaults(defineProps<Icon>(), {
   size: '24px',
-  strokeColor: '--color-default-icon',
-  fillColor: '--color-default-icon',
+
+  strokeColor: '--c-v-2',
+  strokeDarkColor: '--c-v-7',
+
+  fillColor: '--c-v-2',
+  fillDarkColor: '--c-v-7',
 })
+
+const store = useStore()
 
 const icon = defineAsyncComponent(
   () => import(/* @vite-ignore */ `../../assets/icons/${props.icon}`),
 )
 
 const style = computed(() => ({
-  strokeColor: getCssVar(props.strokeColor),
-  fillColor: getCssVar(props.fillColor),
+  strokeColor: getCssVar(
+    store.isDarkTheme ? props.strokeDarkColor : props.strokeColor,
+  ),
+  fillColor: getCssVar(
+    store.isDarkTheme ? props.fillDarkColor : props.fillColor,
+  ),
 }))
 </script>
 

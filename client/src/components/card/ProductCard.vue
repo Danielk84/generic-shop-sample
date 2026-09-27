@@ -12,6 +12,11 @@ const ImageFrameCard = defineAsyncComponent(
 )
 
 const props = defineProps<{ data: ProductCardProps }>()
+
+function onClick(event: Event) {
+  event.preventDefault()
+  event.stopPropagation()
+}
 </script>
 
 <template>
@@ -43,8 +48,8 @@ const props = defineProps<{ data: ProductCardProps }>()
 
 .product-card {
   @apply p-4 w-90 h-120 gap-5 overflow-hidden
-    hover:shadow-[0px_0px_20px_5px]
-    shadow shadow-card-product-shadow
+    shadow-[0_1px_3px_0_var(--c-v-10),0_1px_2px_-1px_var(--c-v-10)]
+    hover:shadow-[0px_0px_20px_5px_var(--c-v-10)]
     transform duration-150
     rounded-2xl;
 }

@@ -6,6 +6,7 @@ import { useMutation } from '@tanstack/vue-query'
 import api from '@/utils/api'
 import { useStore } from '@/store'
 import { useValidator } from '@/utils/validator'
+import { useNotificationStore } from '@/store/notification'
 import {
   CategoryTag,
   type CategoryTagInput,
@@ -17,6 +18,7 @@ const emits = defineEmits<{
 }>()
 
 const store = useStore()
+const notification = useNotificationStore()
 const router = useRouter()
 
 const errorMsg = ref<string>('')
@@ -36,6 +38,7 @@ const { mutate, isPending } = useMutation({
   onSuccess: () => {
     if (errorMsg.value !== '') errorMsg.value = ''
     if (isError.value) isError.value = false
+    notification.success('new tag added.')
     emits('refetch')
   },
   onError: (error) => {
@@ -108,20 +111,20 @@ const onClick = async (event: MouseEvent) => {
 .form-item input {
   @apply outline-4 hover:brightness-140
     focus:brightness-110
-    p-4 outline-c-form-outline
+    p-4 outline-(--c-v-7)
     rounded-xl h-15 w-full text-xl;
 }
 
 .form-item button {
   @apply hover:brightness-90 cursor-pointer
     font-bold rounded-xl h-15 w-35 text-xl
-    bg-c-form-btn
-    text-c-form-btn-text;
+    bg-(--c-v-8)
+    text-(--c-v-7);
 }
 
 .create-tag-box .form-error {
   @apply p-4 text-wrap font-bold
     rounded-xl max-h-3 w-full text-sm text-center
-    text-c-form-error;
+    text-(--c-v-11);
 }
 </style>

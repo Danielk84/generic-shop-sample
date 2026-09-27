@@ -21,7 +21,7 @@ const emits = defineEmits<{
   <div class="full-screen">
     <div class="tools-bar">
       <button class="close-btn" @click="emits('destroy')">
-        <BaseIcon :icon="icons.pages.products.close" />
+        <BaseIcon :icon="icons.common.products.close" />
       </button>
     </div>
     <div class="item">
@@ -40,7 +40,7 @@ const emits = defineEmits<{
 
 .full-screen > .tools-bar {
   @apply w-full h-9 border-b
-    border-img-frame-list-border px-10
+    border-(--c-v-10) px-10
     flex flex-row items-center justify-end;
 }
 

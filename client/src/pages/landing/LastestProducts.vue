@@ -19,7 +19,7 @@ const router = useRouter()
 
 const { data, isPending, isFetched, error } = useQuery({
   queryKey: ['latest-products'],
-  queryFn: async () => api.get<ProductSummaryResponse[]>('/products/'),
+  queryFn: async () => api.get<ProductSummaryResponse[]>('products/'),
   select: (res) => res.data,
 })
 
@@ -57,7 +57,7 @@ watch(
 <template>
   <ProductsView
     title="New Products"
-    to="/"
+    to="/products/"
     empty-view="Sorry, but there is not any new products."
     :data="data"
   />

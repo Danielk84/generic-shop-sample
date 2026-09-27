@@ -16,7 +16,7 @@ function getYear() {
 
 .base-footer {
   @apply w-full h-18 font-bold
-    text-sm text-footer-text
-    bg-footer-bg border-t-2 border-b-2 border-footer-border;
+    text-sm text-(--c-v-7)
+    bg-(--c-v-1) border-t-2 border-b-2 border-(--c-v-7);
 }
 </style>

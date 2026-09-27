@@ -22,6 +22,6 @@ import UnauthorizedSVG from '@/assets/artwork/error/401-artwork.vue'
 
 .unauthorized-page h1 {
   @apply text-7xl font-extrabold w-full p-10 text-center
-    text-error-p-msg underline;
+    text-(--c-v-11) underline;
 }
 </style>

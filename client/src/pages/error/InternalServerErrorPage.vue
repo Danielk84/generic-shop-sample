@@ -20,6 +20,6 @@ import InternalServerErrorSVG from '@/assets/artwork/error/500-artwork.vue'
 
 .internal-server-error-page h1 {
   @apply text-7xl font-extrabold w-full p-10 text-center
-    text-error-p-msg;
+    text-(--c-v-11);
 }
 </style>

@@ -20,6 +20,6 @@ import TooManyRequestsSVG from '@/assets/artwork/error/429-artwork.vue'
 
 .too-many-requests-page h1 {
   @apply text-7xl font-extrabold w-full p-10 text-center
-    text-error-p-msg;
+    text-(--c-v-11);
 }
 </style>

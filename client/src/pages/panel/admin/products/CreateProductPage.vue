@@ -182,8 +182,8 @@ async function onClick(event: MouseEvent) {
   @apply m-10 rounded-2xl
     px-10 py-5
     hover:brightness-110
-    text-panel-products-add-property-btn-text
-    bg-panel-products-add-property-btn
+    text-(--c-v-7)
+    bg-(--c-v-10)
     cursor-pointer;
 }
 
@@ -207,7 +207,7 @@ async function onClick(event: MouseEvent) {
 .create-product-page .property-item {
   @apply outline-4
     focus:brightness-120
-    p-4 outline-c-form-outline
+    p-4 outline-(--c-v-7)
     rounded-xl h-15 w-full text-xl;
 }
 </style>

@@ -13,6 +13,9 @@ interface State {
     isAuth: boolean
   }
   claims: AuthClaims
+  theme: {
+    isDark: boolean
+  }
   loading: boolean
 }
 
@@ -27,6 +30,9 @@ export const useStore = defineStore('store', {
       id: '',
       email: '',
       permission_type: 3,
+    },
+    theme: {
+      isDark: false,
     },
     loading: false,
   }),
@@ -44,6 +50,9 @@ export const useStore = defineStore('store', {
     getClaims: (state) => {
       return state.claims
     },
+    isDarkTheme: (state) => {
+      return state.theme.isDark
+    },
   },
   actions: {
     setEmail(email: string) {
@@ -52,6 +61,7 @@ export const useStore = defineStore('store', {
     setAccessToken(token: string) {
       this.user.accessToken = token
       this.setClaims(token)
+      this.setIsAuth(true)
     },
     setIsAuth(status: boolean) {
       this.user.isAuth = status
@@ -85,6 +95,9 @@ export const useStore = defineStore('store', {
       this.claims.id = ''
       this.claims.email = ''
       this.claims.permission_type = 4
+    },
+    setDarkTheme(status: boolean) {
+      this.theme.isDark = status
     },
   },
 })

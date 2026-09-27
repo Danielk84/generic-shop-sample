@@ -26,7 +26,6 @@ const { mutateAsync, isPending } = useMutation({
       },
     })
   },
-  onSuccess: () => {},
   onError: (error) => {
     errorStatusHandler(error, router, {
       notFound() {
@@ -58,8 +57,8 @@ const { mutateAsync, isPending } = useMutation({
 .delete-btn {
   @apply rounded-2xl hover:brightness-110
     size-full cursor-pointer
-    bg-delete-tag-btn-bg
-    text-delete-tag-btn-text
+    bg-(--c-v-11)
+    text-(--c-v-7)
     text-2xl font-bold;
 }
 </style>

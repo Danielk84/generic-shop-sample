@@ -44,26 +44,29 @@ const PopularProducts = defineAsyncComponent(
 .landing-page {
   @apply w-screen h-full relative -top-25
     bg-radial
-    from-landing-p-primary-bg-1 from-0%
-    to-landing-p-primary-bg-2 to-100%;
+    from-(--c-v-3) from-0%
+    to-(--c-v-1) to-100%;
 }
 
 .landing-page > .landing-banner {
   @apply pt-32 w-full h-200
-    flex-col gap-20;
+    flex-col gap-20
+    max-md:h-auto max-md:pt-24 max-md:px-4;
 }
 
 .landing-page > .landing-banner > .banner-content {
-  @apply text-landing-p-text w-50/100 flex-col gap-10;
+  @apply text-(--c-v-6) w-50/100 flex-col gap-10
+    max-md:w-full;
 }
 
 .landing-page > .landing-banner > .banner-content > h1 {
   @apply text-5xl font-extrabold flex-col font-secondary-default
-    w-full h-full text-center leading-16;
+    w-full h-full text-center leading-16
+    max-md:text-3xl max-md:leading-10;
 }
 
 .landing-page > .landing-banner > .banner-content > p {
-  @apply w-80/100;
+  @apply w-80/100 max-md:text-sm;
 }
 
 .landing-page > .landing-banner > .banner-search {
@@ -73,6 +76,6 @@ const PopularProducts = defineAsyncComponent(
 .landing-page > .landing-content {
   @apply w-full h-fit z-10 flex-col
     rounded-t-4xl pt-20 gap-10
-    bg-landing-p-secondary-bg;
+    bg-(--c-v-7) dark:bg-(--c-v-0);
 }
 </style>

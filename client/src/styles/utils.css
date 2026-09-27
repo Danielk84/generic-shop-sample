@@ -10,9 +10,8 @@
   .c-floating-box {
     @apply rounded-2xl p-4
       gap-20
-      shadow-c-floating-box-shadow
-      shadow-[0_0_20px_5px]
-      bg-categories-p-float-bg;
+      shadow-[0_0_20px_5px_var(--c-v-12)]
+      bg-(--c-v-7) dark:bg-(--c-v-1);
   }
 
   .c-floating-window {
@@ -26,12 +25,11 @@
       focus:outline-none;
   }
   .c-form-bg {
-    @apply bg-c-form-bg text-c-form-text
-      shadow-[0_0_30px_10px]
-      shadow-c-form-shadow;
+    @apply bg-(--c-v-1) text-(--c-v-7)
+      shadow-[0_0_30px_10px_var(--c-v-8)];
   }
   .c-form-error-shadow {
-    @apply shadow-c-form-shadow-error;
+    @apply shadow-[0_0_30px_10px_var(--c-v-11)];
   }
   .c-form {
     @apply flex flex-col;
@@ -45,18 +43,18 @@
   .c-form .c-form-input {
     @apply outline-4
       focus:brightness-120
-      p-4 outline-c-form-outline
+      p-4 outline-(--c-v-7)
       rounded-xl h-15 w-full text-xl;
   }
   .c-form .c-form-btn {
     @apply my-10 hover:brightness-90 cursor-pointer
       font-bold rounded-xl h-15 w-full text-xl
-      bg-c-form-btn
-      text-c-form-btn-text;
+      bg-(--c-v-8)
+      text-(--c-v-7);
   }
   .c-form .c-form-error {
     @apply py-2 px-4 text-wrap font-bold
       rounded-xl max-h-3 w-full text-sm
-      text-c-form-error;
+      text-(--c-v-11);
   }
 }

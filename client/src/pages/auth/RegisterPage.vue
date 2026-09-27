@@ -76,8 +76,8 @@ const onClick = async (event: MouseEvent) => {
         <BackBtn
           page-name="auth"
           :icon="{
-            fillColor: '--color-auth-back-btn',
-            strokeColor: '--color-auth-back-btn',
+            fillColor: '--c-v-7',
+            strokeColor: '--c-v-7',
           }"
         />
         <CountdownTimer :remaining-minutes="10" />
@@ -100,12 +100,12 @@ const onClick = async (event: MouseEvent) => {
               <BaseIcon
                 v-if="showPassword"
                 :icon="icons.pages.auth.eyeOn"
-                stroke-color="--color-eye-icon"
+                stroke-color="--c-v-7"
               />
               <BaseIcon
                 v-else
                 :icon="icons.pages.auth.eyeOff"
-                stroke-color="--color-eye-icon"
+                stroke-color="--c-v-7"
               />
             </button>
           </div>
@@ -132,9 +132,9 @@ const onClick = async (event: MouseEvent) => {
 
         <div class="c-form-item">
           <label class="c-form-label" for="email"> Fist name: </label>
-          <input class="c-form-input" v-model="formData.fist_name" />
-          <p class="c-form-error" v-if="errors['fist_name'] !== undefined">
-            {{ errors['fist_name'] }}
+          <input class="c-form-input" v-model="formData.first_name" />
+          <p class="c-form-error" v-if="errors['first_name'] !== undefined">
+            {{ errors['first_name'] }}
           </p>
         </div>
 

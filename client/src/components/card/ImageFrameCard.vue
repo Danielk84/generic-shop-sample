@@ -44,7 +44,7 @@ onMounted(async () => {
 
 .img-frame {
   @apply flex-col w-full h-full z-0
-    bg-img-frame-card-bg rounded-xl
+    bg-(--c-v-1) rounded-xl
     relative isolate overflow-hidden;
 }
 
@@ -58,7 +58,7 @@ onMounted(async () => {
 
 .img-frame .tag {
   @apply w-fit h-fit absolute inset-0 p-2 m-4 z-20
-    bg-img-frame-card-tag-bg rounded-xl brightness-125
-    text-img-frame-card-tag-text;
+    bg-(--c-v-2) rounded-xl brightness-125
+    text-(--c-v-7);
 }
 </style>

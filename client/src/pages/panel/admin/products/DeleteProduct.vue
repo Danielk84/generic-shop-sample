@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import api from '@/utils/api'
 import { useStore } from '@/store'
 import { errorStatusHandler } from '@/utils/helper'
+import { useNotificationStore } from '@/store/notification'
 
 const props = defineProps<{
   id: string
@@ -12,6 +13,10 @@ const props = defineProps<{
 
 const store = useStore()
 const router = useRouter()
+const notification = useNotificationStore()
+const emit = defineEmits<{
+  (event: 'success'): void
+}>()
 
 const { mutate, isPending } = useMutation({
   mutationFn: async () => {
@@ -21,7 +26,10 @@ const { mutate, isPending } = useMutation({
       },
     })
   },
-  onSuccess: () => {},
+  onSuccess: () => {
+    notification.success('Product deleted.')
+    emit('success')
+  },
   onError: (error) => {
     errorStatusHandler(error, router)
   },

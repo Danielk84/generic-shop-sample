@@ -15,6 +15,11 @@ const icon = {
     loading: {
       loading: 'common/loading/LoadingIcon.vue',
     },
+    products: {
+      close: 'common/products/CloseIcon.vue',
+      fullScreen: 'common/products/FullScreenIcon.vue',
+      basket: 'common/products/BasketIcon.vue',
+    },
   },
   ui: {
     button: {
@@ -26,6 +31,10 @@ const icon = {
     pagination: {
       next: 'ui/pagination/NextIcon.vue',
       previous: 'ui/pagination/PreviousIcon.vue',
+    },
+    theme: {
+      sun: 'ui/SunIcon.vue',
+      moon: 'ui/MoonIcon.vue',
     },
   },
   pages: {
@@ -40,10 +49,6 @@ const icon = {
       close: 'pages/basket/CloseIcon.vue',
       plus: 'pages/basket/PlusIcon.vue',
       minus: 'pages/basket/MinusIcon.vue',
-    },
-    products: {
-      close: 'pages/products/CloseIcon.vue',
-      fullScreen: 'pages/products/FullScreenIcon.vue',
     },
     panel: {
       products: {

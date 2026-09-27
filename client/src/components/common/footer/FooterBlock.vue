@@ -32,7 +32,7 @@ const BaseFooter = defineAsyncComponent(
 }
 
 .footer-block > .footer-content {
-  @apply bg-footer-bg text-footer-text p-10
+  @apply bg-(--c-v-1) text-(--c-v-7) p-10
     flex-col gap-10 text-4xl;
 }
 

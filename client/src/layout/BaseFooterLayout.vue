@@ -21,6 +21,7 @@ const BaseFooter = defineAsyncComponent(
 @reference "@/styles/index.css";
 
 .page {
-  @apply pt-22 max-w-screen min-h-screen flex-col;
+  @apply pt-22 max-w-screen min-h-screen flex-col
+    max-md:pt-16;
 }
 </style>

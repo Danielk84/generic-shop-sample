@@ -20,6 +20,6 @@ import UnprocessableContentSVG from '@/assets/artwork/error/422-artwork.vue'
 
 .unprocessable-content-page h1 {
   @apply text-7xl font-extrabold w-full p-10 text-center
-    text-error-p-msg;
+    text-(--c-v-11);
 }
 </style>

@@ -144,8 +144,8 @@ async function onClick(event: MouseEvent) {
       <div class="py-4">
         <BackBtn
           :icon="{
-            strokeColor: '--color-panel-products-back-icon',
-            fillColor: '--color-panel-products-back-icon',
+            strokeColor: '--c-v-7',
+            fillColor: '--c-v-7',
           }"
         />
       </div>
@@ -275,8 +275,8 @@ async function onClick(event: MouseEvent) {
   @apply m-10 rounded-2xl
     px-10 py-5
     hover:brightness-110
-    text-panel-products-add-property-btn-text
-    bg-panel-products-add-property-btn
+    text-(--c-v-7)
+    bg-(--c-v-10)
     cursor-pointer;
 }
 
@@ -287,7 +287,7 @@ async function onClick(event: MouseEvent) {
 .product-edit-page .property-item {
   @apply outline-4
     focus:brightness-120
-    p-4 outline-c-form-outline
+    p-4 outline-(--c-v-7)
     rounded-xl h-15 w-full text-xl;
 }
 
@@ -298,8 +298,8 @@ async function onClick(event: MouseEvent) {
 .product-edit-page .next-btn {
   @apply py-5 px-20 rounded-2xl m-5
     w-fit h-fit text-xl font-bold
-    bg-panel-products-next-btn
-    text-panel-products-next-text
+    bg-(--c-v-13)
+    text-(--c-v-1)
     hover:brightness-95;
 }
 </style>

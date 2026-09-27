@@ -39,7 +39,6 @@ watch(
     if (err !== null) {
       errorStatusHandler(err, router, {
         notFound() {
-          console.log('hello')
           isNotFound.value = true
         },
       })

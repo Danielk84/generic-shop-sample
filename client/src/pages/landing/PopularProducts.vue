@@ -19,7 +19,7 @@ const router = useRouter()
 
 const { data, isPending, isFetched, error } = useQuery({
   queryKey: ['papular-products'],
-  queryFn: async () => api.get<ProductSummaryResponse[]>('/products/popular'),
+  queryFn: async () => api.get<ProductSummaryResponse[]>('products/popular'),
   select: (res) => res.data,
 })
 
@@ -57,7 +57,7 @@ watch(
 <template>
   <ProductsView
     title="Popular Products"
-    to="/"
+    to="/products/popular"
     empty-view="Sorry, but there is not any popular products."
     :data="data"
   />
