@@ -30,45 +30,47 @@ export const useNotificationStore = defineStore('notification', {
       duration = 3000,
     ): string {
       const id = randKey()
-      this.notifications.push({
+      const n: Notification = {
         id,
         type,
         message,
         duration,
-      })
-
-      if (duration > 0) {
-        setTimeout(() => {
-          this.remove(id)
-        }, duration)
       }
+      this.notifications.push(n)
+      this.setTimout(n)
       return id
     },
-
     success(message: string, duration = 3000): string {
       return this.show(message, 'success', duration)
     },
-
     error(message: string, duration = 5000): string {
       return this.show(message, 'error', duration)
     },
-
     warning(message: string, duration = 4000): string {
       return this.show(message, 'warning', duration)
     },
-
     info(message: string, duration = 3000): string {
       return this.show(message, 'info', duration)
     },
-
     remove(id: string) {
       this.notifications = this.notifications.filter(
         (notification) => notification.id !== id,
       )
     },
-
     clear() {
       this.notifications = []
+    },
+    initTimout() {
+      this.notifications.forEach((n) => {
+        this.setTimout(n)
+      })
+    },
+    setTimout(n: Notification) {
+      if (n.duration !== undefined && n.duration > 0) {
+        setTimeout(() => {
+          this.remove(n.id)
+        }, n.duration)
+      }
     },
   },
 })

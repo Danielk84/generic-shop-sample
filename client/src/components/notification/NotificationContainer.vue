@@ -5,7 +5,7 @@ const notifications = useNotificationStore()
 </script>
 
 <template>
-  <div class="notifications-container">
+  <div v-if="notifications.Notify.length !== 0" class="notifications-container">
     <TransitionGroup name="notification">
       <div
         v-for="notification in notifications.Notify"
@@ -13,9 +13,8 @@ const notifications = useNotificationStore()
         class="item c-flex-all-center"
         :class="`item-${notification.type}`"
       >
-        <span>{{ notification.message }}</span>
-
         <button @click="notifications.remove(notification.id)">x</button>
+        <p>{{ notification.message }}</p>
       </div>
     </TransitionGroup>
   </div>
@@ -30,37 +29,43 @@ const notifications = useNotificationStore()
 }
 
 .notifications-container .item {
-  @apply rounded-2xl w-100 h-20 p-4
-    bg-notification-bg
-    text-notification-text
+  @apply rounded-2xl w-100 min-h-20 max-h-30 p-2
+    bg-(--c-v-6) dark:bg-(--c-v-3)
     flex items-center justify-between
     border-t-6 border
     hover:brightness-95;
 }
 
-.notifications-container span {
-  @apply truncate font-bold;
+.notifications-container p {
+  overflow: hidden;
+  display: -webkit-box;
+  text-overflow: ellipsis;
+  -webkit-line-clamp: 2; /* number of lines to show */
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font: bold;
+  text-wrap: balance;
 }
 
 .notifications-container button {
   @apply p-2 w-fit h-full flex
-    items-start cursor-pointer;
+    items-center justify-center cursor-pointer;
 }
 
 .notifications-container .item-success {
-  @apply border-notification-success;
+  @apply border-(--nord-aurora-4);
 }
 
 .notifications-container .item-error {
-  @apply border-notification-error;
+  @apply border-(--c-v-11);
 }
 
 .notifications-container .item-warning {
-  @apply border-notification-warning;
+  @apply border-(--c-v-12);
 }
 
 .notifications-container .item-info {
-  @apply border-notification-info;
+  @apply border-(--c-v-15);
 }
 
 .notification-enter-active,

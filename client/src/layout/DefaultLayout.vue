@@ -2,8 +2,10 @@
 import { defineAsyncComponent } from 'vue'
 
 import { useStore } from '@/store'
+import { useNotificationStore } from '@/store/notification'
 
 const store = useStore()
+const notification = useNotificationStore()
 
 const NavBar = defineAsyncComponent(
   () => import('@/components/common/nav-bar/NavBar.vue'),
@@ -14,6 +16,8 @@ const NotificationContainer = defineAsyncComponent(
 const LoadingPage = defineAsyncComponent(
   () => import('@/components/common/loading/LoadingPage.vue'),
 )
+
+notification.initTimout()
 </script>
 
 <template>
@@ -34,8 +38,8 @@ const LoadingPage = defineAsyncComponent(
 
 .base {
   @apply font-primary-default
-    bg-default-layout-bg
-    text-default-layout-text
+    bg-(--c-v-7) dark:bg-(--c-v-0)
+    text-(--c-v-1) dark:text-(--c-v-7)
     align-middle;
 }
 </style>
