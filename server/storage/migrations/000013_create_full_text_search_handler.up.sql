@@ -4,16 +4,19 @@ CREATE TABLE full_text_search_s.products_changes (
     product_id UUID PRIMARY KEY REFERENCES product_s.products(id) ON DELETE CASCADE
 );
 
-CREATE OR REPLACE FUNCTION full_text_search_s.tags_to_text(product_id UUID) RETURNS TEXT
+CREATE OR REPLACE FUNCTION full_text_search_s.tags_to_text(UUID) RETURNS TEXT
 AS $$
     DECLARE
-        context TEXT[] := '{}';
+        output TEXT := '';
     BEGIN
-        SELECT ARRAY_AGG(p.tag) INTO context
-        FROM products_s.products_categories AS p 
-        WHERE p.product_id = product_id;
+        SELECT COALESCE(
+            STRING_AGG(p.tag, ','),
+            '')
+        INTO output
+        FROM product_s.products_categories AS p
+        WHERE p.product_id = $1;
 
-        RETURN array_to_string(context, ',');
+        RETURN output;
     END;
 $$ LANGUAGE PLPGSQL;
 
