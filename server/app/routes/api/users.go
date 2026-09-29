@@ -42,7 +42,7 @@ func UsersRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 }
 
 type VerfierKey struct {
-	Key int `json:"num" binding:"required"`
+	Key int `json:"key" binding:"required"`
 }
 
 type usersHandler struct {
@@ -80,17 +80,19 @@ func (h *usersHandler) list(c *gin.Context) {
 }
 
 func (h *usersHandler) get(c *gin.Context) {
-	claims := md.GetUserClaims(c)
-	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
-		return
-	}
-
 	id := c.Param("id")
 	ctx := c.Request.Context()
 	output, err := h.userStore.Get(ctx, id)
 	if err != nil {
 		NotFound(c, "")
 		return
+	}
+	claims := md.GetUserClaims(c)
+	if !HasPermissions(nil, claims.PermissionType, queries.Admin) {
+		if claims.ID != output.ID || claims.PermissionType != output.PermissionType {
+			Forbidden(c, "")
+			return
+		}
 	}
 	c.JSON(http.StatusOK, output)
 }
@@ -266,7 +268,7 @@ func (h *ShopHandler) upsert(c *gin.Context) {
 
 func (h *ShopHandler) get(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
+	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
 		return
 	}
 	ctx := c.Request.Context()
@@ -275,6 +277,12 @@ func (h *ShopHandler) get(c *gin.Context) {
 	if err != nil {
 		NotFound(c, "")
 		return
+	}
+	if HasPermissions(nil, claims.PermissionType, queries.Vendor) {
+		if claims.ID != output.ID {
+			Forbidden(c, "")
+			return
+		}
 	}
 
 	c.JSON(http.StatusOK, output)
@@ -346,12 +354,13 @@ func (h *ShopHandler) uploadProfileImg(c *gin.Context) {
 
 func (h *ShopHandler) deleteImgPath(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	imgPath, err := h.store.DeleteImgPath(c.Request.Context(), claims.ID)
+	ctx := c.Request.Context()
+	imgPath, err := h.store.DeleteImgPath(ctx, claims.ID)
 	if err != nil {
 		NotFound(c, "")
 		return
 	}
-	if err := h.fileStore.Delete(c.Request.Context(), imgPath); err != nil {
+	if err := h.fileStore.Delete(ctx, imgPath); err != nil {
 		Forbidden(c, "")
 		return
 	}

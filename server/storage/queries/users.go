@@ -164,15 +164,16 @@ func (u *userRepository) Create(ctx context.Context, user CreateUserRequest) (it
 
 func (u *userRepository) Register(ctx context.Context, user RegisterUserRequest) (err error) {
 	const q = `INSERT INTO user_s.users(
-			email, phone_number,
+			email, is_v_email, phone_number,
 			first_name, last_name, national_code,
 			permission_type, is_active)
 		VALUES (
-			@Email, @PhoneNumber,
+			@Email, @IsVEmail, @PhoneNumber,
 			@FirstName, @LastName, @NationalCode,
 			@PermissionType, @IsActive)`
 	args := pgx.NamedArgs{
 		"Email":          user.Email,
+		"IsVEmail":       true,
 		"PhoneNumber":    user.PhoneNumber,
 		"FirstName":      user.FirstName,
 		"LastName":       user.LastName,
@@ -438,7 +439,7 @@ func (s *shopRepository) Upsert(ctx context.Context, userID string, info UpsertS
 			zip_code = @ZipCode,
 			business_code = @BusinessCode,
 			bio = @Bio,
-			is_verified = FALSE`
+			is_shop = FALSE`
 	args := pgx.NamedArgs{
 		"UserID":       userID,
 		"Brand":        info.Brand,
@@ -455,15 +456,24 @@ func (s *shopRepository) Upsert(ctx context.Context, userID string, info UpsertS
 
 func (s *shopRepository) Get(ctx context.Context, userID string) (item ShopInfoResponse, err error) {
 	const q = `SELECT
-			u.id, (u.first_name || ' ' || u.last_name) as name
-			u.permission_type, u.is_active, u.is_verified,
-			COALESCE(u.email, '') AS email, u.is_v_email,
-			COALESCE(u.phone_numner, '') AS phone_number, u.is_v_phone_number,
+			u.id,
+			(u.first_name || ' ' || u.last_name) as name,
+			u.permission_type,
+			u.is_active, u.is_verified,
+			COALESCE(u.email, '') AS email,
+			u.is_v_email,
+			COALESCE(u.phone_number, '') AS phone_number,
+			u.is_v_phone_number,
 
-			COALESCE(s.brand, '') AS brand, s.shop_addr, s.zip_code,
-			s.business_code, COALESCE(s.phone_number, '') as shop_phone_number
-			s.img_path, s.bio
-		FROM user_s.users as u LEFT JOIN user_s.shop as s on u.id = s.user_id
+			COALESCE(s.brand, '') AS brand,
+			s.shop_addr, s.zip_code,
+			s.business_code,
+			COALESCE(s.phone_number, '') AS shop_phone_number,
+			s.img_path,
+			s.bio,
+			s.is_shop
+		FROM user_s.users AS u
+		LEFT JOIN user_s.shop AS s on u.id = s.user_id
 		WHERE user_id = $1::UUID`
 	if item, err = get[ShopInfoResponse](ctx, s.session, q, userID); err != nil {
 		s.log.Debug("ShopRepository.Get", "error", err)
@@ -493,7 +503,7 @@ func (p *shopRepository) MaxPage(ctx context.Context, pagination int) (int, erro
 
 func (s *shopRepository) SetPhoneNumber(ctx context.Context, userID string, phoneNumber ShopPhoneNumberRequest) (err error) {
 	const q = `UPDATE user_s.shop
-		SET phone_numner = NULLIF($1, ''), is_v_phone_number = FALSE
+		SET phone_number = NULLIF($1, ''), is_v_phone_number = FALSE
 		WHERE user_id = $2::UUID`
 	if err = execOne(ctx, s.session, q, phoneNumber.PhoneNumber, userID); err != nil {
 		s.log.Debug("ShopRepository.SetPhoneNumber", "error", err)
