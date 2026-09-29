@@ -38,6 +38,10 @@ const icon = {
     },
   },
   pages: {
+    account: {
+      verified: 'pages/account/VerifiedIcon.vue',
+      notVerified: 'pages/account/NotVerifiedIcon.vue',
+    },
     landing: {
       rightArrow: 'pages/landing/RightArrowIcon.vue',
     },

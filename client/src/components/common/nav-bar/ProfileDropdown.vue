@@ -74,28 +74,37 @@ function onClick() {
     </button>
     <div class="dropdown-content" :class="{ show: showUp }">
       <div class="content c-flex-all-center">
-        <RouterLink :to="{ name: 'account' }"> Account </RouterLink>
-        <RouterLink :to="{ name: 'orders-list' }"> Orders </RouterLink>
+        <RouterLink class="item" :to="{ name: 'account' }">
+          Account
+        </RouterLink>
+        <RouterLink class="item" :to="{ name: 'orders-list' }">
+          Orders
+        </RouterLink>
         <RouterLink
           v-if="store.getClaims.permission_type === PermissionType.Vendor"
           :to="{ name: 'vendor-orders' }"
+          class="item"
         >
           Vendor
         </RouterLink>
         <RouterLink
           v-if="store.getClaims.permission_type === PermissionType.Admin"
           :to="{ name: 'admin' }"
+          class="item"
         >
           Admin
         </RouterLink>
         <RouterLink
           v-if="store.getClaims.permission_type === PermissionType.Admin"
           :to="{ name: 'admin-issues' }"
+          class="item"
         >
           Issues
         </RouterLink>
-        <RouterLink v-else :to="{ name: 'issues-list' }"> Issues </RouterLink>
-        <button class="logout-btn" @click="onLogout">Logout</button>
+        <RouterLink v-else class="item" :to="{ name: 'issues-list' }">
+          Issues
+        </RouterLink>
+        <button class="item logout-btn" @click="onLogout">Logout</button>
       </div>
     </div>
   </div>
@@ -113,18 +122,25 @@ function onClick() {
 }
 
 .profile-dropdown > .dropdown-content {
-  @apply absolute hidden px-10 py-2
+  @apply absolute hidden p-2
     rounded-2xl right-0 top-10
     border-2 border-(--c-v-1) dark:border-(--c-v-7)
     bg-(--c-v-7) dark:bg-(--c-v-0);
 }
 
 .profile-dropdown > .dropdown-content > .content {
-  @apply flex-col gap-4;
+  @apply flex-col gap-2;
 }
 
 .profile-dropdown .show {
   @apply block;
+}
+
+.profile-dropdown .item {
+  @apply rounded-lg w-full h-10 px-9 text-center
+    flex items-center justify-center
+    dark:bg-(--c-v-2) bg-(--c-v-5)
+    hover:brightness-110;
 }
 
 .logout-btn {

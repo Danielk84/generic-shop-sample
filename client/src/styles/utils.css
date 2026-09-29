@@ -50,7 +50,7 @@
     @apply my-10 hover:brightness-90 cursor-pointer
       font-bold rounded-xl h-15 w-full text-xl
       bg-(--c-v-8)
-      text-(--c-v-7);
+      text-(--c-v-1);
   }
   .c-form .c-form-error {
     @apply py-2 px-4 text-wrap font-bold
