@@ -61,7 +61,11 @@ AS $$
         IF TG_TABLE_SCHEMA = 'product_s' AND TG_TABLE_NAME = 'products' THEN
             p_id := NEW.id;
         ELSIF TG_TABLE_SCHEMA = 'product_s' AND TG_TABLE_NAME = 'products_categories' THEN
-            p_id := NEW.product_id;
+            IF TG_OP = 'DELETE' THEN
+                p_id := OLD.product_id;
+            ELSE
+                p_id := NEW.product_id;
+            END IF;
         ELSE
             RAISE EXCEPTION 'invalid table for recording products changes';
         END IF;

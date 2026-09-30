@@ -99,7 +99,7 @@ func (p *pcRepository) SetTags(ctx context.Context, id string, tags []string) (e
 					pgx.Identifier{"product_s", "products_categories"},
 					[]string{"product_id", "tag"},
 					pgx.CopyFromSlice(newTagsSize, func(i int) ([]any, error) {
-						return []any{id, tags[i]}, nil
+						return []any{id, newTags[i]}, nil
 					}),
 				)
 				if err != nil {
