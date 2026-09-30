@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { defineAsyncComponent, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMutation } from '@tanstack/vue-query'
 
@@ -12,6 +12,10 @@ import {
   type CreateProductInput,
 } from '@/contracts/products/request.schema'
 import type { ProductProperty } from '@/contracts/products/response.interface'
+
+const BackBtn = defineAsyncComponent(
+  () => import('@/components/ui/button/BackBtn.vue'),
+)
 
 const store = useStore()
 const route = useRoute()
@@ -84,6 +88,9 @@ async function onClick(event: MouseEvent) {
 <template>
   <div class="create-product-page c-flex-all-center">
     <form class="c-form c-form-bg min-h-fit c-flex-all-center">
+      <div class="w-full">
+        <BackBtn />
+      </div>
       <div class="c-form-item base-item">
         <label class="c-form-label" for="name"> Name : </label>
         <input class="c-form-input base-input" v-model="formData.name" />

@@ -19,3 +19,9 @@ export interface BlogCardProps {
   pudDate: string
   title: string
 }
+
+export interface TagCardProps {
+  id: number
+  tag: string
+  palette: number
+}

@@ -2,6 +2,7 @@
 import type { StyleValue } from 'vue'
 
 import { getCssVar } from '@/utils/helper'
+import type { TagCardProps } from '@/components/card/types'
 import type { Category } from '@/contracts/categories/response.interface'
 
 const colorList: StyleValue = [
@@ -22,11 +23,7 @@ const colorList: StyleValue = [
   },
 ] as const
 
-const props = defineProps<{
-  id: number
-  tag: string
-  palette: number
-}>()
+const props = defineProps<TagCardProps>()
 
 const emits = defineEmits<{
   (e: 'tagHandler', category: Category): void

@@ -19,6 +19,9 @@ import type {
 const BackBtn = defineAsyncComponent(
   () => import('@/components/ui/button/BackBtn.vue'),
 )
+const SetTags = defineAsyncComponent(
+  () => import('@/pages/panel/admin/products/SetTags.vue'),
+)
 
 const route = useRoute()
 const router = useRouter()
@@ -136,11 +139,16 @@ async function onClick(event: MouseEvent) {
     mutation.mutate(input.data)
   }
 }
+
+window.scroll(0, 0)
 </script>
 
 <template>
   <div class="product-edit-page c-flex-all-center">
-    <div class="edit-box c-form-bg" :class="{ 'c-form-error-shadow': isError }">
+    <section
+      class="edit-box c-form-bg"
+      :class="{ 'c-form-error-shadow': isError }"
+    >
       <div class="py-4">
         <BackBtn
           :icon="{
@@ -235,7 +243,10 @@ async function onClick(event: MouseEvent) {
           <span>Next</span>
         </RouterLink>
       </div>
-    </div>
+    </section>
+    <section class="w-full c-flex-all-center">
+      <SetTags :id="productID as string" />
+    </section>
   </div>
 </template>
 
@@ -243,7 +254,7 @@ async function onClick(event: MouseEvent) {
 @reference "@/styles/index.css";
 
 .product-edit-page {
-  @apply w-screen min-h-screen p-10;
+  @apply w-screen min-h-screen p-10 flex-col gap-20;
 }
 
 .product-edit-page .edit-box {

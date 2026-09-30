@@ -57,6 +57,7 @@ const icon = {
     panel: {
       products: {
         upload: 'pages/panel/products/UploadIcon.vue',
+        save: 'pages/panel/products/SaveIcon.vue',
       },
     },
   },
