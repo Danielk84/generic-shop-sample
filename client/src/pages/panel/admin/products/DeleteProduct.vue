@@ -37,7 +37,7 @@ const { mutate, isPending } = useMutation({
 </script>
 
 <template>
-  <button :class="{ 'is-pending': isPending }" @click="mutate()">Delete</button>
+  <button :disabled="isPending" @click="mutate()">Delete</button>
 </template>
 
 <style scoped>

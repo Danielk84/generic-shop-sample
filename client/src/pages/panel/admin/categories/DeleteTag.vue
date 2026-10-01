@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import api from '@/utils/api'
 import { useStore } from '@/store'
 import { errorStatusHandler } from '@/utils/helper'
+import { useNotificationStore } from '@/store/notification'
 
 const props = defineProps<{
   id: number
@@ -14,6 +15,7 @@ const emits = defineEmits<{
   (e: 'afterDelete'): void
 }>()
 
+const notification = useNotificationStore()
 const store = useStore()
 const router = useRouter()
 
@@ -26,9 +28,14 @@ const { mutateAsync, isPending } = useMutation({
       },
     })
   },
+  onSuccess() {
+    notification.success('Tag deleted')
+    emits('afterDelete')
+  },
   onError: (error) => {
     errorStatusHandler(error, router, {
       notFound() {
+        notification.error('Failed to delete tag.')
         emits('afterDelete')
       },
     })

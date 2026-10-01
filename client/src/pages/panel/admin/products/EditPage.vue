@@ -5,6 +5,7 @@ import { useQuery, useMutation } from '@tanstack/vue-query'
 
 import api from '@/utils/api'
 import { useStore } from '@/store'
+import { useNotificationStore } from '@/store/notification'
 import { errorStatusHandler } from '@/utils/helper'
 import { useValidator } from '@/utils/validator'
 import {
@@ -26,6 +27,7 @@ const SetTags = defineAsyncComponent(
 const route = useRoute()
 const router = useRouter()
 const store = useStore()
+const notification = useNotificationStore()
 
 const callback_page = route.query.page
 const productID = route.params.productID
@@ -35,7 +37,6 @@ if (productID === undefined || productID === '') {
 
 const { formData, errors, validate } = useValidator(UpdateProductRequest)
 
-const errorMsg = ref<string>('')
 const isError = ref<boolean>(false)
 
 const properties = ref<
@@ -109,14 +110,14 @@ const mutation = useMutation({
     })
   },
   async onSuccess() {
-    errorMsg.value = ''
+    notification.success('Changes saved.')
     isError.value = false
     await query.refetch()
   },
   onError(error) {
     errorStatusHandler(error, router, {
       badRequest() {
-        errorMsg.value = 'invalid data.'
+        notification.error('invalid data.')
         isError.value = true
       },
     })
@@ -227,9 +228,6 @@ window.scroll(0, 0)
         >
           <span>Save</span>
         </button>
-        <p v-if="errorMsg !== ''" class="c-form-error">
-          {{ errorMsg }}
-        </p>
       </form>
       <div class="next-box">
         <RouterLink
