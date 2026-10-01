@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, defineAsyncComponent, watch } from 'vue'
+import { computed, ref, defineAsyncComponent, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useMutation, useQuery } from '@tanstack/vue-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 
 import api from '@/utils/api'
 import { useStore } from '@/store'
+import { useNotificationStore } from '@/store/notification'
 import { errorStatusHandler } from '@/utils/helper'
 import { formatDate } from '@/utils/helper'
 import { useValidator } from '@/utils/validator'
@@ -18,32 +19,57 @@ import type { CommentResponse } from '@/contracts/comments/response.interface'
 const IndentedComments = defineAsyncComponent(
   () => import('@/components/common/comments/IndentedComments.vue'),
 )
+const ListPagination = defineAsyncComponent(
+  () => import('@/components/ui/ListPagination.vue'),
+)
 
 const props = withDefaults(
   defineProps<{
     isParent?: boolean
+    pageName?: string
     relation: RelatedCommentsRequest
   }>(),
   {
     isParent: true,
+    pageName: 'product',
   },
 )
 
 const store = useStore()
 const router = useRouter()
+const notification = useNotificationStore()
 
 const { formData, errors, validate } = useValidator(CommentRequest)
 
 const createTarget = ref<RelatedCommentsRequest | null>(null)
-const errorMsg = ref<string | null>(null)
+const isError = ref<boolean>(false)
+const page = ref(1)
+const maxPage = ref(1)
 
-const { data, error } = useQuery({
-  queryKey: ['comments-list', props.relation.parent, props.relation.referrer],
-  queryFn: async () =>
-    api.get<CommentResponse[]>(
-      `commnets/?parent=${props.relation.parent}&referrer=${props.relation.referrer}`,
-    ),
-  select: (res) => res.data,
+const { data, error, refetch } = useQuery({
+  queryKey: computed(() => [
+    'comments-list',
+    props.relation.parent,
+    props.relation.referrer,
+    page.value,
+  ]),
+  queryFn: async () => {
+    const params: { parent?: string; referrer: string; page: number } = {
+      referrer: props.relation.referrer,
+      page: page.value,
+    }
+    if (props.relation.parent) {
+      params.parent = props.relation.parent
+    }
+    return api.get<CommentResponse[]>('comments/', { params })
+  },
+  select: (res) => {
+    const mp = Number(res.headers['x-max-page'])
+    if (!Number.isNaN(mp) && mp > 0) {
+      maxPage.value = mp
+    }
+    return res.data
+  },
 })
 
 watch(error, (err) => {
@@ -62,20 +88,36 @@ const createMutate = useMutation({
         Authorization: store.getAccessToken,
       },
     }),
-  onSuccess() {
-    errorMsg.value = null
+  async onSuccess() {
+    formData.value.body = ''
+    notification.success('Comment added.')
+    createTarget.value = null
+    isError.value = false
+    await refetch()
   },
-  onError() {
-    errorMsg.value = 'invalid comments'
+  onError(err) {
+    errorStatusHandler(err, router, {
+      notFound() {
+        notification.error('Unable to add comment.')
+        return
+      },
+      badRequest() {
+        notification.error('Invalid comment body')
+      },
+    })
+    isError.value = true
   },
 })
 
 async function createComments(event: MouseEvent) {
   event.preventDefault()
 
+  formData.value.referrer = props.relation.referrer
+  formData.value.parent = createTarget.value?.parent || undefined
   const { input, isValid } = await validate()
   if (!isValid) {
-    errorMsg.value = 'invalid comments'
+    notification.error('Invalid comment body.')
+    isError.value = true
   }
   if (input.data !== undefined) {
     createMutate.mutate(input.data)
@@ -85,32 +127,10 @@ async function createComments(event: MouseEvent) {
 
 <template>
   <section class="comments-list">
-    <section v-if="createTarget != null" class="c-floating-window">
-      <form
-        class="c-form c-form-bg"
-        :class="{ 'c-form-error-shadow': errorMsg != null }"
-      >
-        <div class="c-form-item">
-          <label class="c-form-label" for="body">Your experience:</label>
-          <textarea
-            class="c-form-input"
-            v-model="(formData as CommentInput).body"
-            rows="4"
-            cols="5"
-          ></textarea>
-          <p class="c-form-error" v-if="errors['body'] != undefined">
-            {{ errors['body'] }}
-          </p>
-        </div>
-        <button @click="createComments($event)" class="c-form-btn">Send</button>
-        <p class="c-form-error" v-if="errorMsg !== null">
-          {{ errorMsg }}
-        </p>
-      </form>
-    </section>
-    <div class="create-btn">
+    <div class="w-full flex justify-center">
       <button
         v-if="props.isParent"
+        class="create-btn"
         @click="
           () => {
             createTarget = {
@@ -119,7 +139,6 @@ async function createComments(event: MouseEvent) {
             }
           }
         "
-        class="c-form-btn"
       >
         Send Your experience
       </button>
@@ -127,7 +146,7 @@ async function createComments(event: MouseEvent) {
     <div v-if="data === undefined" class="empty-comments">
       <span>There are not any comments.</span>
     </div>
-    <div v-else class="c-flex-all-center flex-col">
+    <div v-else class="mt-8">
       <div class="list">
         <div v-for="item of data" :key="item.id" class="item">
           <div class="content">
@@ -159,7 +178,44 @@ async function createComments(event: MouseEvent) {
           </div>
         </div>
       </div>
+      <ListPagination
+        :last="maxPage"
+        :page-name="props.pageName"
+        @change-page="(value: number) => (page = value)"
+      />
     </div>
+    <section
+      v-if="createTarget != null"
+      class="c-floating-window c-flex-all-center top-0 left-0"
+    >
+      <form
+        class="comment-box c-form c-form-bg justify-between"
+        :class="{ 'c-form-error-shadow': isError }"
+      >
+        <div>
+          <button
+            class="text-2xl font-bold cursor-pointer"
+            type="button"
+            @click="createTarget = null"
+          >
+            <span>X</span>
+          </button>
+        </div>
+        <label class="c-form-label" for="body">Your experience:</label>
+        <textarea
+          class="c-form-input"
+          v-model="(formData as CommentInput).body"
+          rows="4"
+          cols="5"
+        ></textarea>
+        <p class="c-form-error" v-if="errors['body'] != undefined">
+          {{ errors['body'] }}
+        </p>
+        <button @click="createComments($event)" class="c-form-btn mb-0">
+          Send
+        </button>
+      </form>
+    </section>
   </section>
 </template>
 
@@ -170,8 +226,16 @@ async function createComments(event: MouseEvent) {
   @apply w-full h-fit;
 }
 
+.comments-list .comment-box {
+  @apply rounded-2xl p-4 size-120;
+}
+
 .comments-list textarea {
-  @apply resize-y;
+  @apply resize-none h-60;
+}
+
+.comments-list .create-btn {
+  @apply rounded-2xl p-4 bg-(--c-v-13) text-(--c-v-1) text-2xl font-bold size-fit;
 }
 
 .comments-list .empty-comments {
@@ -179,7 +243,7 @@ async function createComments(event: MouseEvent) {
 }
 
 .comments-list .list {
-  @apply border-r border-b p-4;
+  @apply border-l border-t p-4;
 }
 
 .comments-list .item {
@@ -195,6 +259,6 @@ async function createComments(event: MouseEvent) {
 }
 
 .comments-list .body {
-  @apply text-wrap text-center w-full h-fit;
+  @apply text-wrap text-start w-full h-fit p-5;
 }
 </style>

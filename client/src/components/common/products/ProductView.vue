@@ -173,8 +173,10 @@ function addToBasket() {
           <h2>Details</h2>
           <ul>
             <li v-for="(v, k) in product.common_detail" :key="k">
-              <span>{{ k }}</span>
-              <span>{{ v }}</span>
+              <span class="opacity-70 font-bold">{{ k }}</span>
+              <span class="basis-3/4 border-b border-(--c-v-8) p-4">{{
+                v
+              }}</span>
             </li>
           </ul>
         </section>

@@ -66,7 +66,11 @@ watch(
 
 watch(page, async (v: number) => {
   window.scroll(0, 0)
-  router.push({ name: props.pageName, query: { page: v } })
+  router.push({
+    name: props.pageName,
+    params: route.params,
+    query: { ...route.query, page: v },
+  })
 })
 </script>
 
@@ -74,18 +78,23 @@ watch(page, async (v: number) => {
   <div class="pagination" v-if="props.last > 1">
     <button
       class="main-btn btn"
+      type="button"
+      aria-label="Previous page"
       v-bind:class="{ off: page === 1 }"
       @click="setPage(page - 1)"
     >
       <BaseIcon
         :icon="icons.ui.pagination.previous"
-        stroke-color="--color-pagination-icon"
-        fill-color="--color-pagination-icon"
+        stroke-color="--c-v-7"
+        fill-color="--c-v-7"
       />
     </button>
     <div v-for="i of pageRange(page, props.last)" :key="i">
       <button
         class="btn item"
+        type="button"
+        :aria-label="`Go to page ${i}`"
+        :aria-current="i === page ? 'page' : undefined"
         v-bind:class="{ select: i === page }"
         @click="setPage(i)"
       >
@@ -94,13 +103,15 @@ watch(page, async (v: number) => {
     </div>
     <button
       class="main-btn btn item"
+      type="button"
+      aria-label="Next page"
       :class="{ off: page === props.last || props.last === 0 }"
       @click="setPage(page + 1)"
     >
       <BaseIcon
         :icon="icons.ui.pagination.next"
-        stroke-color="--color-pagination-icon"
-        fill-color="--color-pagination-icon"
+        stroke-color="--c-v-7"
+        fill-color="--c-v-7"
       />
     </button>
   </div>
@@ -112,24 +123,27 @@ watch(page, async (v: number) => {
 .pagination {
   @apply flex flex-row justify-center items-center
     size-fit rounded-xl overflow-hidden
-    border border-pagination-border;
+    border border-(--c-v-1);
 }
 
 .pagination .main-btn {
-  @apply bg-pagination-btn;
+  @apply bg-(--c-v-1) cursor-pointer transition-colors duration-200
+    focus-visible:outline-2 focus-visible:outline-offset-2;
 }
 
 .pagination .btn {
-  @apply hover:cursor-pointer min-w-10 min-h-10 px-4
-    text-pagination-default-text;
+  @apply min-w-11 min-h-11 px-4 cursor-pointer
+    transition-colors duration-200
+    focus-visible:outline-2 focus-visible:outline-offset-2
+    text-(--c-v-1);
 }
 
 .pagination .item {
-  @apply border-l border-pagination-border;
+  @apply border-l border-(--c-v-1);
 }
 
 .pagination .select {
-  @apply bg-pagination-select-bg text-pagination-select-text;
+  @apply bg-(--c-v-1) text-(--c-v-7);
 }
 
 .pagination .off {
