@@ -6,6 +6,7 @@ export interface StatusHandlers {
   unauthorized?: () => void
   forbidden?: () => void
   notFound?: () => void
+  notAcceptable?: () => void
   contentTooLarge?: () => void
   unprocessableEntity?: () => void
   tooManyRequests?: () => void

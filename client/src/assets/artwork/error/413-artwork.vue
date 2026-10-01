@@ -7,7 +7,6 @@
     xmlns:xlink="http://www.w3.org/1999/xlink"
     role="img"
     artist="Katerina Limpitsouni"
-    source="https://undraw.co/"
   >
     <g
       id="Group_24"

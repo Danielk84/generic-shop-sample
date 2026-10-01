@@ -59,6 +59,13 @@ export function errorStatusHandler(
         router.push('/404')
       }
       break
+    case axios.HttpStatusCode.NotAcceptable:
+      if (typeof handlers?.notAcceptable === 'function') {
+        handlers.notAcceptable()
+      } else {
+        router.push('/406')
+      }
+      break
     case axios.HttpStatusCode.ContentTooLarge:
       if (typeof handlers?.contentTooLarge === 'function') {
         handlers.contentTooLarge()

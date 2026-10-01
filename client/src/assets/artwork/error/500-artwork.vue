@@ -7,7 +7,6 @@
     xmlns:xlink="http://www.w3.org/1999/xlink"
     role="img"
     artist="Katerina Limpitsouni"
-    source="https://undraw.co/"
   >
     <g transform="translate(-480 -169)">
       <g transform="translate(480 169)">
