@@ -20,8 +20,7 @@ function onClick(event: MouseEvent) {
   event.preventDefault()
   if (props.pageName === undefined) {
     router.back()
-  }
-  if (props.pageName === 'back-2') {
+  } else if (props.pageName === 'back-2') {
     router.go(-2)
   } else {
     router.push({ name: props.pageName, query: props.query })
@@ -31,7 +30,7 @@ function onClick(event: MouseEvent) {
 
 <template>
   <div>
-    <button class="back-btn" @click="onClick($event)">
+    <button class="back-btn" type="button" @click="onClick($event)">
       <BaseIcon
         :icon="icons.ui.button.back"
         :size="props.icon?.size"
