@@ -71,10 +71,19 @@ AS $$
         END IF;
 
         INSERT INTO full_text_search_s.products_changes(product_id)
-            VALUES (p_id)
+            SELECT (p_id)
+            WHERE EXISTS(
+                SELECT 1
+                FROM product_s.products
+                WHERE id = p_id
+            )
             ON CONFLICT DO NOTHING;
 
-        RETURN NEW;
+        IF TG_OP = 'DELETE' THEN
+            RETURN OLD;
+        ELSE
+            RETURN NEW;
+        END IF;
     END;
 $$ LANGUAGE PLPGSQL;
 

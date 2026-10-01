@@ -239,7 +239,7 @@ func (p *productRepository) Update(ctx context.Context, product UpdateProductReq
 
 func (p *productRepository) Delete(ctx context.Context, id string) (err error) {
 	const q = `DELETE FROM product_s.products WHERE id = $1::UUID`
-	if err = execOne(ctx, p.session, q, id); err != nil {
+	if _, err := p.session.Exec(ctx, q, id); err != nil {
 		p.log.Error("ProductRepository.Delete", "error", err)
 	}
 	return

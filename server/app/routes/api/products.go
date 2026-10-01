@@ -288,17 +288,15 @@ func (h *productsHandler) delete(c *gin.Context) {
 	id := c.Param("id")
 	ctx := c.Request.Context()
 	productImages, err := h.productImagesStore.List(ctx, id)
-	if err != nil {
-		NotFound(c, "")
-		return
-	}
-	imgs := make([]string, 0, len(productImages))
-	for _, p := range productImages {
-		imgs = append(imgs, p.ImgPath)
-	}
-	if err := h.fileStore.BulkDelete(ctx, imgs); err != nil {
-		Unprocessable(c, "")
-		return
+	if err == nil {
+		imgs := make([]string, 0, len(productImages))
+		for _, p := range productImages {
+			imgs = append(imgs, p.ImgPath)
+		}
+		if err := h.fileStore.BulkDelete(ctx, imgs); err != nil {
+			Unprocessable(c, "")
+			return
+		}
 	}
 	if err := h.productStore.Delete(ctx, id); err != nil {
 		NotFound(c, "")

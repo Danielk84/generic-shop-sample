@@ -122,14 +122,12 @@ func (h *usersHandler) delete(c *gin.Context) {
 	ctx := c.Request.Context()
 	if HasPermissions(nil, claims.PermissionType, queries.Admin, queries.Vendor) {
 		imgPath, err := h.shopStore.GetImgPath(ctx, claims.ID)
-		if err != nil {
-			NotFound(c, "")
-			return
-		}
-		if imgPath != "" {
-			if err := h.fileStore.Delete(ctx, imgPath); err != nil {
-				Unprocessable(c, "")
-				return
+		if err == nil {
+			if imgPath != "" {
+				if err := h.fileStore.Delete(ctx, imgPath); err != nil {
+					Unprocessable(c, "")
+					return
+				}
 			}
 		}
 	}

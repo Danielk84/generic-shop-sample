@@ -189,7 +189,7 @@ func (u *userRepository) Register(ctx context.Context, user RegisterUserRequest)
 
 func (u *userRepository) List(ctx context.Context, pagination, page int) (items []UserResponse, err error) {
 	const q = `SELECT
-			id, (first_name || ' ' || last_name) as name
+			id, (first_name || ' ' || last_name) as name,
 			permission_type, is_active, is_verified
 		FROM user_s.users
 		ORDER BY is_active DESC, is_verified
@@ -249,7 +249,7 @@ func (u *userRepository) Delete(ctx context.Context, id, email string) (err erro
 		UPDATE user_s.users
         SET email = NULL, phone_number = NULL, is_active = FALSE
         WHERE id = $1::UUID AND email = $2`
-	if err = execOne(ctx, u.session, q, id, email); err != nil {
+	if _, err = u.session.Exec(ctx, q, id, email); err != nil {
 		u.log.Warn("UserRepository.Delete", "error", err)
 	}
 	return
