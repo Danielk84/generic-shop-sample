@@ -101,7 +101,7 @@ const fullScreen = ref<boolean>(false)
 }
 
 .image-frame-list .base-img {
-  @apply border rounded-xl border-(--c-v-10)
+  @apply border rounded-xl border-(--c-v-13)
     hover:brightness-80 relative;
 }
 

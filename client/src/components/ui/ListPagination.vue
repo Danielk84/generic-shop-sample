@@ -77,7 +77,7 @@ watch(page, async (v: number) => {
 <template>
   <div class="pagination" v-if="props.last > 1">
     <button
-      class="main-btn btn"
+      class="main-btn btn rounded-l-xl border-y border-(--c-v-10)"
       type="button"
       aria-label="Previous page"
       v-bind:class="{ off: page === 1 }"
@@ -102,7 +102,7 @@ watch(page, async (v: number) => {
       </button>
     </div>
     <button
-      class="main-btn btn item"
+      class="main-btn btn rounded-r-xl border-y border-(--c-v-10)"
       type="button"
       aria-label="Next page"
       :class="{ off: page === props.last || props.last === 0 }"
@@ -122,8 +122,7 @@ watch(page, async (v: number) => {
 
 .pagination {
   @apply flex flex-row justify-center items-center
-    size-fit rounded-xl overflow-hidden
-    border border-(--c-v-1);
+    size-fit rounded-xl overflow-hidden;
 }
 
 .pagination .main-btn {
@@ -139,7 +138,7 @@ watch(page, async (v: number) => {
 }
 
 .pagination .item {
-  @apply border-l border-(--c-v-1);
+  @apply border-l border-y border-(--c-v-1);
 }
 
 .pagination .select {

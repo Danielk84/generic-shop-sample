@@ -8,6 +8,20 @@ export const PermissionType = {
   BlockUser: 3,
 } as const
 
+export const PermissionNames = ['Admin', 'Vendor', 'Customer', 'BlockUser']
+
+export function PermissionString(perm: number) {
+  return PermissionNames[perm] ?? PermissionNames[PermissionType.BlockUser]
+}
+
+export function PermissionNumber(perm: string) {
+  let idx = PermissionNames.indexOf(perm)
+  if (idx === -1) {
+    return PermissionType.BlockUser
+  }
+  return idx
+}
+
 export const EmailAddrRequest = z.object({
   email: z.email().min(10).max(254),
 })
