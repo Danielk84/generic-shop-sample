@@ -36,6 +36,7 @@ func CommentsRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 		{http.MethodGet, "/find/:id", []gin.HandlerFunc{h.find}},
 		{http.MethodGet, "/overview/:id", []gin.HandlerFunc{h.get}},
 		{http.MethodPut, "/set-active/:id", []gin.HandlerFunc{h.setActive}},
+		{http.MethodDelete, "/clean-cache", []gin.HandlerFunc{h.cleanCache}},
 		{http.MethodDelete, "/:id", []gin.HandlerFunc{h.delete}},
 	})
 }
@@ -275,4 +276,28 @@ func (h *commentsHandler) setActive(c *gin.Context) {
 		return
 	}
 	Accepted(c, "")
+}
+
+func (h *commentsHandler) cleanCache(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
+		return
+	}
+	ctx := c.Request.Context()
+	err := background.SendCacheCleaner(ctx, h.cache, background.CacheCleanerMessage{
+		CacheDB: cache.PublicCache,
+		Keys: []string{
+			fmt.Sprintf("%s:get", h.baseCacheKey),
+			fmt.Sprintf("%s:list", h.baseCacheKey),
+			fmt.Sprintf("%s:full", h.baseCacheKey),
+		},
+	})
+	if err != nil {
+		h.log.Warn("commentsHandler.delete", "error", err)
+		c.JSON(
+			http.StatusNotAcceptable,
+			gin.H{"msg": "failed to clean cache."})
+	} else {
+		c.Status(http.StatusNoContent)
+	}
 }
