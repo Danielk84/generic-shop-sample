@@ -1,6 +1,7 @@
 import { type Router } from 'vue-router'
 import axios from 'axios'
 
+import { useNotification } from '@/store/notification'
 import type { StatusHandlers } from '@/utils/types'
 
 export const getCssVar = (cssVar: string) =>
@@ -26,6 +27,9 @@ export function errorStatusHandler(
   if (!axios.isAxiosError(err)) {
     if (typeof handlers?.notAxiosError === 'function') {
       handlers.notAxiosError()
+    } else {
+      const notification = useNotification()
+      notification.error('Unexpected error happened!?')
     }
     return
   }
@@ -122,11 +126,18 @@ export function setCallbackURL(fullPath: string): string {
 
 export function parseJwt<T>(token: string): T | undefined {
   if (!token) {
-    return
+    return undefined
   }
-  const base64Url = token.split('.')[1]
-  const base64 = base64Url.replace('-', '+').replace('_', '/')
-  return JSON.parse(window.atob(base64)) as T
+  try {
+    const base64Url = token.split('.')[1]
+    if (base64Url === undefined) {
+      return undefined
+    }
+    const base64 = base64Url.replace('-', '+').replace('_', '/')
+    return JSON.parse(window.atob(base64)) as T
+  } catch {
+    return undefined
+  }
 }
 
 export function formatDate(input: string) {

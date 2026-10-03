@@ -12,11 +12,6 @@ const ImageFrameCard = defineAsyncComponent(
 )
 
 const props = defineProps<{ data: ProductCardProps }>()
-
-function onClick(event: Event) {
-  event.preventDefault()
-  event.stopPropagation()
-}
 </script>
 
 <template>
