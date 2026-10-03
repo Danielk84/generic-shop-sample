@@ -203,6 +203,10 @@ func (h *productsHandler) get(c *gin.Context) {
 }
 
 func (h *productsHandler) update(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
+		return
+	}
 	var input queries.UpdateProductRequest
 	if err := c.ShouldBindJSON(&input); err != nil {
 		h.log.Debug("productsHandler.update", "error", err)

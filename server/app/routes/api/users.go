@@ -298,6 +298,13 @@ func (h *ShopHandler) list(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
+	SetPageHeader(c, CacheMaxPageInput{
+		ctx:        ctx,
+		client:     h.cache,
+		name:       "shops",
+		pagination: h.pagination,
+		getMaxPage: h.store.MaxPage,
+	})
 	c.JSON(http.StatusOK, output)
 }
 

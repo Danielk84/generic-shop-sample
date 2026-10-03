@@ -17,7 +17,7 @@ type CommentRequest struct {
 
 type CommentResponse struct {
 	ID             string    `json:"id"`
-	Name          string    `json:"name"`
+	Name           string    `json:"name"`
 	PubDate        time.Time `json:"pub_date"`
 	ChildrenAmount int32     `json:"children_amount"`
 	Body           string    `json:"body"`

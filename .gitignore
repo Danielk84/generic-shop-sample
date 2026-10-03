@@ -26,6 +26,7 @@ client/dist
 client/dist-ssr
 client/coverage
 client/*.local
+client/.env
 
 # Editor directories and files
 client/.vscode/*
