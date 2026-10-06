@@ -20,6 +20,9 @@ import type {
 const BackBtn = defineAsyncComponent(
   () => import('@/components/ui/button/BackBtn.vue'),
 )
+const SetVendor = defineAsyncComponent(
+  () => import('@/pages/panel/admin/products/SetVendor.vue'),
+)
 const SetTags = defineAsyncComponent(
   () => import('@/pages/panel/admin/products/SetTags.vue'),
 )
@@ -241,6 +244,19 @@ window.scroll(0, 0)
           <span>Next</span>
         </RouterLink>
       </div>
+    </section>
+    <section
+      v-if="query.data.value !== undefined"
+      class="w-full c-flex-all-center"
+    >
+      <SetVendor
+        :data="query.data.value"
+        @afterMutation="
+          async () => {
+            await query.refetch()
+          }
+        "
+      />
     </section>
     <section class="w-full c-flex-all-center">
       <SetTags :id="productID as string" />

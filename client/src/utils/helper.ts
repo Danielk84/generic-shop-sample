@@ -1,7 +1,7 @@
 import { type Router } from 'vue-router'
 import axios from 'axios'
 
-import { useNotification } from '@/store/notification'
+import { useNotificationStore } from '@/store/notification'
 import type { StatusHandlers } from '@/utils/types'
 
 export const getCssVar = (cssVar: string) =>
@@ -28,7 +28,7 @@ export function errorStatusHandler(
     if (typeof handlers?.notAxiosError === 'function') {
       handlers.notAxiosError()
     } else {
-      const notification = useNotification()
+      const notification = useNotificationStore()
       notification.error('Unexpected error happened!?')
     }
     return
@@ -160,4 +160,26 @@ export function useTimer(fn: () => void, timout?: number) {
       timer = undefined
     },
   }
+}
+
+// Source - https://stackoverflow.com/a/77278013
+// Posted by DamianoPantani, modified by community. See post 'Timeline' for change history
+// Retrieved 2026-10-05, License - CC BY-SA 4.0
+export const deepEqual = <T>(a: T, b: T): boolean => {
+  if (a === b) {
+    return true
+  }
+
+  const bothAreObjects =
+    a &&
+    b &&
+    typeof a === 'object' &&
+    typeof b === 'object' &&
+    Array.isArray(a) === Array.isArray(b)
+
+  return Boolean(
+    bothAreObjects &&
+    Object.keys(a).length === Object.keys(b).length &&
+    Object.entries(a).every(([k, v]) => deepEqual(v, b[k as keyof T])),
+  )
 }

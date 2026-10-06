@@ -15,7 +15,7 @@ export function PermissionString(perm: number) {
 }
 
 export function PermissionNumber(perm: string) {
-  let idx = PermissionNames.indexOf(perm)
+  const idx = PermissionNames.indexOf(perm)
   if (idx === -1) {
     return PermissionType.BlockUser
   }

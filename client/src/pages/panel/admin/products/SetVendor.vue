@@ -1,77 +1,430 @@
 <script setup lang="ts">
+import { ref, watch, toRaw } from 'vue'
 import { useMutation } from '@tanstack/vue-query'
 import { useRouter } from 'vue-router'
 
 import api from '@/utils/api'
 import { useStore } from '@/store'
+import { useNotificationStore } from '@/store/notification'
 import { useValidator } from '@/utils/validator'
-import { errorStatusHandler } from '@/utils/helper'
+import { deepEqual, errorStatusHandler } from '@/utils/helper'
+import type { ProductResponse } from '@/contracts/products/response.interface'
 import {
-  UpdateProductRequest,
-  type UpdateProductInput,
+  ProductVariantDetailRequest,
+  UpdateProductVendor,
+  type ProductVariantDetailInput,
+  type ProductVendorInput,
+  type UpdateProductVendorInput,
 } from '@/contracts/products/request.schema'
+import type { ProductProperty } from '@/contracts/products/response.interface'
 
 const store = useStore()
+const notification = useNotificationStore()
 const router = useRouter()
-const { formData, errors, validate } = useValidator(UpdateProductRequest)
 
-const { mutate, isPending } = useMutation({
-  mutationKey: ['admin-product-set-vendor'],
-  mutationFn: async (input: UpdateProductInput) => {
-    return api.put('products/set-vendor', input, {
+const props = defineProps<{ data: ProductResponse }>()
+const emits = defineEmits<{
+  (e: 'afterMutation'): void
+}>()
+
+const isSetVariantOpen = ref<boolean>(false)
+
+const vendorProperty = ref<ProductProperty | null>(null)
+const vendorEdit = ref<ProductVendorInput | null>(null)
+
+const variantDetail = {
+  state: ref(structuredClone(toRaw(props.data?.variant_detail ?? []))),
+  add(property: ProductProperty) {
+    if (deepEqual(property, {})) {
+      return
+    }
+    for (let i = 0; i < this.state.value.length; ++i) {
+      if (deepEqual(this.state.value[i].property, property)) {
+        notification.warning('property already exists.')
+        return
+      }
+    }
+    this.state.value.push({
+      property: property,
+      price: 0,
+      vendors: [],
+    })
+  },
+  remove(property: ProductProperty) {
+    for (let i = 0; i < this.state.value.length; ++i) {
+      if (deepEqual(this.state.value[i].property, property)) {
+        this.state.value.splice(i, 1)
+      }
+    }
+  },
+}
+
+const createProperty = {
+  state: ref<
+    Array<{
+      key: string
+      value: string
+    }>
+  >([]),
+  get(): ProductProperty {
+    let property: ProductProperty = {}
+    this.state.value.forEach((v) => {
+      property[v.key] = v.value
+    })
+    return property
+  },
+  add() {
+    this.state.value.push({
+      key: '',
+      value: '',
+    })
+  },
+  remove(index: number) {
+    this.state.value.splice(index, 1)
+  },
+  clear() {
+    this.state.value = []
+  },
+}
+
+const setVendorValidator = useValidator(UpdateProductVendor)
+const setVariantDetailValidator = useValidator(ProductVariantDetailRequest)
+
+watch(vendorEdit, (v) => {
+  if (v === null) {
+    return null
+  }
+  setVendorValidator.formData.value.user_id = v.user_id
+  setVendorValidator.formData.value.quantity = v.quantity
+})
+
+const setVendorMutation = useMutation({
+  mutationKey: ['admin-set-vendor-product', props.data.id],
+  mutationFn: async (input: UpdateProductVendorInput) =>
+    api.put('products/set-vendor', input, {
       headers: {
         Authorization: store.getAccessToken,
       },
-    })
+    }),
+  onSuccess() {
+    notification.success('Vendor changes saved.')
+    emits('afterMutation')
+    vendorProperty.value = null
+    if (vendorEdit.value !== null) {
+      vendorEdit.value = null
+    }
   },
-  onSuccess: () => {},
-  onError: (error) => {
-    errorStatusHandler(error, router)
+  onError(error) {
+    errorStatusHandler(error, router, {
+      badRequest() {
+        notification.error('Invalid vendor changes.')
+        return
+      },
+      notFound() {
+          notification.error('Not found!?')
+          return
+      },
+    })
   },
 })
 
-const props = defineProps<{
-  id: string
-}>()
+const setVariantDetailMutation = useMutation({
+  mutationKey: ['admin-set-variant-detail-product', props.data.id],
+  mutationFn: async (input: ProductVariantDetailInput) =>
+    api.put(`products/set-variant-detail/${props.data.id}`, input, {
+      headers: {
+        Authorization: store.getAccessToken,
+      },
+    }),
+  onSuccess() {
+    notification.success('Variant detail added.')
+    isSetVariantOpen.value = false
+    createProperty.clear()
+    emits('afterMutation')
+  },
+  onError(error) {
+    errorStatusHandler(error, router, {
+      badRequest() {
+        notification.error('Invalid variant detail.')
+        return
+      },
+    })
+  },
+})
 
-const onClick = async (event: MouseEvent) => {
-  event.preventDefault()
-
-  formData.value.id = props.id
-  const { input, isValid } = await validate()
-  if (!isValid) {
+async function saveVendor() {
+  if (vendorProperty.value === null) {
+    notification.warning('First select property then manage vendor.')
     return
   }
-  if (input.data !== undefined) {
-    mutate(input.data)
+  setVendorValidator.formData.value.id = props.data.id
+  setVendorValidator.formData.value.property = vendorProperty.value
+  const { input, isValid } = await setVendorValidator.validate()
+  if (!isValid) {
+    notification.error('Invalid data.')
+    return
   }
+  if (input.data === undefined) {
+    notification.error('Unexpected error.')
+    return
+  }
+  await setVendorMutation.mutateAsync(input.data)
 }
 
-// common detail not handled now.
+async function saveVariantDetail() {
+  console.log(1)
+  variantDetail.add(createProperty.get())
+  console.log(2)
+  setVariantDetailValidator.formData.value.items = variantDetail.state.value
+  console.log(3)
+
+  const { input, isValid } = await setVariantDetailValidator.validate()
+  console.log(4, input, isValid)
+  if (!isValid) {
+    notification.error('Invalid data set.')
+    return
+  }
+  console.log(5)
+  if (input.data === undefined) {
+    notification.error('Unexpected error.')
+    return
+  }
+  console.log(6)
+  await setVariantDetailMutation.mutateAsync(input.data)
+  console.log(7)
+}
 </script>
 
 <template>
-  <div>
-    <form>
-      <div>
-        <label for=""></label>
-        <input type="text " v-model="formData.name" />
-        <p v-if="errors['name']">{{ errors['name'] }}</p>
+  <section class="set-vendor-section">
+    <div class="w-full c-flex-all-center">
+      <button class="create-variant-btn" @click="isSetVariantOpen = true">
+        Add Variant Detail
+      </button>
+    </div>
+    <section class="show-items c-flex-all-center">
+      <div
+        v-for="[idx, item] of Object.entries(props.data.variant_detail)"
+        :key="idx"
+        class="item"
+      >
+        <h3>Price: {{ item.price }}</h3>
+        <table>
+          <tr v-for="[key, value] in Object.entries(item.property)" :key="key">
+            <td>{{ key }}</td>
+            <td>{{ value }}</td>
+          </tr>
+        </table>
+        <button
+          class="text-2xl font-bold cursor-pointer w-full text-center hover:brightness-125"
+          @click="vendorProperty = item.property"
+        >
+          Add New Vendor
+        </button>
+        <div class="vendor-list">
+          <ul v-for="(vendor, index) in item.vendors" :key="index">
+            <button
+              class="rounded-2xl w-full bg-(--c-v-2) p-4 cursor-pointer"
+              @click="
+                () => {
+                  vendorProperty = item.property
+                  vendorEdit = {
+                    user_id: vendor.user_id,
+                    quantity: vendor.quantity,
+                  }
+                }
+              "
+            >
+              <li>{{ vendor.user_id }}</li>
+              <li>{{ vendor.quantity }}</li>
+            </button>
+          </ul>
+        </div>
       </div>
+    </section>
+    <section
+      v-if="vendorProperty !== null || vendorEdit !== null"
+      class="c-floating-window c-flex-all-center"
+    >
+      <!-- set vendor -->
+      <div class="c-floating-box c-form-bg">
+        <div class="w-full p-2">
 
-      <div>
-        <label for=""></label>
-        <input type="text " v-model="formData.description" />
-        <p v-if="errors['description']">{{ errors['description'] }}</p>
+        <button
+          class="text-2xl font-bold cursor-pointer"
+          type="button"
+          @click="
+            () => {
+              vendorProperty = null
+              if (vendorEdit !== null) {
+                vendorEdit = null
+              }
+            }
+          "
+        >
+          <span>X</span>
+        </button>
+        </div>
+        <form class="c-form">
+          <div class="c-form-item">
+            <label class="c-form-label" for="user_id">User ID</label>
+            <input
+              class="c-form-input"
+              v-model="setVendorValidator.formData.value.user_id"
+              :disabled="vendorEdit !== null"
+              type="text"
+            />
+            <p
+              class="c-form-error"
+              v-if="setVendorValidator.errors.value['user_id'] !== undefined"
+            >
+              {{ setVendorValidator.errors.value['user_id'] }}
+            </p>
+          </div>
+          <div class="c-form-item">
+            <label class="c-form-label" for="quantity">Quantity</label>
+            <input
+              class="c-form-input"
+              v-model="setVendorValidator.formData.value.quantity"
+              type="number"
+            />
+            <p
+              class="c-form-error"
+              v-if="setVendorValidator.errors.value['quantity'] !== undefined"
+            >
+              {{ setVendorValidator.errors.value['quantity'] }}
+            </p>
+          </div>
+          <button
+            class="c-form-btn"
+            @click="saveVendor"
+            :disabled="setVendorMutation.isPending.value"
+          >
+            Save
+          </button>
+        </form>
       </div>
-      <button
-        :class="{ 'is-pending': isPending }"
-        @click="onClick($event)"
-      ></button>
-    </form>
-  </div>
+    </section>
+    <section
+      v-if="isSetVariantOpen"
+      class="c-floating-window c-flex-all-center"
+    >
+      <!-- set variant property -->
+      <div
+        class="c-floating-box c-form-bg w-80/100 max-h-80/100 overflow-y-scroll overflow-x-hidden"
+      >
+        <div class="p-2 w-full">
+          <button
+            type="button"
+            class="text-2xl font-bold text-(--c-v-7) cursor-pointer"
+            @click="isSetVariantOpen = false"
+          >
+            <span>X</span>
+          </button>
+        </div>
+        <form class="c-form">
+          <button
+            type="button"
+            class="c-form-btn bg-(--c-v-11)"
+            @click="createProperty.clear()"
+          >
+            Clear Properties
+          </button>
+          <button
+            type="button"
+            class="c-form-btn bg-(--c-v-14)"
+            @click="createProperty.add()"
+          >
+            Add Property
+          </button>
+          <div class="h-auto flex flex-col gap-6">
+            <label
+              v-if="createProperty.state.value.length !== 0"
+              class="w-full flex flex-row justify-evenly text-2xl font-bold"
+            >
+              <h2>Key</h2>
+              <h2>Value</h2>
+            </label>
+            <div
+              v-for="(item, index) of createProperty.state.value"
+              :key="index"
+              class="flex flex-col gap-4"
+            >
+              <div class="flex gap-4 w-full">
+                <input class="c-form-input" v-model="item.key" type="text" />
+                <button
+                  class="text-xl font-bold text-(--c-v-12) w-8 cursor-pointer"
+                  @click="createProperty.remove(index)"
+                >
+                  <span>X</span>
+                </button>
+                <input class="c-form-input" v-model="item.value" type="text" />
+              </div>
+            </div>
+            <p
+              class="c-form-error"
+              v-for="key in Object.keys(setVariantDetailValidator.errors.value)"
+              :key="key"
+            >
+              {{ setVariantDetailValidator.errors.value[key] }}
+            </p>
+          </div>
+          <button
+            class="c-form-btn"
+            type="button"
+            @click="saveVariantDetail"
+            :disabled="setVariantDetailMutation.isPending.value"
+          >
+            Save
+          </button>
+        </form>
+      </div>
+    </section>
+  </section>
 </template>
 
 <style scoped>
 @reference "@/styles/index.css";
+
+.set-vendor-section {
+  @apply w-90/100 rounded-2xl p-4
+    border-4 border-(--c-v-15);
+}
+
+.set-vendor-section .create-variant-btn {
+  @apply px-4 py-2 text-2xl font-bold rounded-2xl
+    bg-(--c-v-15) text-(--c-v-1) cursor-pointer;
+}
+
+.set-vendor-section .show-items {
+  @apply flex-col gap-4;
+}
+
+.set-vendor-section .item {
+  @apply w-full h-fit rounded-2xl backdrop-brightness-125 px-2 mt-4
+    border-b-2 border-(--c-v-1) dark:border-(--c-v-7)
+    flex flex-col justify-center items-start gap-2;
+}
+
+.item h3 {
+  @apply text-xl font-bold text-(--c-v-11) text-center rounded-xl py-2
+    w-full my-2 border-b-2 border-t-2 border-(--c-v-11);
+}
+
+.item table {
+  @apply flex flex-col w-full justify-center items-center gap-4 rounded-2xl p-4
+    border-2 border-(--c-v-1) dark:border-(--c-v-7);
+}
+
+.item tr {
+  @apply flex w-full justify-evenly items-center opacity-90;
+}
+
+.item td {
+  @apply border-l-2 border-(--c-v-10) px-1 w-50/100;
+}
+
+.vendor-list ul {
+  @apply list-disc border-b w-full border-(--c-v-10) p-2;
+}
 </style>

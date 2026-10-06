@@ -89,7 +89,14 @@ async function onClick(event: MouseEvent) {
   <div class="create-product-page c-flex-all-center">
     <form class="c-form c-form-bg min-h-fit c-flex-all-center">
       <div class="w-full">
-        <BackBtn />
+        <BackBtn
+          :icon="{
+            strokeColor: '--c-v-7',
+            strokeDarkColor: '--c-v-7',
+            fillColor: '--c-v-7',
+            fillDarkColor: '--c-v-7',
+          }"
+        />
       </div>
       <div class="c-form-item base-item">
         <label class="c-form-label" for="name"> Name : </label>
