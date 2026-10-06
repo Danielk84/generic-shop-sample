@@ -54,7 +54,7 @@ type ProductPropertyRequest struct {
 
 type ProductVariantDetail struct {
 	ProductPropertyRequest
-	Price   int64           `json:"price" binding:"required,min=0"`
+	Price   int64           `json:"price" binding:"min=0"`
 	Vendors []ProductVendor `json:"vendors" binding:"required,min=0,dive"`
 }
 

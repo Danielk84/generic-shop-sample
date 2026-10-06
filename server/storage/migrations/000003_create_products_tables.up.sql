@@ -61,6 +61,7 @@ AS $$
         vendor JSONB;
         user_ids TEXT[] := '{}';
         properties TEXT[] := '{}';
+        user_exists BOOLEAN;
     BEGIN
         IF jsonb_typeof(NEW.variant_detail) != 'array' THEN
             RAISE EXCEPTION 'variant_detail must be a JSON array';
@@ -81,12 +82,12 @@ AS $$
                     RAISE EXCEPTION 'failed to process property in variant_detail, error msg: %', SQLERRM;
             END;
 
-            IF jsonb_typeof(item->'vendors') != 'array' THEN
-                RAISE EXCEPTION 'vendors in variant_detail must be a JSON array';
+            IF NOT (item ? 'price') OR ((item->>'price')::BIGINT) < 0 then
+                RAISE EXCEPTION 'variant_detail has price field with number type and most be greater than or equal zero';
             END IF;
 
-            IF NOT (item ? 'price') OR ((item->>'price')::BIGINT) < 0 then
-                RAISE EXCEPTION 'variant_detail has price field with number type and most be greater than zero';
+            IF jsonb_typeof(item->'vendors') != 'array' THEN
+                RAISE EXCEPTION 'vendors in variant_detail must be a JSON array';
             END IF;
             FOR vendor IN (
                 SELECT value
@@ -95,6 +96,16 @@ AS $$
             LOOP
                 IF NOT (vendor ? 'user_id') THEN
                     RAISE EXCEPTION 'user_id in vendors in variant_detail most be specified';
+                END IF;
+                -- check if user exists and has valid permission_type
+                -- Admin perm = 0, Vendor perm = 1
+                SELECT EXISTS(
+                    SELECT 1
+                    FROM user_s.users
+                    WHERE id = (vendor->>'user_id')::UUID AND permission_type = ANY(ARRAY[0, 1])
+                ) INTO user_exists;
+                IF NOT user_exists THEN
+                    RAISE EXCEPTION 'user with id="%" does not exists or does not have valid permission_type', vendor->>'user_id';
                 END IF;
 
                 IF NOT (vendor ? 'quantity') OR ((vendor->>'quantity')::INTEGER) < 0 THEN
