@@ -238,7 +238,7 @@ func (h *productsHandler) setVendor(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	if claims.ID != input.UserID {
+	if claims.PermissionType != queries.Admin && claims.ID != input.UserID {
 		Forbidden(c, "")
 		return
 	}

@@ -181,7 +181,7 @@ func OrderItemsRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	h := orderItemsHandler{
 		store:           queries.NewOrderItemsStore(deps.DB.GetSession(), log),
 		log:             log,
-		baseCacheKey:    "ordre-items",
+		baseCacheKey:    "order-items",
 		cacheExpiration: 1 * time.Hour,
 		cache:           deps.Cache.GetCache(cache.OrdersCache),
 		pagination:      deps.Config.Pagination,
@@ -232,7 +232,7 @@ func (h *orderItemsHandler) create(c *gin.Context) {
 func (h *orderItemsHandler) customerList(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	if HasPermissions(nil, claims.PermissionType, queries.BlockUser) {
-		BadRequest(c, "")
+		Forbidden(c, "")
 		return
 	}
 

@@ -37,6 +37,7 @@ func UsersRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 		{http.MethodPut, "/set-email", []gin.HandlerFunc{h.setEmail}},
 		{http.MethodPut, "/set-phone-number", []gin.HandlerFunc{h.setPhoneNumber}},
 		{http.MethodPost, "/verify-email", []gin.HandlerFunc{h.verifyEmail}},
+		{http.MethodPut, "/set-info", []gin.HandlerFunc{h.setInfo}},
 		{http.MethodPut, "/:id", []gin.HandlerFunc{h.updateUserPermission}},
 	})
 }
@@ -137,6 +138,21 @@ func (h *usersHandler) delete(c *gin.Context) {
 	}
 
 	c.Status(http.StatusNoContent)
+}
+
+func (h *usersHandler) setInfo(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	var input queries.UserInfoRequest
+	if err := c.ShouldBindJSON(&input); err != nil {
+		h.log.Debug("usersHandler.setInfo", "error", err)
+		BadRequest(c, "")
+		return
+	}
+	if err := h.userStore.SetInfo(c.Request.Context(), claims.ID, input); err != nil {
+		NotFound(c, "")
+		return
+	}
+	Accepted(c, "")
 }
 
 func (h *usersHandler) setEmail(c *gin.Context) {
