@@ -250,7 +250,7 @@ type OrderItemID struct {
 type OrderItemRequest struct {
 	OrderItem
 	Property ProductProperty `json:"property" binding:"required,min=0,dive,keys,required,min=1,endkeys,required,min=1"`
-	Price    int64           `json:"price"  binding:"required,min=0"`
+	Price    int64           `json:"price"  binding:"min=0"`
 }
 
 type OwnedOrderItemResponse struct {
