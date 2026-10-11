@@ -63,14 +63,14 @@ function onSearch(event: Event) {
 @reference "@/styles/index.css";
 
 .search-box {
-  @apply w-full h-14 flex-row
+  @apply w-full h-14 md:h-14 flex-row mb-4
     rounded-4xl p-1.5 bg-(--c-v-1)
     border-2 border-(--c-v-6);
 }
 
 .search-box > .search-input {
   @apply w-full h-full focus:outline-none
-    mx-3 text-(--c-v-6) text-xl min-h-11;
+    mx-3 text-(--c-v-6) text-base md:text-xl min-h-10;
 }
 
 .search-box > input::placeholder {
@@ -78,8 +78,8 @@ function onSearch(event: Event) {
 }
 
 .search-box > .search-btn {
-  @apply w-11 h-11 shrink-0 flex items-center justify-center rounded-full
-    bg-(--c-v-4) cursor-pointer transition-colors duration-200
+  @apply w-10 h-10 md:w-11 md:h-11 shrink-0 flex items-center justify-center rounded-full
+    bg-(--c-v-4) shadow shadow-(color:--c-v-0) cursor-pointer transition-colors duration-200
     focus-visible:outline-2 focus-visible:outline-offset-2;
 }
 

@@ -107,6 +107,12 @@ onUnmounted(async () => {
       <RouterLink :to="{ name: 'products-list' }">
         <span>Products</span>
       </RouterLink>
+      <RouterLink :to="{ name: 'search' }">
+        <span>Search</span>
+      </RouterLink>
+      <RouterLink :to="{ name: 'shops' }">
+        <span>Shops</span>
+      </RouterLink>
     </div>
     <div class="n-items c-flex-all-center">
       <button class="base-btn" @click="toggleTheme" aria-label="Toggle theme">
@@ -147,7 +153,8 @@ onUnmounted(async () => {
   @apply p-2 rounded-lg
     bg-(--c-v-6) dark:bg-(--c-v-1)
     border border-(--c-v-1) dark:border-(--c-v-7)
-    hover:brightness-110 transition-colors cursor-pointer;
+    hover:brightness-110 cursor-pointer
+    shadow shadow-(color:--c-v-0);
 }
 
 .on-scroll {
@@ -166,6 +173,10 @@ onUnmounted(async () => {
 
   .nav-bar > .n-items {
     @apply gap-2 text-base;
+  }
+
+  .base-btn {
+    @apply p-2;
   }
 }
 </style>

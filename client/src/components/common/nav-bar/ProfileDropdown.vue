@@ -125,7 +125,8 @@ function onClick() {
   @apply absolute hidden p-2
     rounded-2xl right-0 top-10
     border-2 border-(--c-v-1) dark:border-(--c-v-7)
-    bg-(--c-v-7) dark:bg-(--c-v-0);
+    bg-(--c-v-7) dark:bg-(--c-v-0)
+    min-w-[180px];
 }
 
 .profile-dropdown > .dropdown-content > .content {
@@ -137,7 +138,7 @@ function onClick() {
 }
 
 .profile-dropdown .item {
-  @apply rounded-lg w-full h-10 px-9 text-center
+  @apply rounded-lg w-full h-10 px-4 md:px-9 text-center
     flex items-center justify-center
     dark:bg-(--c-v-2) bg-(--c-v-5)
     hover:brightness-110;

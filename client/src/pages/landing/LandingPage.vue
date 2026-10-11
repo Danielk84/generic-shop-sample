@@ -42,40 +42,39 @@ const PopularProducts = defineAsyncComponent(
 @reference "@/styles/index.css";
 
 .landing-page {
-  @apply w-screen h-full relative -top-25
+  @apply w-screen min-h-screen relative -top-25
     bg-radial
     from-(--c-v-3) from-0%
     to-(--c-v-1) to-100%;
 }
 
 .landing-page > .landing-banner {
-  @apply pt-32 w-full h-200
-    flex-col gap-20
-    max-md:h-auto max-md:pt-24 max-md:px-4;
+  @apply pt-32 w-full h-auto min-h-200
+    flex-col gap-10 md:gap-20
+    px-4 md:px-0;
 }
 
 .landing-page > .landing-banner > .banner-content {
-  @apply text-(--c-v-6) w-50/100 flex-col gap-10
-    max-md:w-full;
+  @apply text-(--c-v-6) w-full md:w-50/100 flex-col gap-6 md:gap-10
+    items-center text-center;
 }
 
 .landing-page > .landing-banner > .banner-content > h1 {
-  @apply text-5xl font-extrabold flex-col font-secondary-default
-    w-full h-full text-center leading-16
-    max-md:text-3xl max-md:leading-10;
+  @apply text-3xl md:text-5xl font-extrabold flex-col font-secondary-default
+    w-full h-full leading-12 md:leading-16;
 }
 
 .landing-page > .landing-banner > .banner-content > p {
-  @apply w-80/100 max-md:text-sm;
+  @apply w-full md:w-80/100 text-base md:text-lg;
 }
 
 .landing-page > .landing-banner > .banner-search {
-  @apply w-100 h-fit;
+  @apply w-full md:w-100 h-fit;
 }
 
 .landing-page > .landing-content {
   @apply w-full h-fit z-10 flex-col
-    rounded-t-4xl pt-20 gap-10
+    rounded-t-4xl pt-10 md:pt-20 gap-6 md:gap-10 px-4 md:px-0
     bg-(--c-v-7) dark:bg-(--c-v-0);
 }
 </style>
