@@ -69,31 +69,31 @@ const fullScreen = ref<boolean>(false)
 @reference "@/styles/index.css";
 
 .empty-img-list {
-  @apply size-150 rounded-4xl border-4
+  @apply max-w-150 max-h-150 rounded-4xl border-4
     border-t-(--c-v-12)
     border-r-(--c-v-13)
     border-b-(--c-v-14)
     border-l-(--c-v-15)
     bg-(--c-v-1)
-    text-(--c-v-11) font-bold text-2xl;
+    text-(--c-v-11) font-bold text-xl md:text-2xl;
 }
 
 .image-frame-list {
-  @apply w-150 h-150 flex-col;
+  @apply w-full max-w-150 h-150 max-md:h-120 max-sm:h-80 flex-col gap-5;
 }
 
 .image-frame-list > .list {
-  @apply w-full h-20/100
+  @apply w-full h-20 shrink-0
     overflow-y-hidden overflow-x-scroll
-    flex flex-row flex-nowrap items-center gap-4;
+    flex flex-row flex-nowrap items-center gap-3 md:gap-4;
 }
 
 .image-frame-list > .list > .item {
-  @apply size-25 shrink-0;
+  @apply size-20 md:size-25 shrink-0;
 }
 
 .image-frame-list .btn {
-  @apply size-full cursor-pointer;
+  @apply size-full cursor-pointer rounded-2xl overflow-hidden;
 }
 
 .image-frame-list > .show-up {
@@ -101,7 +101,7 @@ const fullScreen = ref<boolean>(false)
 }
 
 .image-frame-list .base-img {
-  @apply border rounded-xl border-(--c-v-13)
+  @apply border-2 rounded-2xl border-(--c-v-11)
     hover:brightness-80 relative;
 }
 

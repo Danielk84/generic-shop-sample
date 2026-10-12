@@ -35,7 +35,9 @@ function onClick(event: MouseEvent) {
         :icon="icons.ui.button.back"
         :size="props.icon?.size"
         :stroke-color="props.icon?.strokeColor"
+        :stroke-dark-color="props.icon?.strokeDarkColor"
         :fill-color="props.icon?.fillColor"
+        :fill-dark-color="props.icon?.fillDarkColor"
       />
     </button>
   </div>

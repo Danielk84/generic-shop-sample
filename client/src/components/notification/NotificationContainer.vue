@@ -25,14 +25,14 @@ const notifications = useNotificationStore()
 
 .notifications-container {
   @apply fixed z-70 w-fit h-fit overflow-hidden
-    flex flex-col items-end gap-5 p-10;
+    flex flex-col items-end gap-5 p-2 md:p-10;
 }
 
 .notifications-container .item {
-  @apply rounded-2xl w-100 min-h-20 max-h-30 p-2
+  @apply rounded-2xl w-[80vw] sm:w-100 min-h-20 max-h-30 p-2 md:p-4
     bg-(--c-v-6) dark:bg-(--c-v-3)
-    flex items-center justify-between
-    border-t-6 border
+    flex items-center justify-between gap-2
+    border-t-6 border max-sm:text-sm
     hover:brightness-95;
 }
 

@@ -91,39 +91,39 @@ const onClick = async (event: MouseEvent) => {
 @reference "@/styles/index.css";
 
 .create-tag-box {
-  @apply w-fit h-fit
-    rounded-2xl p-4;
+  @apply w-full max-w-150 h-fit
+    rounded-2xl p-4 md:p-6;
 }
 
 .create-tag-box form {
-  @apply w-fit flex flex-col;
+  @apply w-full flex flex-col gap-4;
 }
 
 .create-tag-box .form-item {
-  @apply w-150 flex flex-row gap-4
+  @apply w-full flex flex-col md:flex-row gap-4
     justify-center items-center;
 }
 
 .form-item label {
-  @apply text-2xl font-bold;
+  @apply text-lg md:text-2xl font-bold;
 }
 
 .form-item input {
   @apply outline-4 hover:brightness-140
     focus:brightness-110
-    p-4 outline-(--c-v-7)
-    rounded-xl h-15 w-full text-xl;
+    p-3 md:p-4 outline-(--c-v-7)
+    rounded-xl h-12 md:h-15 w-full text-base md:text-xl;
 }
 
 .form-item button {
   @apply hover:brightness-90 cursor-pointer
-    font-bold rounded-xl h-15 w-35 text-xl
+    font-bold rounded-xl h-12 md:h-15 w-full md:w-35 text-base md:text-xl
     bg-(--c-v-8)
     text-(--c-v-7);
 }
 
 .create-tag-box .form-error {
-  @apply p-4 text-wrap font-bold
+  @apply p-3 md:p-4 text-wrap font-bold
     rounded-xl max-h-3 w-full text-sm text-center
     text-(--c-v-11);
 }

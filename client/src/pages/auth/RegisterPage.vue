@@ -174,10 +174,10 @@ const onClick = async (event: MouseEvent) => {
 @reference "@/styles/index.css";
 
 .register-page {
-  @apply w-screen min-h-screen p-20;
+  @apply w-screen min-h-screen p-4 md:p-20;
 }
 
 .register-page .register-box {
-  @apply w-150 h-fit rounded-2xl p-10;
+  @apply w-full max-w-150 h-fit rounded-2xl p-6 md:p-10;
 }
 </style>

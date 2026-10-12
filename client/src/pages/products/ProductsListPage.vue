@@ -125,20 +125,20 @@ watch([searchQuery, isPopular], () => {
 @reference "@/styles/index.css";
 
 .products-list {
-  @apply w-full min-h-200 p-8
-    flex flex-col items-center justify-between gap-10;
+  @apply w-full min-h-screen p-4 md:p-8
+    flex flex-col items-center gap-6 md:gap-10;
 }
 
 .products-list > .products-search {
-  @apply w-80/100 h-fit;
+  @apply w-full md:w-80/100 h-fit;
 }
 
 .products-list > .empty > h2 {
-  @apply text-4xl flex flex-col items-start justify-center;
+  @apply text-2xl md:text-4xl flex flex-col items-start justify-center;
 }
 
 .products-list > .items {
   @apply w-full flex flex-row flex-wrap
-    justify-center items-start gap-10 p-4;
+    justify-center items-start gap-6 md:gap-10 p-4;
 }
 </style>

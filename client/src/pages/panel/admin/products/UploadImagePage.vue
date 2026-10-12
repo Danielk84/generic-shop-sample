@@ -124,7 +124,7 @@ window.scroll(0, 0)
 
 <template>
   <div class="upload-image-page">
-    <div class="w-full px-4">
+    <div class="w-full p-4">
       <BackBtn
         page-name="admin-products-list"
         :query="{ page: callback_page }"
@@ -151,11 +151,12 @@ window.scroll(0, 0)
     </div>
     <form>
       <label class="add-img-btn c-flex-all-center">
+        <h2>Upload Photo</h2>
         <input
-          class="cursor-pointer"
           ref="ImgRef"
           type="file"
           accept="image/*"
+          hidden
           @change="onChange($event)"
           :disabled="isPending"
         />
@@ -163,7 +164,9 @@ window.scroll(0, 0)
           :icon="icons.pages.panel.products.upload"
           size="32px"
           stroke-color="none"
-          fill-color="--c-v-8-text"
+          stroke-dark-color="none"
+          fill-color="--c-v-1"
+          fill-dark-color="--c-v-7"
         />
       </label>
     </form>
@@ -174,23 +177,23 @@ window.scroll(0, 0)
 @reference "@/styles/index.css";
 
 .upload-image-page {
-  @apply w-screen h-screen flex flex-col
+  @apply w-screen min-h-screen flex flex-col
     items-center;
 }
 
 .upload-image-page .image-controls {
-  @apply flex-row gap-4 px-10;
+  @apply flex-row flex-wrap gap-4 px-10 min-h-200;
 }
 
 .upload-image-page .delete-list {
-  @apply flex flex-wrap justify-center gap-2;
+  @apply flex flex-col flex-wrap justify-center gap-2;
 }
 
 .upload-image-page .delete-list button {
   @apply px-3 py-2 rounded-lg font-bold cursor-pointer
     bg-(--c-v-11) text-(--c-v-7) disabled:opacity-50
     hover:brightness-110
-    max-w-120 truncate;
+    max-w-70 text-wrap h-auto truncate;
 }
 
 .upload-image-page .show-box {
@@ -198,10 +201,10 @@ window.scroll(0, 0)
 }
 
 .upload-image-page .add-img-btn {
-  @apply m-10 py-10 px-5 hover:brightness-90 cursor-pointer
-      font-bold rounded-xl text-2xl
-      bg-(--c-v-8)
-      text-(--c-v-7);
+  @apply my-10 py-8 gap-1 px-2 md:px-5 hover:brightness-90 cursor-pointer
+    font-bold rounded-2xl sm:text-2xl text-wrap
+    shadow shadow-(color:--c-v-1)
+    border-4 border-(--c-v-11) min-w-70;
 }
 
 .show-box .empty-box {

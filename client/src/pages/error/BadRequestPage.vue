@@ -15,11 +15,11 @@ import BadRequestSVG from '@/assets/artwork/error/400-artwork.vue'
 @reference "@/styles/index.css";
 
 .bad-request-page {
-  @apply w-screen min-h-screen -mt-10;
+  @apply w-full min-h-screen p-4 md:p-10 -mt-5 md:-mt-20;
 }
 
 .bad-request-page h1 {
-  @apply text-7xl font-extrabold w-full p-10 text-center
+  @apply text-4xl md:text-7xl font-extrabold w-full p-6 md:p-10 text-center
     text-(--c-v-11);
 }
 </style>

@@ -103,12 +103,12 @@ window.scroll(0, 0)
 @reference "@/styles/index.css";
 
 .users-list-page {
-  @apply w-full min-h-screen p-10
-    flex flex-col items-center gap-8;
+  @apply w-full min-h-screen p-4 md:p-10
+    flex flex-col items-center gap-6 md:gap-8;
 }
 
 .empty {
-  @apply text-2xl font-bold p-10;
+  @apply text-xl md:text-2xl font-bold p-6 md:p-10;
 }
 
 .list {
@@ -116,15 +116,15 @@ window.scroll(0, 0)
 }
 
 .item {
-  @apply w-full p-5 rounded-2xl
+  @apply w-full p-4 md:p-5 rounded-2xl
     border border-(--c-v-5)
-    flex flex-col gap-4
+    flex flex-col gap-3 md:gap-4
     hover:shadow-[0_0_15px_4px_var(--c-v-9)]
     transition duration-150;
 }
 
 .row {
-  @apply flex flex-row justify-between
+  @apply flex flex-row justify-between gap-2
     border-b border-(--c-v-8);
 }
 
@@ -146,5 +146,15 @@ window.scroll(0, 0)
 
 .badge.bad {
   @apply bg-(--c-v-11) text-(--c-v-1);
+}
+
+@media (max-width: 640px) {
+  .item {
+    @apply p-4;
+  }
+
+  .row {
+    @apply flex-col gap-1 text-center;
+  }
 }
 </style>

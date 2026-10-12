@@ -32,7 +32,7 @@ const BaseIcon = defineAsyncComponent(
 
 .subscribe-box > input {
   @apply w-full h-full focus:outline-none
-    mx-3 text-(--c-v-7) text-xl;
+    mx-3 text-(--c-v-7) text-base md:text-xl;
 }
 
 .subscribe-box > input::placeholder {
@@ -41,6 +41,7 @@ const BaseIcon = defineAsyncComponent(
 
 .subscribe-box > .subscribe-btn {
   @apply rounded-full w-fit h-fit
-    bg-(--c-v-1) p-2 hover:cursor-pointer;
+    bg-(--c-v-1) p-2 hover:cursor-pointer
+    shadow shadow-(color:--c-v-0);
 }
 </style>

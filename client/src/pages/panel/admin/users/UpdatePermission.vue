@@ -67,6 +67,7 @@ const onClick = async (event: Event) => {
               PermissionType.Admin,
               PermissionType.BlockUser + 1,
             )"
+            :key="i"
             :value="i"
           >
             {{ PermissionNames[i] }}
@@ -76,9 +77,15 @@ const onClick = async (event: Event) => {
           {{ errors['permission_type'] }}
         </p>
       </div>
-      <div class="c-form-item p-4 m-4 text-center">
-        <label class="text-2xl font-bold" for="is_active"> Active </label>
-        <input class="is-active" type="checkbox" v-model="formData.is_active" />
+      <div class="c-form-item p-4 m-4">
+        <div class="c-flex-center">
+          <label class="text-2xl font-bold" for="is_active"> Active </label>
+          <input
+            class="is-active"
+            type="checkbox"
+            v-model="formData.is_active"
+          />
+        </div>
         <p v-if="errors['is_active'] !== undefined">
           {{ errors['is_active'] }}
         </p>
@@ -98,7 +105,7 @@ const onClick = async (event: Event) => {
 @reference "@/styles/index.css";
 
 .update-permission {
-  @apply rounded-2xl p-4;
+  @apply rounded-2xl p-4 md:p-6;
 }
 
 .update-permission .is-active {
@@ -106,6 +113,10 @@ const onClick = async (event: Event) => {
 }
 
 .update-permission select {
-  @apply bg-(--c-v-4) border-2 border-(--c-v-7) p-2 rounded-xl;
+  @apply bg-(--c-v-4) border-2 border-(--c-v-7) p-2 md:p-3 rounded-xl w-full;
+}
+
+.update-permission .c-form-item {
+  @apply flex flex-col gap-2;
 }
 </style>

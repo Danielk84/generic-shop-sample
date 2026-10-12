@@ -40,7 +40,7 @@ const emits = defineEmits<{
 
 .full-screen > .tools-bar {
   @apply w-full h-9 border-b
-    border-(--c-v-10) px-10
+    border-(--c-v-10) px-4 md:px-10
     flex flex-row items-center justify-end;
 }
 
@@ -49,6 +49,6 @@ const emits = defineEmits<{
 }
 
 .full-screen > .item {
-  @apply size-full p-20 object-cover;
+  @apply size-full p-4 md:p-20 object-cover;
 }
 </style>

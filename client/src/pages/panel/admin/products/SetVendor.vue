@@ -121,8 +121,8 @@ const setVendorMutation = useMutation({
         return
       },
       notFound() {
-          notification.error('Not found!?')
-          return
+        notification.error('Not found!?')
+        return
       },
     })
   },
@@ -172,26 +172,19 @@ async function saveVendor() {
 }
 
 async function saveVariantDetail() {
-  console.log(1)
   variantDetail.add(createProperty.get())
-  console.log(2)
   setVariantDetailValidator.formData.value.items = variantDetail.state.value
-  console.log(3)
 
   const { input, isValid } = await setVariantDetailValidator.validate()
-  console.log(4, input, isValid)
   if (!isValid) {
     notification.error('Invalid data set.')
     return
   }
-  console.log(5)
   if (input.data === undefined) {
     notification.error('Unexpected error.')
     return
   }
-  console.log(6)
   await setVariantDetailMutation.mutateAsync(input.data)
-  console.log(7)
 }
 </script>
 
@@ -249,21 +242,20 @@ async function saveVariantDetail() {
       <!-- set vendor -->
       <div class="c-floating-box c-form-bg">
         <div class="w-full p-2">
-
-        <button
-          class="text-2xl font-bold cursor-pointer"
-          type="button"
-          @click="
-            () => {
-              vendorProperty = null
-              if (vendorEdit !== null) {
-                vendorEdit = null
+          <button
+            class="text-2xl font-bold cursor-pointer"
+            type="button"
+            @click="
+              () => {
+                vendorProperty = null
+                if (vendorEdit !== null) {
+                  vendorEdit = null
+                }
               }
-            }
-          "
-        >
-          <span>X</span>
-        </button>
+            "
+          >
+            <span>X</span>
+          </button>
         </div>
         <form class="c-form">
           <div class="c-form-item">
@@ -350,7 +342,7 @@ async function saveVariantDetail() {
               :key="index"
               class="flex flex-col gap-4"
             >
-              <div class="flex gap-4 w-full">
+              <div class="flex flex-wrap gap-4 w-full">
                 <input class="c-form-input" v-model="item.key" type="text" />
                 <button
                   class="text-xl font-bold text-(--c-v-12) w-8 cursor-pointer"
@@ -387,12 +379,12 @@ async function saveVariantDetail() {
 @reference "@/styles/index.css";
 
 .set-vendor-section {
-  @apply w-90/100 rounded-2xl p-4
+  @apply w-full max-w-200 rounded-2xl p-4 md:p-6
     border-4 border-(--c-v-15);
 }
 
 .set-vendor-section .create-variant-btn {
-  @apply px-4 py-2 text-2xl font-bold rounded-2xl
+  @apply px-4 md:px-6 py-2 md:py-3 text-lg md:text-2xl font-bold rounded-2xl
     bg-(--c-v-15) text-(--c-v-1) cursor-pointer;
 }
 
@@ -401,30 +393,44 @@ async function saveVariantDetail() {
 }
 
 .set-vendor-section .item {
-  @apply w-full h-fit rounded-2xl backdrop-brightness-125 px-2 mt-4
+  @apply w-full h-fit rounded-2xl backdrop-brightness-125 px-2 md:px-4 mt-4
     border-b-2 border-(--c-v-1) dark:border-(--c-v-7)
-    flex flex-col justify-center items-start gap-2;
+    flex flex-col flex-wrap justify-center items-start gap-2;
 }
 
 .item h3 {
-  @apply text-xl font-bold text-(--c-v-11) text-center rounded-xl py-2
+  @apply text-lg md:text-xl font-bold text-(--c-v-11) text-center rounded-xl py-2
     w-full my-2 border-b-2 border-t-2 border-(--c-v-11);
 }
 
 .item table {
-  @apply flex flex-col w-full justify-center items-center gap-4 rounded-2xl p-4
+  @apply flex flex-col w-full flex-wrap justify-center items-center gap-4 rounded-2xl p-4
     border-2 border-(--c-v-1) dark:border-(--c-v-7);
 }
 
 .item tr {
-  @apply flex w-full justify-evenly items-center opacity-90;
+  @apply flex w-full flex-wrap justify-evenly items-center h-auto text-wrap;
 }
 
 .item td {
-  @apply border-l-2 border-(--c-v-10) px-1 w-50/100;
+  @apply border-l-2 border-(--c-v-10) px-1 w-full sm:w-50/100 h-auto text-wrap wrap-break-word;
 }
 
 .vendor-list ul {
   @apply list-disc border-b w-full border-(--c-v-10) p-2;
+}
+
+.vendor-list li {
+  @apply text-wrap;
+}
+
+@media (max-width: 640px) {
+  .set-vendor-section .c-floating-box {
+    @apply w-full max-w-full m-2;
+  }
+
+  .set-vendor-section .c-floating-window {
+    @apply p-4;
+  }
 }
 </style>

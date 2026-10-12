@@ -42,15 +42,15 @@ const tagHandler = (category: Category) => {
 @reference "@/styles/index.css";
 
 .categories-view {
-  @apply w-full h-full p-10;
+  @apply w-full h-full p-2 md:p-10;
 }
 
 .categories-view .not-found {
-  @apply text-2xl font-bold;
+  @apply text-base md:text-2xl font-bold;
 }
 
 .tags {
   @apply flex flex-row flex-wrap gap-4
-    place-content-center;
+    place-content-center max-sm:w-[95vw] max-sm:h-fit;
 }
 </style>

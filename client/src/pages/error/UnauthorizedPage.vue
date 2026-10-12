@@ -17,11 +17,11 @@ import UnauthorizedSVG from '@/assets/artwork/error/401-artwork.vue'
 @reference "@/styles/index.css";
 
 .unauthorized-page {
-  @apply w-screen min-h-screen -mt-20;
+  @apply w-screen min-h-screen -mt-4 md:-mt-20;
 }
 
 .unauthorized-page h1 {
-  @apply text-7xl font-extrabold w-full p-10 text-center
+  @apply text-4xl md:text-7xl font-extrabold w-full p-6 md:p-10 text-center
     text-(--c-v-11) underline;
 }
 </style>

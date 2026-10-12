@@ -42,7 +42,10 @@ const props = defineProps<{ data: ProductCardProps }>()
 @reference "@/styles/index.css";
 
 .product-card {
-  @apply p-4 w-90 h-120 gap-5 overflow-hidden
+  @apply p-3 md:p-4
+    w-full min-w-40 sm:w-80 md:w-90 lg:w-80 max-w-100
+    max-[344px]:h-75 h-95
+    gap-4 overflow-hidden
     shadow-[0_1px_3px_0_var(--c-v-10),0_1px_2px_-1px_var(--c-v-10)]
     hover:shadow-[0px_0px_20px_5px_var(--c-v-10)]
     transform duration-150
@@ -50,11 +53,11 @@ const props = defineProps<{ data: ProductCardProps }>()
 }
 
 .product-card > .banner {
-  @apply w-full h-80/100;
+  @apply w-full max-[344px]:h-50 h-70;
 }
 
 .product-card > .content {
-  @apply py-2 px-4;
+  @apply py-2 px-2 md:px-4;
 }
 
 .product-card > .content > span {
@@ -62,11 +65,11 @@ const props = defineProps<{ data: ProductCardProps }>()
 }
 
 .product-card > .content > .title {
-  @apply text-2xl;
+  @apply text-lg md:text-2xl;
 }
 
 .product-card > .content > .price {
-  @apply text-sm text-center
+  @apply text-sm md:text-base text-center
     flex flex-row justify-between items-center px-1;
 }
 

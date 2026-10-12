@@ -175,7 +175,9 @@ const pcMutation = useMutation({
         <div class="choosed-box c-flex-all-center">
           <div class="choosed-tags">
             <div v-if="choosedTags.length === 0">
-              <h2 class="text-2xl font-bold">There are not any tags.</h2>
+              <h2 class="text-sm sm:text-2xl sm:font-bold">
+                There are not any tags.
+              </h2>
             </div>
             <div v-for="item of choosedTags" :key="item" class="choosed-item">
               <span>{{ item }}</span>
@@ -208,25 +210,25 @@ const pcMutation = useMutation({
 @reference "@/styles/index.css";
 
 .set-tags {
-  @apply w-80/100 flex-col
+  @apply w-full max-w-200 flex-col
     border-4 border-(--c-v-15)
-    p-4 rounded-2xl;
+    p-4 md:p-6 rounded-2xl;
 }
 
 .set-tags .edit-btn {
-  @apply rounded-2xl cursor-pointer px-10 py-2.5
-    bg-(--c-v-15) text-(--c-v-1) text-2xl font-bold
-    mt-6 hover:brightness-120;
+  @apply rounded-2xl cursor-pointer px-6 md:px-10 py-2 md:py-2.5
+    bg-(--c-v-15) text-(--c-v-1) text-lg md:text-2xl font-bold
+    mt-4 md:mt-6 hover:brightness-120;
 }
 
 .set-tags .close-btn {
-  @apply text-2xl cursor-pointer font-bold;
+  @apply text-lg md:text-2xl cursor-pointer font-bold;
 }
 
 .set-tags .save-btn {
-  @apply py-2 px-5 rounded-2xl
-    bg-(--c-v-10) text-(--c-v-7) text-2xl cursor-pointer
-    gap-4 hover:brightness-110;
+  @apply py-2 px-4 md:px-5 rounded-2xl
+    bg-(--c-v-10) text-(--c-v-7) text-lg md:text-2xl cursor-pointer
+    gap-3 md:gap-4 hover:brightness-110;
 }
 
 .set-tags .all-tags {
@@ -234,17 +236,27 @@ const pcMutation = useMutation({
 }
 
 .set-tags .choosed-box {
-  @apply h-20 p-10 w-full
-    overflow-x-scroll overflow-y-hidden
+  @apply h-20 p-6 md:p-10 w-full
+    overflow-x-auto overflow-y-hidden
     border-t-2 border-b-2 border-(--c-v-8);
 }
 
 .set-tags .choosed-tags {
-  @apply flex items-center justify-start flex-nowrap gap-5 shrink-0;
+  @apply flex items-center justify-start flex-nowrap gap-3 md:gap-5 shrink-0;
 }
 
 .set-tags .choosed-item {
-  @apply rounded-lg p-2 text-lg font-bold
+  @apply rounded-lg p-2 text-base md:text-lg font-bold
     bg-(--c-v-8) text-(--c-v-1) text-nowrap;
+}
+
+@media (max-width: 640px) {
+  .set-tags .c-floating-box {
+    @apply w-full max-w-full m-2;
+  }
+
+  .set-tags .c-floating-window {
+    @apply p-4;
+  }
 }
 </style>

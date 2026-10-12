@@ -340,46 +340,45 @@ watch(page, (v) => {
 @reference "@/styles/index.css";
 
 .products-list-page {
-  @apply w-screen min-h-screen flex flex-col items-center;
+  @apply w-full min-h-screen flex flex-col items-center;
 }
 
 .products-list-page .options {
-  @apply p-10 w-full border-b border-(--c-v-1)
-    flex flex-col items-center justify-center gap-10
-    text-2xl font-bold;
+  @apply p-4 md:p-10 w-full border-b border-(--c-v-1)
+    flex flex-col items-center justify-center gap-6 md:gap-10
+    text-lg md:text-2xl font-bold;
 }
 
 .products-list-page .redirect-btn {
-  @apply bg-(--c-v-15) rounded-2xl px-10 py-5
+  @apply bg-(--c-v-15) rounded-2xl px-6 md:px-10 py-3 md:py-5
     hover:brightness-110;
 }
 
 .products-list-page .empty-product {
-  @apply text-2xl font-bold p-10;
+  @apply text-xl md:text-2xl font-bold p-6 md:p-10;
 }
 
 .products-list-page .list {
-  @apply flex-col gap-10 p-10 size-full;
+  @apply flex-col gap-6 md:gap-10 p-4 md:p-10 w-full;
 }
 
 .products-list-page .item {
-  @apply w-223 min-h-97 p-8
+  @apply w-full max-w-300 min-h-auto p-6 md:p-8
     rounded-2xl
     shadow-[0_1px_3px_0_var(--c-v-9),0_1px_2px_-1px_var(--c-v-9)]
     hover:shadow-[0_0_20px_5px_var(--c-v-9)]
-    flex flex-row items-center justify-evenly;
+    flex flex-col md:flex-row items-center justify-evenly gap-4;
 }
 
 .products-list-page .img-frame {
-  @apply size-82 rounded-2xl overflow-hidden
-    basis-3/7;
+  @apply size-50 sm:size-82 rounded-2xl overflow-hidden shrink-0;
 }
 
 .products-list-page .content {
   @apply flex flex-col gap-2
-    border-l px-4
+    border-l md:border-0 border-t md:border-t-0 px-4 md:px-0 py-2 md:py-0
     border-(--c-v-9)
-    basis-4/7;
+    w-full;
 }
 
 .content h2 {
@@ -387,9 +386,9 @@ watch(page, (v) => {
 }
 
 .products-list-page .set-btn {
-  @apply w-40 h-10 rounded-2xl
+  @apply w-full md:w-40 h-10 rounded-2xl
     flex items-center justify-center
-    text-xl font-bold
+    text-base md:text-xl font-bold
     hover:brightness-120;
 }
 
@@ -405,5 +404,19 @@ watch(page, (v) => {
 .products-list-page .base-btn {
   @apply border-2 border-(--c-v-1)
     cursor-pointer;
+}
+
+@media (max-width: 768px) {
+  .products-list-page .content {
+    @apply border-t border-(--c-v-9) pt-4;
+  }
+
+  .products-list-page .item {
+    @apply flex-col;
+  }
+
+  .products-list-page .set-btn {
+    @apply w-full;
+  }
 }
 </style>

@@ -268,11 +268,11 @@ window.scroll(0, 0)
 @reference "@/styles/index.css";
 
 .product-edit-page {
-  @apply w-screen min-h-screen p-10 flex-col gap-20;
+  @apply w-screen min-h-screen p-4 md:p-10 flex-col gap-10 md:gap-20;
 }
 
 .product-edit-page .edit-box {
-  @apply rounded-2xl p-10;
+  @apply rounded-2xl p-6 md:p-10;
 }
 
 .product-edit-page .base-item {
@@ -284,21 +284,21 @@ window.scroll(0, 0)
 }
 
 .product-edit-page .properties-box {
-  @apply my-10 flex flex-col gap-5;
+  @apply my-6 md:my-10 flex flex-col gap-5;
 }
 
 .product-edit-page .properties-head {
   @apply flex flex-row items-center justify-evenly
-    text-2xl font-bold;
+    text-lg md:text-2xl font-bold;
 }
 
 .product-edit-page .properties {
-  @apply flex flex-row gap-4;
+  @apply flex flex-col sm:flex-row gap-3 md:gap-4;
 }
 
 .product-edit-page .add-property {
-  @apply m-10 rounded-2xl
-    px-10 py-5
+  @apply m-6 md:m-10 rounded-2xl
+    px-6 md:px-10 py-4 md:py-5
     hover:brightness-110
     text-(--c-v-7)
     bg-(--c-v-10)
@@ -306,14 +306,14 @@ window.scroll(0, 0)
 }
 
 .product-edit-page .delete-property {
-  @apply text-2xl font-bold cursor-pointer;
+  @apply text-xl md:text-2xl font-bold cursor-pointer shrink-0;
 }
 
 .product-edit-page .property-item {
   @apply outline-4
     focus:brightness-120
-    p-4 outline-(--c-v-7)
-    rounded-xl h-15 w-full text-xl;
+    p-3 md:p-4 outline-(--c-v-7)
+    rounded-xl h-12 md:h-15 w-full text-base md:text-xl;
 }
 
 .product-edit-page .next-box {
@@ -321,8 +321,8 @@ window.scroll(0, 0)
 }
 
 .product-edit-page .next-btn {
-  @apply py-5 px-20 rounded-2xl m-5
-    w-fit h-fit text-xl font-bold
+  @apply py-4 md:py-5 px-10 md:px-20 rounded-2xl m-3 md:m-5
+    w-fit h-fit text-lg md:text-xl font-bold
     bg-(--c-v-13)
     text-(--c-v-1)
     hover:brightness-95;

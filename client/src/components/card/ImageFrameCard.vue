@@ -57,8 +57,8 @@ onMounted(async () => {
 }
 
 .img-frame .tag {
-  @apply w-fit h-fit absolute inset-0 p-2 m-4 z-20
+  @apply w-fit h-fit absolute inset-0 p-2 md:p-3 m-2 md:m-4 z-20
     bg-(--c-v-2) rounded-xl brightness-125
-    text-(--c-v-7);
+    text-(--c-v-7) text-sm md:text-base;
 }
 </style>

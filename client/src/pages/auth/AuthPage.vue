@@ -141,21 +141,21 @@ const onClick = async (event: MouseEvent) => {
 @reference "@/styles/index.css";
 
 .auth-page {
-  @apply w-screen h-screen;
+  @apply w-screen min-h-screen;
 }
 
 .auth-page > .auth-box {
-  @apply w-100 h-120 p-6 rounded-2xl
-    flex flex-col justify-between items-center;
+  @apply w-full max-w-100 h-auto p-6 md:p-8 rounded-2xl
+    flex flex-col justify-between items-center mx-4;
 }
 
 .auth-box .info {
   @apply w-full h-fit
-    flex flex-row justify-between items-center;
+    flex flex-row justify-between items-center mb-8;
 }
 
 .auth-box h1 {
-  @apply text-2xl font-bold;
+  @apply text-xl md:text-2xl font-bold;
 }
 
 .auth-box .pass-key {

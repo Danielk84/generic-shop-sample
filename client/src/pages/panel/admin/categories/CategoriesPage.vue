@@ -79,31 +79,31 @@ function tagHandler(category: Category) {
 @reference "@/styles/index.css";
 
 .categories-page {
-  @apply w-screen min-h-screen p-4;
+  @apply w-full min-h-screen min-h-dvh p-4 md:p-6;
 }
 
 .categories-page .delete-box {
-  @apply w-120 h-80 flex-col;
+  @apply w-full max-w-120 h-80 flex-col;
 }
 
 .floating-box h2 {
-  @apply text-center text-wrap text-xl p-4
+  @apply text-center text-wrap text-lg md:text-xl p-4
     text-(--c-v-1);
 }
 
 .c-floating-window .btn-box {
-  @apply flex-row gap-10;
+  @apply flex-col md:flex-row gap-4 md:gap-10;
 }
 
 .btn-box .btn {
-  @apply w-40 h-15 flex items-center justify-center;
+  @apply w-full md:w-40 h-12 md:h-15 flex items-center justify-center;
 }
 
 .btn-box .cancel-delete {
   @apply size-full
     rounded-2xl hover:brightness-110
     border-4 border-(--c-v-10)
-    text-2xl font-bold cursor-pointer;
+    text-lg md:text-2xl font-bold cursor-pointer;
 }
 
 .categories-page .add {
@@ -111,6 +111,6 @@ function tagHandler(category: Category) {
 }
 
 .categories-page .list {
-  @apply size-full border-t border-(--c-v-1) my-10;
+  @apply w-full h-fit border-t border-(--c-v-1) my-6 md:my-10;
 }
 </style>

@@ -15,11 +15,15 @@ import InternalServerErrorSVG from '@/assets/artwork/error/500-artwork.vue'
 @reference "@/styles/index.css";
 
 .internal-server-error-page {
-  @apply w-screen min-h-screen flex-col;
+  @apply w-screen min-h-screen flex-col overflow-hidden;
+}
+
+.internal-server-error-page .artwork {
+  @apply max-w-full;
 }
 
 .internal-server-error-page h1 {
-  @apply text-7xl font-extrabold w-full p-10 text-center
+  @apply text-4xl md:text-7xl font-extrabold w-full p-6 md:p-10 text-center
     text-(--c-v-11);
 }
 </style>

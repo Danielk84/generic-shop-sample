@@ -15,11 +15,11 @@ import NotFoundSVG from '@/assets/artwork/error/404-artwork.vue'
 @reference "@/styles/index.css";
 
 .not-found-page {
-  @apply w-screen min-h-screen -mt-50;
+  @apply w-full min-h-screen p-4 md:p-10 md:-mt-50;
 }
 
 .not-found-page h1 {
-  @apply text-7xl font-extrabold w-full p-10 text-center
+  @apply text-4xl md:text-7xl font-extrabold w-full p-6 md:p-10 text-center
     text-(--c-v-11);
 }
 </style>

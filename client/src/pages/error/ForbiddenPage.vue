@@ -15,11 +15,11 @@ import ForbiddenSVG from '@/assets/artwork/error/403-artwork.vue'
 @reference "@/styles/index.css";
 
 .forbidden-page {
-  @apply w-screen min-h-screen -mt-30;
+  @apply w-screen min-h-screen md:-mt-30;
 }
 
 .forbidden-page h1 {
-  @apply text-7xl font-extrabold w-full p-10 text-center
+  @apply text-4xl md:text-7xl font-extrabold w-full p-6 md:p-10 text-center
     text-(--c-v-11);
 }
 </style>

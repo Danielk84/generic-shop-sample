@@ -3,7 +3,7 @@ import NotAcceptableSVG from '@/assets/artwork/error/406-artwork.vue'
 </script>
 
 <template>
-  <div class="not-acceptable-pag">
+  <div class="not-acceptable-pag c-flex-all-center">
     <div class="artwork c-flex-all-center">
       <NotAcceptableSVG />
     </div>
@@ -15,15 +15,15 @@ import NotAcceptableSVG from '@/assets/artwork/error/406-artwork.vue'
 @reference "@/styles/index.css";
 
 .not-acceptable-pag {
-  @apply w-screen min-h-screen;
+  @apply w-screen min-h-screen flex-col md:mt-5;
 }
 
 .not-acceptable-pag .artwork {
-  @apply w-full;
+  @apply w-60/100 max-h-100;
 }
 
 .not-acceptable-pag h1 {
-  @apply text-7xl font-extrabold w-full p-10 text-center
+  @apply text-4xl md:text-7xl font-extrabold w-full p-6 md:p-10 text-center
     text-(--c-v-11);
 }
 </style>

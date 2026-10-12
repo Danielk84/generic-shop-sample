@@ -173,19 +173,19 @@ async function onClick(event: MouseEvent) {
 @reference "@/styles/index.css";
 
 .create-product-page {
-  @apply w-full min-h-screen p-10;
+  @apply w-full min-h-screen p-4 md:p-10;
 }
 
 .create-product-page form {
-  @apply rounded-2xl py-8 w-70/100 px-10;
+  @apply rounded-2xl py-6 md:py-8 w-full max-w-300 px-4 md:px-10;
 }
 
 .create-product-page .base-input {
-  @apply w-150;
+  @apply w-full;
 }
 
 .create-product-page .base-item {
-  @apply flex flex-col gap-4;
+  @apply flex flex-col gap-4 w-full lg:w-50/100;
 }
 
 .create-product-page textarea {
@@ -193,8 +193,8 @@ async function onClick(event: MouseEvent) {
 }
 
 .create-product-page .add-property {
-  @apply m-10 rounded-2xl
-    px-10 py-5
+  @apply m-6 md:m-10 rounded-2xl
+    px-6 md:px-10 py-4 md:py-5
     hover:brightness-110
     text-(--c-v-7)
     bg-(--c-v-10)
@@ -202,26 +202,26 @@ async function onClick(event: MouseEvent) {
 }
 
 .create-product-page .properties-box {
-  @apply my-10 flex flex-col gap-5;
+  @apply my-6 md:my-10 flex flex-col gap-5;
 }
 
 .create-product-page .properties-head {
   @apply flex flex-row items-center justify-evenly
-    text-2xl font-bold;
+    text-lg md:text-2xl font-bold;
 }
 
 .create-product-page .properties {
-  @apply flex flex-row gap-4;
+  @apply flex flex-col sm:flex-row gap-3 md:gap-4;
 }
 
 .create-product-page .delete-property {
-  @apply text-2xl font-bold cursor-pointer;
+  @apply text-xl md:text-2xl font-bold cursor-pointer shrink-0;
 }
 
 .create-product-page .property-item {
   @apply outline-4
     focus:brightness-120
-    p-4 outline-(--c-v-7)
-    rounded-xl h-15 w-full text-xl;
+    p-3 md:p-4 outline-(--c-v-7)
+    rounded-xl h-12 md:h-15 w-full text-base md:text-xl;
 }
 </style>

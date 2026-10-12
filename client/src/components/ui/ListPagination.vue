@@ -131,7 +131,7 @@ watch(page, async (v: number) => {
 }
 
 .pagination .btn {
-  @apply min-w-11 min-h-11 px-4 cursor-pointer
+  @apply min-w-10 md:min-w-11 min-h-10 md:min-h-11 px-3 md:px-4 cursor-pointer
     transition-colors duration-200
     focus-visible:outline-2 focus-visible:outline-offset-2
     text-(--c-v-1);

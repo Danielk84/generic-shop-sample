@@ -28,8 +28,8 @@ const BaseIcon = defineAsyncComponent(
 .loading-page {
   @apply w-screen h-screen backdrop-blur-xl
     absolute inset-0 z-70
-    text-xl font-bold
-    gap-5 flex-col
+    text-base md:text-xl font-bold
+    gap-4 md:gap-5 flex-col
     text-(--c-v-13);
 }
 

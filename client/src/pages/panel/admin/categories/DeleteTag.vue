@@ -66,6 +66,6 @@ const { mutateAsync, isPending } = useMutation({
     size-full cursor-pointer
     bg-(--c-v-11)
     text-(--c-v-7)
-    text-2xl font-bold;
+    text-lg md:text-2xl font-bold;
 }
 </style>

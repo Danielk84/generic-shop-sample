@@ -32,8 +32,8 @@ const BaseFooter = defineAsyncComponent(
 }
 
 .footer-block > .footer-content {
-  @apply bg-(--c-v-1) text-(--c-v-7) p-10
-    flex-col gap-10 text-4xl;
+  @apply bg-(--c-v-1) text-(--c-v-7) p-6 md:p-10
+    flex-col gap-10 text-2xl md:text-4xl;
 }
 
 .footer-block > .footer-content > h4 {
@@ -41,6 +41,6 @@ const BaseFooter = defineAsyncComponent(
 }
 
 .footer-block > .footer-content > .footer-sub {
-  @apply w-90 h-fit;
+  @apply w-full max-w-90 h-fit;
 }
 </style>

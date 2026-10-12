@@ -155,7 +155,7 @@ const onClick = async (event: MouseEvent) => {
 }
 
 .login-page .login-box {
-  @apply rounded-2xl p-4;
+  @apply rounded-2xl p-4 md:p-8 w-full max-w-md mx-4;
 }
 
 .login-box .pass-key {

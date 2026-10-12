@@ -15,11 +15,15 @@ import UnprocessableContentSVG from '@/assets/artwork/error/422-artwork.vue'
 @reference "@/styles/index.css";
 
 .unprocessable-content-page {
-  @apply w-screen min-h-screen flex-col mt-10;
+  @apply w-screen min-h-screen flex-col max-sm:-mt-20 md:mt-10 overflow-hidden;
+}
+
+.unprocessable-content-page .artwork {
+  @apply max-w-full;
 }
 
 .unprocessable-content-page h1 {
-  @apply text-7xl font-extrabold w-full p-10 text-center
+  @apply text-4xl md:text-7xl font-extrabold w-full p-6 md:p-10 text-center
     text-(--c-v-11);
 }
 </style>

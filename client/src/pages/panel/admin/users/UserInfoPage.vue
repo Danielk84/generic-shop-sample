@@ -62,12 +62,12 @@ watch(
 @reference "@/styles/index.css";
 
 .user-info-page {
-  @apply w-full min-h-150 p-10
-    flex flex-col items-center gap-8;
+  @apply w-full min-h-150 p-4 md:p-10
+    flex flex-col items-center gap-6 md:gap-8;
 }
 
 .card {
-  @apply w-full max-w-200 p-6 rounded-2xl
+  @apply w-full max-w-200 p-4 md:p-6 rounded-2xl
     border border-(--c-v-5)
     flex flex-col gap-2;
 }

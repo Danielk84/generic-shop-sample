@@ -15,7 +15,11 @@ import ContentTooLargeSVG from '@/assets/artwork/error/413-artwork.vue'
 @reference "@/styles/index.css";
 
 .bad-request-page {
-  @apply w-screen min-h-screen mt-10;
+  @apply w-screen min-h-screen md:mt-10;
+}
+
+.bad-request-page .artwork {
+  @apply max-md:max-h-110;
 }
 
 .bad-request-page .artwork {
@@ -23,7 +27,7 @@ import ContentTooLargeSVG from '@/assets/artwork/error/413-artwork.vue'
 }
 
 .bad-request-page h1 {
-  @apply text-7xl font-extrabold w-full p-10 text-center
+  @apply text-4xl md:text-7xl font-extrabold w-full p-6 md:p-10 text-center
     text-(--c-v-11);
 }
 </style>
