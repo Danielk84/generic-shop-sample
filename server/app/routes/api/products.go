@@ -37,6 +37,7 @@ func ProductsRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 		{http.MethodPut, "/", []gin.HandlerFunc{h.update}},
 		{http.MethodPut, "/set-vendor", []gin.HandlerFunc{h.setVendor}},
 		{http.MethodPut, "/set-variant-detail/:id", []gin.HandlerFunc{h.setVariantDetail}},
+		{http.MethodPut, "/set-price", []gin.HandlerFunc{h.setPrice}},
 		{http.MethodDelete, "/:id", []gin.HandlerFunc{h.delete}},
 		{http.MethodGet, "/admin", []gin.HandlerFunc{h.adminList}},
 		{http.MethodGet, "/overview/:id", []gin.HandlerFunc{h.get}},
@@ -223,6 +224,25 @@ func (h *productsHandler) update(c *gin.Context) {
 		LogCacheErr("Del", "productsHandler.update", err)
 	}
 
+	Accepted(c, "")
+}
+
+func (h *productsHandler) setPrice(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
+		return
+	}
+	var input queries.ProductSetPriceRequest
+	if err := c.ShouldBindJSON(&input); err != nil {
+		h.log.Debug("productsHandler.setPrice", "error", err)
+		BadRequest(c, "")
+		return
+	}
+	ctx := c.Request.Context()
+	if err := h.productStore.SetPrice(ctx, input); err != nil {
+		NotFound(c, "")
+		return
+	}
 	Accepted(c, "")
 }
 

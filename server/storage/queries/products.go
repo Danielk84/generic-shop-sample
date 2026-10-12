@@ -28,6 +28,12 @@ type UpdateProductRequest struct {
 	CreateProductRequest
 }
 
+type ProductSetPriceRequest struct {
+	ProductIDRequest
+	Property ProductProperty `json:"property" binding:"required,min=0,dive,keys,required,min=1,endkeys,required,min=1"`
+	Price    int64           `json:"price" binding:"min=0"`
+}
+
 type ProductSummaryResponse struct {
 	ID      string    `json:"id"`
 	Name    string    `json:"name"`
@@ -99,6 +105,7 @@ type ProductStore interface {
 	SetVariantDetail(ctx context.Context, id string, variantDetail []ProductVariantDetail) error
 	SetVendor(ctx context.Context, vendor UpdateProductVendor) error
 	SetActive(ctx context.Context, id string, isActive bool) error
+	SetPrice(ctx context.Context, setPrice ProductSetPriceRequest) error
 	GetVendors(ctx context.Context, id string, property ProductProperty) ([]string, error)
 	GetQuantity(ctx context.Context, id string, property ProductProperty, userID string) (int32, error)
 }
@@ -295,6 +302,26 @@ OuterLoop:
 	if err = p.SetVariantDetail(ctx, vendor.ID, product.VariantDetail); err != nil {
 		p.log.Debug("ProductRepository.SetVendor", "error", err)
 	}
+	return
+}
+
+func (p *productRepository) SetPrice(ctx context.Context, setPrice ProductSetPriceRequest) (err error) {
+	item, err := p.Get(ctx, setPrice.ID)
+	if err != nil {
+		p.log.Debug("productRepository.SetPrice", "error", err)
+		return err
+	}
+	for i, variantDetail := range item.VariantDetail {
+		if reflect.DeepEqual(variantDetail.Property, variantDetail.Property) {
+			item.VariantDetail[i].Price = setPrice.Price
+			if err = p.SetVariantDetail(ctx, setPrice.ID, item.VariantDetail); err != nil {
+				p.log.Debug("productRepository.SetPrice", "error", err)
+			}
+			return
+		}
+	}
+	err = ErrNotFound
+	p.log.Debug("productRepository.SetPrice", "error", err)
 	return
 }
 
