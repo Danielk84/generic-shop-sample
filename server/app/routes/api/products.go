@@ -243,6 +243,10 @@ func (h *productsHandler) setPrice(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
+	cacheKey := fmt.Sprintf("%s:%s", h.baseCacheKey, input.ID)
+	if _, err := h.cache.Del(ctx, cacheKey).Result(); err != nil {
+		LogCacheErr("Del", "productsHandler.setVendor", err)
+	}
 	Accepted(c, "")
 }
 
