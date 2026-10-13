@@ -48,3 +48,11 @@ export const UpdateProductVendor = z
   .extend(ProductVendorRequest.shape)
   .extend(ProductPropertyRequest.shape)
 export type UpdateProductVendorInput = z.infer<typeof UpdateProductVendor>
+
+export const ProductSetPriceRequest = z
+  .object({
+    price: z.number().min(0),
+    property: ProductProperty,
+  })
+  .extend(ProductIDRequest.shape)
+export type ProductSetPriceInput = z.infer<typeof ProductSetPriceRequest>
