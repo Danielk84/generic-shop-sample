@@ -59,7 +59,7 @@ AS $$
     DECLARE
         item JSONB;
         vendor JSONB;
-        user_ids TEXT[] := '{}';
+        user_ids TEXT[];
         properties TEXT[] := '{}';
         user_exists BOOLEAN;
     BEGIN
@@ -89,6 +89,8 @@ AS $$
             IF jsonb_typeof(item->'vendors') != 'array' THEN
                 RAISE EXCEPTION 'vendors in variant_detail must be a JSON array';
             END IF;
+
+            user_ids := '{}'::TEXT[];
             FOR vendor IN (
                 SELECT value
                 FROM jsonb_array_elements(item->'vendors')
@@ -119,16 +121,16 @@ AS $$
                         RAISE EXCEPTION 'failed to process user_id "%" in variant_detail, error msg: %', vendor->>'user_id', SQLERRM;
                 END;
             END LOOP;
+
+            -- check vendors be UNIQUE
+            IF product_s.check_duplicate_text_array(user_ids) != 0 THEN
+              RAISE EXCEPTION 'duplicated user_id found in vendors array';
+            END IF;
         END LOOP;
 
-        -- check vendors be UNIQUE
-        IF product_s.check_duplicate_text_array(user_ids) > 0 THEN
-            RAISE EXCEPTION 'duplicated user_id found in vendors array';
-        END IF;
-
         -- check properties be UNIQUE
-        IF product_s.check_duplicate_text_array(properties) > 0 THEN
-            RAISE EXCEPTION 'duplicated user_id found in vendors array';
+        IF product_s.check_duplicate_text_array(properties) != 0 THEN
+            RAISE EXCEPTION 'duplicated property found in vendors array';
         END IF;
 
         RETURN NEW;
@@ -343,6 +345,6 @@ AS $$
         END LOOP;
 
         RAISE EXCEPTION 'invalid property or user_id';
-    END; 
+    END;
 $$ LANGUAGE PLPGSQL;
 

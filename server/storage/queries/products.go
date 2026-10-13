@@ -312,7 +312,7 @@ func (p *productRepository) SetPrice(ctx context.Context, setPrice ProductSetPri
 		return err
 	}
 	for i, variantDetail := range item.VariantDetail {
-		if reflect.DeepEqual(variantDetail.Property, variantDetail.Property) {
+		if reflect.DeepEqual(variantDetail.Property, setPrice.Property) {
 			item.VariantDetail[i].Price = setPrice.Price
 			if err = p.SetVariantDetail(ctx, setPrice.ID, item.VariantDetail); err != nil {
 				p.log.Debug("productRepository.SetPrice", "error", err)
