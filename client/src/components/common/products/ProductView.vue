@@ -36,13 +36,16 @@ const store = useStore()
 const notification = useNotificationStore()
 const id = String(route.params.productID ?? '')
 
-console.log('id', id, route)
-
 const selectedVariantIndex = ref(0)
 
 const { data: product, error } = useQuery({
   queryKey: [props.queryKey, id],
-  queryFn: async () => api.get<ProductResponse>(`${props.queryPath}/${id}`),
+  queryFn: async () =>
+    api.get<ProductResponse>(`${props.queryPath}/${id}`, {
+      headers: {
+        Authorization: store.hasAccessToken ? store.getAccessToken : undefined,
+      },
+    }),
   select: (res) => res.data,
   enabled: () => isValidID(id),
 })
@@ -100,13 +103,21 @@ const addToBasketMutation = useMutation({
       { headers: { Authorization: store.getAccessToken } },
     )
   },
-  onSuccess: (res) => {
+  onSuccess(res) {
     notification.success('Product added to basket.')
     router.push({ name: 'basket', params: { id: res.data.order_id } })
   },
-  onError: (err) => {
-    errorStatusHandler(err, router)
-    notification.error('Unable to add product to basket.')
+  onError(err) {
+    errorStatusHandler(err, router, {
+      badRequest() {
+        notification.error('Unable to add product to basket.')
+        return
+      },
+      notFound() {
+        notification.info('Unable to add more.')
+        return
+      },
+    })
   },
 })
 
@@ -120,8 +131,8 @@ function addToBasket() {
 </script>
 
 <template>
-  <div v-if="product !== undefined" class="product-page">
-    <div class="intro">
+  <section v-if="product !== undefined" class="product-page">
+    <section class="intro">
       <section class="gallery">
         <ImageFrameList :data="images" />
       </section>
@@ -159,9 +170,36 @@ function addToBasket() {
           </span>
         </button>
       </section>
-    </div>
-    <div class="content-box">
+    </section>
+    <section class="content-box">
       <section class="content">
+        <section class="variant-selection">
+          <h2>Choose Variants</h2>
+          <div class="variant-options">
+            <button
+              v-for="(variant, idx) in product.variant_detail"
+              :key="idx"
+              class="variant-option"
+              :class="{ selected: selectedVariantIndex === idx }"
+              @click="selectedVariantIndex = idx"
+              type="button"
+            >
+              <div class="variant-props">
+                <span
+                  class="wrap-break-word text-wrap"
+                  v-for="(v, k) in variant.property"
+                  :key="k"
+                >
+                  {{ k }}: {{ v }}
+                </span>
+              </div>
+              <span class="variant-price">{{ variant.price }}</span>
+            </button>
+          </div>
+          <p v-if="product.variant_detail.length === 0" class="no-variants">
+            No variants available
+          </p>
+        </section>
         <section class="description">
           <h2>Description</h2>
           <p>{{ product.description }}</p>
@@ -180,40 +218,6 @@ function addToBasket() {
             </li>
           </ul>
         </section>
-        <section v-if="product.variant_detail.length > 0" class="variants">
-          <h2>Variants</h2>
-          <label class="variant-select" for="variant">Choose a variant</label>
-          <select
-            id="variant"
-            v-model.number="selectedVariantIndex"
-            class="variant-select-control"
-          >
-            <option
-              v-for="(variant, idx) in product.variant_detail"
-              :key="idx"
-              :value="idx"
-            >
-              {{
-                Object.entries(variant.property)
-                  .map(([key, value]) => `${key}: ${value}`)
-                  .join(', ')
-              }}
-              — {{ variant.price }}
-            </option>
-          </select>
-          <div
-            v-for="(variant, idx) in product.variant_detail"
-            :key="idx"
-            class="variant"
-          >
-            <div class="variant-props">
-              <span v-for="(v, k) in variant.property" :key="k">
-                {{ k }}: {{ v }}
-              </span>
-            </div>
-            <span class="variant-price">{{ variant.price }}</span>
-          </div>
-        </section>
       </section>
       <section class="comments">
         <h2>Comments</h2>
@@ -222,8 +226,8 @@ function addToBasket() {
           :relation="{ parent: '', referrer: product.id }"
         />
       </section>
-    </div>
-  </div>
+    </section>
+  </section>
   <div v-else class="product-page c-flex-all-center">
     <p class="empty">There is not any content.</p>
   </div>
@@ -243,31 +247,27 @@ function addToBasket() {
 }
 
 .product-page .content-box {
-  @apply w-screen h-fit
-    rounded-t-4xl py-4 px-10
+  @apply w-full h-fit
+    rounded-t-4xl py-4 px-4 md:px-10
     bg-(--c-v-7) dark:bg-(--c-v-0)
     text-(--c-v-1) dark:text-(--c-v-7);
 }
 
 .product-page .intro {
-  @apply w-full gap-10 p-10
-    flex items-center justify-between;
+  @apply w-full gap-6 md:gap-10 p-4 md:p-10
+    flex flex-col md:flex-row items-center justify-between;
 }
 
 .product-page .info {
-  @apply w-1/2 min-h-120 flex flex-col justify-between gap-4 max-md:w-full;
-}
-
-.product-page .info {
-  @apply w-1/2 h-full flex flex-col justify-between gap-4 max-md:w-full;
+  @apply w-full md:w-1/2 min-h-120 flex flex-col justify-between gap-4;
 }
 
 .product-page .info h1 {
-  @apply text-4xl font-bold;
+  @apply text-2xl md:text-4xl font-bold;
 }
 
 .product-page .price {
-  @apply text-3xl font-bold text-(--c-v-11)
+  @apply text-2xl md:text-3xl font-bold text-(--c-v-11)
     border-t-2 border-b-2 p-4 text-center
     rounded-2xl;
 }
@@ -299,7 +299,7 @@ function addToBasket() {
 }
 
 .product-page section h2 {
-  @apply text-2xl font-bold pb-2
+  @apply text-xl md:text-2xl font-bold pb-2
     border-b border-(--c-v-4) dark:border-(--c-v-5);
 }
 
@@ -308,16 +308,42 @@ function addToBasket() {
 }
 
 .product-page .props li {
-  @apply flex flex-row justify-between;
-}
-
-.product-page .variant {
-  @apply flex flex-row justify-between items-center
-    p-3 rounded-xl border border-(--c-v-5);
+  @apply flex flex-col md:flex-row justify-between gap-2;
 }
 
 .product-page .variant-props {
+  @apply flex flex-row gap-3 flex-wrap text-wrap wrap-break-word;
+}
+
+.product-page .variant-selection {
+  @apply mb-6;
+}
+
+.product-page .variant-options {
+  @apply flex flex-col gap-2;
+}
+
+.product-page .variant-option {
+  @apply flex flex-col justify-between items-center
+    p-3 rounded-xl border-2 transition-all
+    border-(--c-v-5) bg-transparent cursor-pointer
+    hover:border-(--c-v-8) hover:brightness-110;
+}
+
+.product-page .variant-option.selected {
+  @apply border-(--c-v-14) bg-(--c-v-14)/10;
+}
+
+.product-page .variant-option .variant-props {
   @apply flex flex-row gap-3 flex-wrap;
+}
+
+.product-page .variant-price {
+  @apply font-bold text-lg border-t-2 border-b-2 border-(--c-v-11) rounded-2xl w-full text-center py-2;
+}
+
+.product-page .no-variants {
+  @apply text-(--c-v-4) text-center py-4;
 }
 
 .product-page .variant-select,
@@ -330,22 +356,40 @@ function addToBasket() {
     bg-transparent text-(--c-v-1) cursor-pointer;
 }
 
+.product-page .gallery {
+  @apply w-full md:w-1/2;
+}
+
+@media (max-width: 768px) {
+  .product-page .intro {
+    @apply flex-col;
+  }
+
+  .product-page .gallery {
+    @apply w-full;
+  }
+
+  .product-page .info {
+    @apply w-full;
+  }
+}
+
 .product-page .add-to-basket {
-  @apply w-80/100 min-h-14 px-4 rounded-xl font-bold cursor-pointer
+  @apply w-full md:w-80/100 min-h-14 px-4 rounded-xl font-bold cursor-pointer
     bg-(--c-v-14) text-(--c-v-7) hover:brightness-95
     disabled:opacity-50 disabled:cursor-not-allowed
     flex flex-row items-center justify-center;
 }
 
 .product-page .comments {
-  @apply w-full px-10 max-md:px-0;
+  @apply w-full px-4 md:px-10;
 }
 
 .product-page .comments h2 {
-  @apply text-2xl font-bold mb-4;
+  @apply text-xl md:text-2xl font-bold mb-4;
 }
 
 .product-page .empty {
-  @apply w-full text-center text-2xl font-bold;
+  @apply w-full text-center text-xl md:text-2xl font-bold;
 }
 </style>

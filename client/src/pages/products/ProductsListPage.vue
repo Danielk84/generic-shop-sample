@@ -43,14 +43,12 @@ const { data, error } = useQuery({
         params: { page: page.value },
       })
     }
-    if (isPopular.value) {
-      return api.get<ProductSummaryResponse[]>('products/popular', {
+    return api.get<ProductSummaryResponse[]>(
+      isPopular ? 'products/popular' : 'products/',
+      {
         params: { page: page.value },
-      })
-    }
-    return api.get<ProductSummaryResponse[]>('products/', {
-      params: { page: page.value },
-    })
+      }
+    )
   },
   select: (res) => {
     const mp = Number(res.headers['x-max-page'])

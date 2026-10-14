@@ -107,9 +107,6 @@ onUnmounted(async () => {
       <RouterLink :to="{ name: 'products-list' }">
         <span>Products</span>
       </RouterLink>
-      <RouterLink :to="{ name: 'search' }">
-        <span>Search</span>
-      </RouterLink>
       <RouterLink :to="{ name: 'shops' }">
         <span>Shops</span>
       </RouterLink>
