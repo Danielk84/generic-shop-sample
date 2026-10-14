@@ -13,6 +13,7 @@ import {
   PhoneNumberRequest,
   PermissionType,
   UpsertShopRequest,
+  UserInfoRequest,
   type UpsertShopInput,
 } from '@/contracts/users/request.schema'
 import type {
@@ -62,6 +63,11 @@ const {
   errors: emailErrors,
   validate: emailValidate,
 } = useValidator(EmailAddrRequest)
+const {
+  formData: userInfoForm,
+  errors: userInfoErrors,
+  validate: userInfoValidate,
+} = useValidator(UserInfoRequest)
 
 const IsEmailVerifyReq = ref<boolean>(false)
 const emailVerifyCode = ref<string>('')
@@ -91,6 +97,7 @@ watch(
     if (value === undefined) return
     emailForm.value.email = value.email
     userPhoneForm.value.phone_number = value.phone_number
+    userInfoForm.value.national_code = value.national_code
   },
   { immediate: true },
 )
@@ -228,6 +235,31 @@ const emailMutation = useMutation({
     errorStatusHandler(err, router, {
       notFound() {
         notification.error('Invalid user email')
+        isUserError.value = true
+        return
+      },
+    })
+  },
+})
+
+const userInfoMutation = useMutation({
+  mutationKey: ['update-user-info'],
+  mutationFn: async () => {
+    const { input, isValid } = await userInfoValidate()
+    if (!isValid || input.data === undefined) return null
+    return api.put('users/set-info', input.data, {
+      headers: { Authorization: store.getAccessToken },
+    })
+  },
+  async onSuccess() {
+    notification.success('Profile info updated.')
+    isUserError.value = false
+    await userQuery.refetch()
+  },
+  onError(err) {
+    errorStatusHandler(err, router, {
+      badRequest() {
+        notification.error('Invalid profile info.')
         isUserError.value = true
         return
       },
@@ -514,9 +546,82 @@ async function onImageChange(event: Event) {
       </form>
     </section>
 
+    <section
+      class="user-forms account-card c-form-bg"
+      :class="{ 'c-form-error-shadow': isUserError }"
+    >
+      <h2>Profile Info</h2>
+      <p class="text-lg font-bold py-2">
+        Name:
+        {{
+          userQuery.data.value?.name === undefined ||
+          userQuery.data.value.name === ' '
+            ? 'Unknown!?'
+            : userQuery.data.value.name
+        }}
+      </p>
+      <form class="c-form" @submit.prevent="userInfoMutation.mutate()">
+        <div class="c-form-item">
+          <label class="c-form-label" for="first_name">First Name</label>
+          <input
+            class="c-form-input"
+            id="first_name"
+            v-model="userInfoForm.first_name"
+            type="text"
+          />
+          <p
+            class="c-form-error"
+            v-if="userInfoErrors['first_name'] !== undefined"
+          >
+            {{ userInfoErrors['first_name'] }}
+          </p>
+        </div>
+        <div class="c-form-item">
+          <label class="c-form-label" for="last_name">Last Name</label>
+          <input
+            class="c-form-input"
+            id="last_name"
+            v-model="userInfoForm.last_name"
+            type="text"
+          />
+          <p
+            class="c-form-error"
+            v-if="userInfoErrors['last_name'] !== undefined"
+          >
+            {{ userInfoErrors['last_name'] }}
+          </p>
+        </div>
+        <div class="c-form-item">
+          <label class="c-form-label" for="national_code">National Code</label>
+          <input
+            class="c-form-input"
+            id="national_code"
+            v-model="userInfoForm.national_code"
+            type="text"
+            maxlength="10"
+          />
+          <p
+            class="c-form-error"
+            v-if="userInfoErrors['national_code'] !== undefined"
+          >
+            {{ userInfoErrors['national_code'] }}
+          </p>
+        </div>
+        <button
+          class="c-form-btn"
+          type="submit"
+          :disabled="userInfoMutation.isPending.value"
+        >
+          Save Profile Info
+        </button>
+      </form>
+    </section>
+
     <section v-if="isShopUser" class="account-card c-form-bg">
       <h2>Shop image</h2>
-      <div class="size-100 border-4 rounded-2xl m-5 border-(--c-v-13) p-4">
+      <div
+        class="w-full max-[364px]:h-40 max-[513px]:h-70 min-[513px]:h-100 border-4 rounded-2xl my-5 border-(--c-v-13) p-4"
+      >
         <ImageFrameCard
           :img="shopQuery.data.value?.img_path"
           alt="shop profile"
@@ -597,38 +702,38 @@ async function onImageChange(event: Event) {
 @reference "@/styles/index.css";
 
 .account-page {
-  @apply w-full min-h-150 p-10 flex flex-col items-center gap-15;
+  @apply w-full min-h-150 p-4 md:p-10 flex flex-col items-center gap-10 md:gap-15;
 }
 
 .account-page > h1 {
-  @apply text-4xl font-bold;
+  @apply text-2xl md:text-4xl font-bold;
 }
 
 .account-page .account-card {
-  @apply w-full max-w-200 p-6 rounded-2xl;
+  @apply w-full max-w-200 p-4 md:p-6 rounded-2xl;
 }
 
 .account-card h2 {
-  @apply text-2xl font-bold;
+  @apply text-xl md:text-2xl font-bold;
 }
 
 .user-forms form {
-  @apply border-b-2 border-(--c-v-5) mb-10 rounded-xl;
+  @apply border-b-2 border-(--c-v-5) mb-6 md:mb-10 rounded-xl;
 }
 
 .account-card img {
-  @apply w-32 h-32 object-cover rounded-2xl;
+  @apply w-24 h-24 md:w-32 md:h-32 object-cover rounded-2xl;
 }
 
 .account-card .upload-img {
-  @apply rounded-2xl w-full p-4 text-2xl
+  @apply rounded-2xl w-full p-4 text-lg md:text-2xl
     bg-(--c-v-9) text-(--c-v-1)
-    my-10 text-center cursor-pointer
+    my-6 md:my-10 text-center cursor-pointer
     hover:brightness-95;
 }
 
 .account-card .delete-img {
-  @apply rounded-2xl w-full p-4 text-2xl
+  @apply rounded-2xl w-full p-4 text-lg md:text-2xl
     bg-(--c-v-11) text-(--c-v-7) cursor-pointer
     hover:brightness-95;
 }
@@ -639,22 +744,22 @@ async function onImageChange(event: Event) {
 
 .danger-card > button {
   @apply bg-(--c-v-11) text-(--c-v-7) cursor-pointer
-    text-2xl rounded-2xl w-full p-4 mt-10
+    text-lg md:text-2xl rounded-2xl w-full p-4 mt-6 md:mt-10
     hover:brightness-95;
 }
 
 .account-page .delete-account {
-  @apply p-5 flex flex-col gap-10;
+  @apply p-4 md:p-5 flex flex-col gap-6 md:gap-10;
 }
 
 .delete-account h2 {
-  @apply font-bold text-xl;
+  @apply font-bold text-lg md:text-xl;
 }
 
 .delete-account button {
-  @apply cursor-pointer w-40/100 h-14
+  @apply cursor-pointer w-full md:w-40/100 h-12 md:h-14
     rounded-2xl hover:brightness-125
-    text-2xl font-bold;
+    text-lg md:text-2xl font-bold;
 }
 
 .delete-account .delete-btn {
@@ -663,5 +768,19 @@ async function onImageChange(event: Event) {
 
 .delete-account .cancel-btn {
   @apply border-4 border-(--c-v-14);
+}
+
+@media (max-width: 640px) {
+  .account-page .user-forms form {
+    @apply mb-6;
+  }
+
+  .account-page .c-form-item {
+    @apply flex-col;
+  }
+
+  .account-page .c-form-input.flex {
+    @apply flex-col;
+  }
 }
 </style>
