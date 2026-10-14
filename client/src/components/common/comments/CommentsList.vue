@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, defineAsyncComponent, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
+import { useMutation, useQuery } from '@tanstack/vue-query'
 
 import api from '@/utils/api'
 import { useStore } from '@/store'
@@ -227,7 +227,7 @@ async function createComments(event: MouseEvent) {
 }
 
 .comments-list .comment-box {
-  @apply rounded-2xl p-4 size-120;
+  @apply rounded-2xl p-4 md:p-6 w-full max-w-120;
 }
 
 .comments-list textarea {
@@ -235,23 +235,23 @@ async function createComments(event: MouseEvent) {
 }
 
 .comments-list .create-btn {
-  @apply rounded-2xl p-4 bg-(--c-v-13) text-(--c-v-1) text-2xl font-bold size-fit;
+  @apply rounded-2xl p-3 md:p-4 bg-(--c-v-13) text-(--c-v-1) text-lg md:text-2xl font-bold size-fit cursor-pointer;
 }
 
 .comments-list .empty-comments {
-  @apply w-full p-5 text-xl text-center;
+  @apply w-full p-5 text-lg md:text-xl text-center;
 }
 
 .comments-list .list {
-  @apply border-l border-t p-4;
+  @apply border-l border-t border-(--c-v-1) dark:border-(--c-v-7) p-4 md:p-6;
 }
 
 .comments-list .item {
-  @apply border-b;
+  @apply border-b border-(--c-v-1) dark:border-(--c-v-7) p-4 md:p-0;
 }
 
 .comments-list .name {
-  @apply text-xl w-full flex items-center justify-start;
+  @apply text-lg md:text-xl w-full flex items-center justify-start;
 }
 
 .comments-list .date {
@@ -259,6 +259,16 @@ async function createComments(event: MouseEvent) {
 }
 
 .comments-list .body {
-  @apply text-wrap text-start w-full h-fit p-5;
+  @apply text-wrap wrap-break-word text-start w-full h-fit p-4 md:p-5;
+}
+
+@media (max-width: 640px) {
+  .comments-list .c-floating-box {
+    @apply w-full max-w-full m-2;
+  }
+
+  .comments-list .c-floating-window {
+    @apply p-4;
+  }
 }
 </style>
