@@ -10,8 +10,10 @@ import { useValidator } from '@/utils/validator'
 import { deepEqual, errorStatusHandler } from '@/utils/helper'
 import type { ProductResponse } from '@/contracts/products/response.interface'
 import {
+  ProductSetPriceRequest,
   ProductVariantDetailRequest,
   UpdateProductVendor,
+  type ProductSetPriceInput,
   type ProductVariantDetailInput,
   type ProductVendorInput,
   type UpdateProductVendorInput,
@@ -28,6 +30,7 @@ const emits = defineEmits<{
 }>()
 
 const isSetVariantOpen = ref<boolean>(false)
+const isSetPriceOpen = ref<boolean>(false)
 
 const vendorProperty = ref<ProductProperty | null>(null)
 const vendorEdit = ref<ProductVendorInput | null>(null)
@@ -89,6 +92,9 @@ const createProperty = {
 
 const setVendorValidator = useValidator(UpdateProductVendor)
 const setVariantDetailValidator = useValidator(ProductVariantDetailRequest)
+const setPriceValidator = useValidator(ProductSetPriceRequest)
+
+setPriceValidator.formData.value.id = props.data.id
 
 watch(vendorEdit, (v) => {
   if (v === null) {
@@ -152,6 +158,29 @@ const setVariantDetailMutation = useMutation({
   },
 })
 
+const setPriceMutation = useMutation({
+  mutationKey: ['admin-set-price-product', props.data.id],
+  mutationFn: async (input: ProductSetPriceInput) =>
+    api.put('products/set-price', input, {
+      headers: {
+        Authorization: store.getAccessToken,
+      },
+    }),
+  async onSuccess() {
+    notification.success('Price Updated.')
+    isSetPriceOpen.value = false
+    emits('afterMutation')
+  },
+  onError(error) {
+    errorStatusHandler(error, router, {
+      badRequest() {
+        notification.error('Invalid update price request.')
+        return
+      },
+    })
+  },
+})
+
 async function saveVendor() {
   if (vendorProperty.value === null) {
     notification.warning('First select property then manage vendor.')
@@ -186,6 +215,19 @@ async function saveVariantDetail() {
   }
   await setVariantDetailMutation.mutateAsync(input.data)
 }
+
+async function savePrice() {
+  const { input, isValid } = await setPriceValidator.validate()
+  if (!isValid) {
+    notification.error('Invalid price data.')
+    return
+  }
+  if (input.data === undefined) {
+    notification.error('Unexpected error.')
+    return
+  }
+  await setPriceMutation.mutateAsync(input.data)
+}
 </script>
 
 <template>
@@ -201,7 +243,18 @@ async function saveVariantDetail() {
         :key="idx"
         class="item"
       >
-        <h3>Price: {{ item.price }}</h3>
+        <button
+          class="cursor-pointer w-full"
+          :disabled="setPriceMutation.isPending.value"
+          @click="
+            () => {
+              setPriceValidator.formData.value.property = item.property
+              isSetPriceOpen = true
+            }
+          "
+        >
+          <h3>Price: {{ item.price }}</h3>
+        </button>
         <table>
           <tr v-for="[key, value] in Object.entries(item.property)" :key="key">
             <td>{{ key }}</td>
@@ -217,7 +270,7 @@ async function saveVariantDetail() {
         <div class="vendor-list">
           <ul v-for="(vendor, index) in item.vendors" :key="index">
             <button
-              class="rounded-2xl w-full bg-(--c-v-2) p-4 cursor-pointer"
+              class="rounded-2xl w-full bg-(--c-v-2) p-4 cursor-pointer text-start"
               @click="
                 () => {
                   vendorProperty = item.property
@@ -228,8 +281,8 @@ async function saveVariantDetail() {
                 }
               "
             >
-              <li>{{ vendor.user_id }}</li>
-              <li>{{ vendor.quantity }}</li>
+              <li>ID: {{ vendor.user_id }}</li>
+              <li>Quantity: {{ vendor.quantity }}</li>
             </button>
           </ul>
         </div>
@@ -343,13 +396,13 @@ async function saveVariantDetail() {
               class="flex flex-col gap-4"
             >
               <div class="flex flex-wrap gap-4 w-full">
-                <input class="c-form-input" v-model="item.key" type="text" />
                 <button
                   class="text-xl font-bold text-(--c-v-12) w-8 cursor-pointer"
                   @click="createProperty.remove(index)"
                 >
                   <span>X</span>
                 </button>
+                <input class="c-form-input" v-model="item.key" type="text" />
                 <input class="c-form-input" v-model="item.value" type="text" />
               </div>
             </div>
@@ -367,6 +420,40 @@ async function saveVariantDetail() {
             @click="saveVariantDetail"
             :disabled="setVariantDetailMutation.isPending.value"
           >
+            Save
+          </button>
+        </form>
+      </div>
+    </section>
+    <section v-if="isSetPriceOpen" class="c-floating-window c-flex-all-center">
+      <!-- set variant property -->
+      <div class="c-floating-box">
+        <div class="p-4 flex flex-row justify-between">
+          <button
+            class="text-2xl font-bold cursor-pointer"
+            type="button"
+            @click="isSetPriceOpen = false"
+          >
+            <span>X</span>
+          </button>
+          <h2>Set Price</h2>
+        </div>
+        <form class="c-form">
+          <div class="c-form-item">
+            <label class="c-form-label" for="price">Price</label>
+            <input
+              class="c-form-input"
+              type="number"
+              v-model="setPriceValidator.formData.value.price"
+            />
+            <p
+              v-if="setVendorValidator.errors.value['price'] !== undefined"
+              class="c-form-error"
+            >
+              {{ setVendorValidator.errors.value['price'] }}
+            </p>
+          </div>
+          <button class="c-form-btn" type="button" @click="savePrice">
             Save
           </button>
         </form>
@@ -421,7 +508,7 @@ async function saveVariantDetail() {
 }
 
 .vendor-list li {
-  @apply text-wrap;
+  @apply text-wrap text-(--c-v-7);
 }
 
 @media (max-width: 640px) {
