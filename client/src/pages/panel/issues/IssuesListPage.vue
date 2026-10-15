@@ -230,9 +230,7 @@ async function saveChanges() {
             }
           "
         >
-          <p class="content">
-            ID: {{ item.id }}
-          </p>
+          <p class="content">ID: {{ item.id }}</p>
           <p class="is-done" :class="[item.is_done ? 'done' : 'not-done']">
             Is Done
           </p>
