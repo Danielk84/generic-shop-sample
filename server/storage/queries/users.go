@@ -426,7 +426,7 @@ func (s *shopRepository) IsValidShop(ctx context.Context, userID string) bool {
 func (s *shopRepository) Upsert(ctx context.Context, userID string, info UpsertShopRequest) (err error) {
 	const q = `INSERT INTO user_s.shop(user_id, brand, shop_addr, zip_code, business_code, bio)
         VALUES (
-			@UserID::UUID, 
+			@UserID::UUID,
 			NULLIF(@Brand, ''),
 			@ShopCode,
 			@ZipCode,
@@ -487,7 +487,7 @@ func (s *shopRepository) List(ctx context.Context, pagination, page int) (items 
 			COALESCE(phone_number, '') AS phone_number,
 			is_shop
 		FROM user_s.shop
-		ORDER is_verified
+		ORDER BY is_shop
 		LIMIT $1
 		OFFSET $2`
 	items, err = list[ShopResponse](ctx, s.session, q, pagination, getOffsetFromPageNum(pagination, page))

@@ -16,6 +16,7 @@ func IssuesRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	cache := deps.Cache.GetCache(cache.UsersCache)
 	h := issuesHandler{
 		store:      queries.NewIssuesStore(deps.DB.GetSession(), log),
+		cache:      cache,
 		log:        log,
 		pagination: deps.Config.Pagination,
 	}
@@ -27,16 +28,17 @@ func IssuesRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 		RequestLimit: deps.Config.APIRateLimiter.IssuesRT,
 		TTL:          deps.Config.APIRateLimiter.IssuesTTL,
 	})
-	router.Use(
-		md.AuthMiddleware(deps, log),
-		rateLimiter,
-	)
+	router.Use(md.AuthMiddleware(deps, log))
+
 	router.GET("/", h.userList)
 	router.GET("/admin", h.adminList)
 	router.GET("/:id/:user_id", h.get)
-	router.POST("/", h.create)
-	router.PUT("/", h.update)
-	router.PUT("/set-response", h.setResponse)
+
+	RegisterRoutesWith(router, []gin.HandlerFunc{rateLimiter}, []RouteSpec{
+		{http.MethodPost, "/", []gin.HandlerFunc{h.create}},
+		{http.MethodPut, "/", []gin.HandlerFunc{h.update}},
+		{http.MethodPut, "/set-response", []gin.HandlerFunc{h.setResponse}},
+	})
 }
 
 type issuesHandler struct {
@@ -48,7 +50,7 @@ type issuesHandler struct {
 
 func (h *issuesHandler) create(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if !HasPermissions(c, claims.PermissionType, queries.Customer, queries.Vendor) {
+	if !HasPermissions(c, claims.PermissionType, queries.Customer, queries.Vendor, queries.Admin) {
 		return
 	}
 
@@ -76,7 +78,7 @@ func (h *issuesHandler) create(c *gin.Context) {
 
 func (h *issuesHandler) userList(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if !HasPermissions(c, claims.PermissionType, queries.Customer, queries.Vendor) {
+	if !HasPermissions(c, claims.PermissionType, queries.Customer, queries.Vendor, queries.Admin) {
 		return
 	}
 
@@ -145,7 +147,7 @@ func (h *issuesHandler) get(c *gin.Context) {
 
 func (h *issuesHandler) update(c *gin.Context) {
 	claims := md.GetUserClaims(c)
-	if !HasPermissions(c, claims.PermissionType, queries.Customer, queries.Vendor) {
+	if !HasPermissions(c, claims.PermissionType, queries.Customer, queries.Vendor, queries.Admin) {
 		return
 	}
 	var input queries.UpdateIssuesRequest

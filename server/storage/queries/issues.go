@@ -9,11 +9,11 @@ import (
 )
 
 type IssuesIDRequest struct {
-	ID string `json:"id" binding:"required,uuid"`
+	ID string `json:"id" uri:"id" binding:"required,uuid"`
 }
 
 type IssuesUserIDRequest struct {
-	UserID string `json:"user_id" binding:"required,uuid"`
+	UserID string `json:"user_id" uri:"user_id" binding:"required,uuid"`
 }
 
 type GetIssuesRequest struct {
@@ -34,7 +34,7 @@ type UpdateIssuesRequest struct {
 type SetIssuesResRequest struct {
 	IssuesIDRequest
 	Res    string `json:"res" binding:"required,max=5000,min=1"`
-	IsDone bool   `json:"is_done" binding:"required"`
+	IsDone bool   `json:"is_done" binding:"boolean"`
 }
 
 type IssuesSummaryResponse struct {
