@@ -69,13 +69,14 @@ const fullScreen = ref<boolean>(false)
 @reference "@/styles/index.css";
 
 .empty-img-list {
-  @apply max-w-150 max-h-150 rounded-4xl border-4
+  @apply max-w-150 h-150 max-md:h-120 max-sm:h-80 rounded-4xl border-4
     border-t-(--c-v-12)
     border-r-(--c-v-13)
     border-b-(--c-v-14)
     border-l-(--c-v-15)
     bg-(--c-v-1)
-    text-(--c-v-11) font-bold text-xl md:text-2xl;
+    text-(--c-v-11) font-bold text-xl md:text-2xl text-center
+    p-2;
 }
 
 .image-frame-list {

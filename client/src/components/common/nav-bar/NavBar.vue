@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue'
-import { useRouter, type RouteLocationRaw } from 'vue-router'
+import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router'
 
 import api from '@/utils/api'
 import icons from '@/utils/icons'
 import { useStore } from '@/store'
-import { errorStatusHandler } from '@/utils/helper'
+import { errorStatusHandler, setCallbackURL } from '@/utils/helper'
 
 const BaseIcon = defineAsyncComponent(
   () => import('@/components/ui/BaseIcon.vue'),
@@ -15,6 +15,7 @@ const ProfileDropdown = defineAsyncComponent(
 )
 
 const router = useRouter()
+const route = useRoute()
 const store = useStore()
 const navBarRef = ref<HTMLDivElement | null>(null)
 const isMenuOpen = ref<boolean>(false)
@@ -43,7 +44,10 @@ const menuLinks: {
 
 async function openBasket() {
   if (!store.hasAccessToken) {
-    router.push({ name: 'auth' })
+    router.push({
+      name: 'auth',
+      query: { callback_url: setCallbackURL(route.fullPath) },
+    })
     return
   }
   try {

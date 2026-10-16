@@ -20,49 +20,99 @@ const props = defineProps<{
 }>()
 
 const scrollBoxRef = ref<HTMLDivElement | null>(null)
+
+// Manual drag scrolling is only handled for mouse pointers. Touch and pen input
+// keep the native horizontal scroll so that taps still navigate the cards.
+const DRAG_THRESHOLD = 6
+
+const isPointerDown = ref(false)
 const isDragging = ref(false)
+const activePointerId = ref<number | null>(null)
 const startX = ref(0)
-const initialScrollLeft = ref(0)
+const startScrollLeft = ref(0)
 
 function onPointerDown(event: PointerEvent) {
+  if (event.pointerType !== 'mouse') return
+
   const element = scrollBoxRef.value
   if (!element) return
 
-  isDragging.value = true
+  isPointerDown.value = true
+  isDragging.value = false
+  activePointerId.value = event.pointerId
   startX.value = event.clientX
-  initialScrollLeft.value = element.scrollLeft
-
-  element.setPointerCapture(event.pointerId)
+  startScrollLeft.value = element.scrollLeft
 }
 
 function onPointerMove(event: PointerEvent) {
   const element = scrollBoxRef.value
-  if (!element || !isDragging.value) return
+  if (
+    !element ||
+    !isPointerDown.value ||
+    event.pointerId !== activePointerId.value
+  ) {
+    return
+  }
 
   const distance = event.clientX - startX.value
-  element.scrollLeft = initialScrollLeft.value - distance
+  if (!isDragging.value && Math.abs(distance) < DRAG_THRESHOLD) return
+
+  // Capture only once the drag really starts, otherwise capturing on every
+  // pointerdown swallows the click event and breaks card navigation.
+  if (!isDragging.value) {
+    isDragging.value = true
+    element.setPointerCapture(event.pointerId)
+  }
+
+  element.scrollLeft = startScrollLeft.value - distance
 }
 
-function onPointerUp(event: PointerEvent) {
+function endPointer(event: PointerEvent) {
   const element = scrollBoxRef.value
 
-  isDragging.value = false
+  if (
+    activePointerId.value !== null &&
+    event.pointerId !== activePointerId.value
+  ) {
+    return
+  }
 
-  if (element?.hasPointerCapture(event.pointerId)) {
+  if (
+    element &&
+    isDragging.value &&
+    element.hasPointerCapture(event.pointerId)
+  ) {
     element.releasePointerCapture(event.pointerId)
   }
+
+  isPointerDown.value = false
+  isDragging.value = false
+  activePointerId.value = null
 }
 
-const scrollStep = 15
-const scrollTimeout = 24
+// Resets a pending press that left the list before the drag threshold was
+// reached. An active drag is left alone so capturing cannot cut it short.
+function onPointerLeave(event: PointerEvent) {
+  if (isDragging.value) return
+  if (
+    activePointerId.value !== null &&
+    event.pointerId !== activePointerId.value
+  ) {
+    return
+  }
+
+  isPointerDown.value = false
+  activePointerId.value = null
+}
+
+const scrollStep = 12
+const scrollTimeout = 16
 const goForward = useTimer(() => {
   const element = scrollBoxRef.value
   if (!element) return
 
-  if (initialScrollLeft.value <= element.scrollWidth) {
-    initialScrollLeft.value += scrollStep
-    element.scrollLeft = initialScrollLeft.value
-  }
+  const maxScroll = element.scrollWidth - element.clientWidth
+  element.scrollLeft = Math.min(element.scrollLeft + scrollStep, maxScroll)
 }, scrollTimeout)
 </script>
 
@@ -83,8 +133,9 @@ const goForward = useTimer(() => {
       ref="scrollBoxRef"
       @pointerdown="onPointerDown"
       @pointermove="onPointerMove"
-      @pointerup="onPointerUp"
-      @pointercancel="onPointerUp"
+      @pointerup="endPointer"
+      @pointercancel="endPointer"
+      @pointerleave="onPointerLeave"
       class="products"
       :class="{ 'is-draging': isDragging }"
     >
@@ -105,8 +156,11 @@ const goForward = useTimer(() => {
       <button
         @pointerdown="goForward.start()"
         @pointerup="goForward.end()"
+        @pointercancel="goForward.end()"
+        @pointerleave="goForward.end()"
         @touchstart="goForward.start()"
         @touchend="goForward.end()"
+        @touchcancel="goForward.end()"
         class="moving-btn"
       >
         <BaseIcon :icon="icons.pages.landing.rightArrow" />
@@ -156,7 +210,7 @@ const goForward = useTimer(() => {
 }
 
 .products-view .is-draging {
-  @apply cursor-grabbing;
+  @apply cursor-grabbing select-none;
 }
 
 .products-view .products::-webkit-scrollbar {
