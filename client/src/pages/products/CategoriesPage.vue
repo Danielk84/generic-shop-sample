@@ -12,12 +12,14 @@ const router = useRouter()
 </script>
 
 <template>
-  <CategoriesView
-    @tag-handler="
-      (category: Category) => {
-        const q = category.tag.trim()
-        router.push({ name: 'products-list', query: { q } })
-      }
-    "
-  />
+  <div class="w-screen h-screen">
+    <CategoriesView
+      @tag-handler="
+        (category: Category) => {
+          const q = category.tag.trim()
+          router.push({ name: 'products-list', query: { q } })
+        }
+      "
+    />
+  </div>
 </template>

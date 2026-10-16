@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, type RouteLocationRaw } from 'vue-router'
 
 import api from '@/utils/api'
 import icons from '@/utils/icons'
@@ -17,6 +17,29 @@ const ProfileDropdown = defineAsyncComponent(
 const router = useRouter()
 const store = useStore()
 const navBarRef = ref<HTMLDivElement | null>(null)
+const isMenuOpen = ref<boolean>(false)
+
+const menuLinks: {
+  name: string
+  to: RouteLocationRaw
+}[] = [
+  {
+    name: 'Home',
+    to: '/',
+  },
+  {
+    name: 'Categories',
+    to: { name: 'categories' },
+  },
+  {
+    name: 'Contact Us',
+    to: '/',
+  },
+  {
+    name: 'Products',
+    to: { name: 'products-list' },
+  },
+]
 
 async function openBasket() {
   if (!store.hasAccessToken) {
@@ -90,28 +113,19 @@ onUnmounted(async () => {
 </script>
 
 <template>
-  <div class="nav-bar" ref="navBarRef">
+  <section class="nav-bar" ref="navBarRef">
     <RouterLink to="/">
       <BaseIcon :icon="icons.common.navBar.infinity" size="42px" />
     </RouterLink>
-    <div class="n-items c-flex-all-center">
-      <RouterLink to="/">
-        <span>Home</span>
+    <section class="n-items c-flex-all-center">
+      <RouterLink v-for="item of menuLinks" :key="item.name" :to="item.to">
+        <span>{{ item.name }}</span>
       </RouterLink>
-      <RouterLink :to="{ name: 'categories' }">
-        <span>Categories</span>
-      </RouterLink>
-      <RouterLink to="/">
-        <span>Contact Us</span>
-      </RouterLink>
-      <RouterLink :to="{ name: 'products-list' }">
-        <span>Products</span>
-      </RouterLink>
-      <RouterLink :to="{ name: 'shops' }">
-        <span>Shops</span>
-      </RouterLink>
-    </div>
-    <div class="n-items c-flex-all-center">
+    </section>
+    <section class="n-items c-flex-all-center">
+      <button class="base-btn min-[788px]:hidden" @click="isMenuOpen = true">
+        <BaseIcon :icon="icons.common.navBar.menu" />
+      </button>
       <button class="base-btn" @click="toggleTheme" aria-label="Toggle theme">
         <BaseIcon
           v-if="store.isDarkTheme"
@@ -126,8 +140,38 @@ onUnmounted(async () => {
       <ProfileDropdown>
         <BaseIcon :icon="icons.common.navBar.profile" />
       </ProfileDropdown>
-    </div>
-  </div>
+    </section>
+    <section
+      v-if="isMenuOpen"
+      class="c-floating-window bg-(--c-v-7)/90 dark:bg-(--c-v-1)/90"
+    >
+      <div class="w-full p-4 border-b border-(--c-v-10)">
+        <button
+          class="text-2xl font-bold text-(--c-v-11) cursor-pointer"
+          @click="isMenuOpen = false"
+        >
+          <span>X</span>
+        </button>
+      </div>
+      <div
+        class="flex flex-col items-center justify-between gap-10 mt-4 overflow-x-hidden overflow-y-scroll"
+      >
+        <button
+          v-for="item of menuLinks"
+          :key="item.name"
+          class="text-2xl font-bold text-shadow-sm text-shadow-(color:--c-v-10) cursor-pointer"
+          @click="
+            () => {
+              isMenuOpen = false
+              router.push(item.to)
+            }
+          "
+        >
+          {{ item.name }}
+        </button>
+      </div>
+    </section>
+  </section>
 </template>
 
 <style scoped>
@@ -159,7 +203,7 @@ onUnmounted(async () => {
     transform delay-150 duration-150;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 787px) {
   .nav-bar {
     @apply px-4 h-16;
   }

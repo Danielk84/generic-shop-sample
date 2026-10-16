@@ -94,14 +94,7 @@ function onClick() {
         >
           Admin
         </RouterLink>
-        <RouterLink
-          v-if="store.getClaims.permission_type === PermissionType.Admin"
-          :to="{ name: 'admin-issues' }"
-          class="item"
-        >
-          Issues
-        </RouterLink>
-        <RouterLink v-else class="item" :to="{ name: 'issues-list' }">
+        <RouterLink class="item" :to="{ name: 'issues-list' }">
           Issues
         </RouterLink>
         <button class="item logout-btn" @click="onLogout">Logout</button>
@@ -126,7 +119,7 @@ function onClick() {
     rounded-2xl right-0 top-10
     border-2 border-(--c-v-1) dark:border-(--c-v-7)
     bg-(--c-v-7) dark:bg-(--c-v-0)
-    min-w-[180px];
+    min-w-45;
 }
 
 .profile-dropdown > .dropdown-content > .content {

@@ -44,10 +44,10 @@ const { data, error } = useQuery({
       })
     }
     return api.get<ProductSummaryResponse[]>(
-      isPopular ? 'products/popular' : 'products/',
+      isPopular.value ? 'products/popular' : 'products/',
       {
         params: { page: page.value },
-      }
+      },
     )
   },
   select: (res) => {
