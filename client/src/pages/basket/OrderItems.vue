@@ -7,7 +7,14 @@ const OrderItemsCard = defineAsyncComponent(
   () => import('@/pages/basket/OrderItemsCard.vue'),
 )
 
-const props = defineProps<{ orders: OrderItemsCardProps[] }>()
+const props = defineProps<{
+  orders: (OrderItemsCardProps & { product_id: string })[]
+}>()
+
+const emits = defineEmits<{
+  (e: 'remove', productId: string): void
+  (e: 'changeCount', input: { productId: string; count: number }): void
+}>()
 </script>
 
 <template>
@@ -21,13 +28,20 @@ const props = defineProps<{ orders: OrderItemsCardProps[] }>()
     <div v-else class="orders">
       <OrderItemsCard
         v-for="i of props.orders"
-        :key="i.name"
+        :key="i.product_id"
         :data="{
           name: i.name,
           price: i.price,
           count: i.count,
           total: i.total,
+          img: i.img,
+          alt: i.alt,
         }"
+        @destroy="emits('remove', i.product_id)"
+        @change-count="
+          (count: number) =>
+            emits('changeCount', { productId: i.product_id, count })
+        "
       />
     </div>
   </div>
@@ -37,22 +51,22 @@ const props = defineProps<{ orders: OrderItemsCardProps[] }>()
 @reference "@/styles/index.css";
 
 .order-items {
-  @apply w-150 h-fit
+  @apply w-full max-w-200 h-fit
     border rounded-t-2xl overflow-hidden
-    border-basket-orders-border;
+    border-(--c-v-1);
 }
 
 .order-items > .title {
-  @apply text-2xl font-black w-full h-20
-    bg-basket-orders-title-bg
-    text-basket-orders-title-text;
+  @apply text-xl md:text-2xl font-black w-full h-20
+    bg-(--c-v-1)
+    text-(--c-v-7);
 }
 
 .order-items > .orders {
-  @apply w-fit h-fit;
+  @apply w-full h-fit;
 }
 
 .order-items > .empty {
-  @apply text-2xl py-10 font-bold;
+  @apply text-xl md:text-2xl py-10 font-bold;
 }
 </style>

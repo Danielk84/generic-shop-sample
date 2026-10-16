@@ -1,7 +1,20 @@
 <script setup lang="ts">
 import type { CartToralProps } from '@/pages/basket/types'
 
-const props = defineProps<{ data: CartToralProps }>()
+const props = withDefaults(
+  defineProps<{
+    data: CartToralProps
+    disabled?: boolean
+    processing?: boolean
+  }>(),
+  {
+    disabled: false,
+    processing: false,
+  },
+)
+const emits = defineEmits<{
+  (e: 'process'): void
+}>()
 
 function dashIfUndefined(v?: number) {
   if (v) return v
@@ -14,7 +27,7 @@ function dashIfUndefined(v?: number) {
     <div class="item title">
       <h2>Cart Total</h2>
     </div>
-    <table>
+    <table class="w-full">
       <tr class="item">
         <th>Total Items</th>
         <td>{{ props.data.totalItem }}</td>
@@ -29,8 +42,12 @@ function dashIfUndefined(v?: number) {
       </tr>
     </table>
     <div class="item">
-      <button class="c-flex-all-center">
-        <span>Process Order</span>
+      <button
+        class="c-flex-all-center"
+        :disabled="props.disabled || props.processing"
+        @click="emits('process')"
+      >
+        <span>{{ props.processing ? 'Processing...' : 'Process Order' }}</span>
       </button>
     </div>
   </div>
@@ -40,30 +57,34 @@ function dashIfUndefined(v?: number) {
 @reference "@/styles/index.css";
 
 .card-total {
-  @apply w-fit h-fit rounded-xl
-    border border-basket-card-total-border
+  @apply w-full max-w-100 rounded-xl
+    border border-(--c-v-1)
     overflow-hidden;
 }
 
 .card-total .item {
-  @apply text-2xl flex flex-row
-    items-center h-20 w-150;
+  @apply text-lg md:text-2xl flex flex-row
+    items-center min-h-20;
 }
 
 .card-total .title {
   @apply justify-start p-4
-    bg-basket-card-total-title
-    text-basket-card-total-title-text;
+    bg-(--c-v-4)
+    text-(--c-v-7);
 }
 
 .card-total tr {
-  @apply justify-between border-b p-4
-    border-basket-card-total-border;
+  @apply justify-between border-b p-4 w-full
+    border-(--c-v-1);
 }
 
 .card-total button {
-  @apply size-full cursor-pointer
-    bg-basket-card-total-btn
-    text-basket-card-total-btn-text;
+  @apply w-full h-12 cursor-pointer
+    bg-(--c-v-1)
+    text-(--c-v-7);
+}
+
+.card-total button:disabled {
+  @apply opacity-50 cursor-not-allowed;
 }
 </style>
