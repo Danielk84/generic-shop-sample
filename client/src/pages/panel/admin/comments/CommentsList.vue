@@ -333,15 +333,15 @@ const deleteMutate = useMutation({
 @reference "@/styles/index.css";
 
 .comments-list-page {
-  @apply w-screen min-h-screen;
+  @apply w-screen min-h-screen p-4 md:p-6;
 }
 
 .comments-list-page .overview {
-  @apply w-60/100 min-h-20 max-h-80/100 overflow-y-auto;
+  @apply w-full max-w-200 min-h-20 max-h-80/100 overflow-y-auto;
 }
 
 .comments-list-page .id-list {
-  @apply w-full text-lg border-b border-(--c-v-15);
+  @apply w-full text-base md:text-lg border-b border-(--c-v-15);
 }
 
 .comments-list-page .intro {
@@ -349,52 +349,52 @@ const deleteMutate = useMutation({
 }
 
 .comments-list-page .content-body {
-  @apply text-sm font-bold text-center w-150 max-h-50
-    overflow-y-scroll overflow-x-scroll;
+  @apply text-sm font-bold text-center w-full max-h-50
+    overflow-y-auto overflow-x-auto;
 }
 
 .comments-list-page .clean-cache {
-  @apply rounded-2xl p-4 text-2xl font-bold
+  @apply rounded-2xl p-3 md:p-4 text-lg md:text-2xl font-bold
     hover:brightness-110 text-(--c-v-1) bg-(--c-v-13);
 }
 
 .comments-list-page .delete-box {
-  @apply w-140 h-90 flex-col p-8;
+  @apply w-full max-w-140 h-90 flex-col p-6 md:p-8;
 }
 
 .comments-list-page .finder {
-  @apply w-full gap-3 p-6 border-b border-(--c-v-15) mb-10;
+  @apply w-full gap-3 p-4 md:p-6 border-b border-(--c-v-15) mb-6 md:mb-10 flex flex-col md:flex-row items-stretch;
 }
 
 .comments-list-page .finder label {
-  @apply font-bold;
+  @apply font-bold text-base md:text-lg;
 }
 
 .comments-list-page .finder input {
-  @apply min-w-0 flex-1 p-2 rounded-lg border-2
+  @apply min-w-0 flex-1 p-2 md:p-3 rounded-lg border-2
     border-(--c-v-1) dark:border-(--c-v-7)
     bg-transparent;
 }
 
 .comments-list-page .finder button {
-  @apply p-2 rounded-lg font-bold cursor-pointer
+  @apply p-2 md:p-3 rounded-lg font-bold cursor-pointer
     bg-(--c-v-8) text-(--c-v-1) disabled:opacity-50;
 }
 
 .comments-list-page .list {
-  @apply w-full h-fit flex-col gap-10;
+  @apply w-full h-fit flex-col gap-6 md:gap-10;
 }
 
 .comments-list-page .item {
-  @apply w-60/100 h-fit flex-col
+  @apply w-full max-w-200 h-fit flex-col
     shadow-[0_1px_3px_0_var(--c-v-10),0_1px_2px_-1px_var(--c-v-10)]
     hover:shadow-[0px_0px_20px_5px_var(--c-v-10)]
     rounded-2xl p-4;
 }
 
 .comments-list-page .base-btn {
-  @apply rounded-2xl w-90 h-13 mt-5
-    hover:brightness-110 text-2xl font-bold
+  @apply rounded-2xl w-full md:w-90 h-12 md:h-13 mt-3 md:mt-5
+    hover:brightness-110 text-base md:text-2xl font-bold
     flex justify-center items-center;
 }
 
@@ -415,6 +415,20 @@ const deleteMutate = useMutation({
 }
 
 .comments-list-page .pagination {
-  @apply w-full py-6;
+  @apply w-full py-4 md:py-6;
+}
+
+@media (max-width: 640px) {
+  .comments-list-page .item > div {
+    @apply text-left;
+  }
+
+  .comments-list-page .c-floating-box {
+    @apply w-full max-w-full m-2;
+  }
+
+  .comments-list-page .c-floating-window {
+    @apply p-4;
+  }
 }
 </style>
