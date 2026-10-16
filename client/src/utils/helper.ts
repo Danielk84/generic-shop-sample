@@ -30,6 +30,7 @@ export function errorStatusHandler(
     } else {
       const notification = useNotificationStore()
       notification.error('Unexpected error happened!?')
+      console.error(err)
     }
     return
   }

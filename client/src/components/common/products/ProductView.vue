@@ -2,12 +2,13 @@
 import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMutation, useQuery } from '@tanstack/vue-query'
+import axios from 'axios'
 
 import api from '@/utils/api'
 import icons from '@/utils/icons'
 import { useStore } from '@/store'
 import { useNotificationStore } from '@/store/notification'
-import { errorStatusHandler } from '@/utils/helper'
+import { errorStatusHandler, setCallbackURL } from '@/utils/helper'
 import { isValidID } from '@/utils/validator'
 import type { ProductProperty } from '@/contracts/products/response.interface'
 import type {
@@ -87,25 +88,46 @@ const addToBasketMutation = useMutation({
     if (product.value === undefined) {
       throw new Error('Product is not loaded')
     }
+
+    // Reuse the open (unpaid) order if the backend already has one, otherwise
+    // it creates a new order. Its id is what the basket page is routed with.
     const order = await api.post<{ order_id: string }>(
       'orders/',
       {},
       { headers: { Authorization: store.getAccessToken } },
     )
-    return api.post(
-      'orders/items/',
-      {
-        order_id: order.data.order_id,
-        product_id: product.value.id,
-        property: selectedProperty.value,
-        price: selectedPrice.value,
-      },
-      { headers: { Authorization: store.getAccessToken } },
-    )
+    const orderId = order.data.order_id
+
+    try {
+      await api.post(
+        'orders/items/',
+        {
+          order_id: orderId,
+          product_id: product.value.id,
+          property: selectedProperty.value,
+          price: selectedPrice.value,
+        },
+        { headers: { Authorization: store.getAccessToken } },
+      )
+    } catch (err) {
+      // The order_items table is keyed by (order, product), so adding a product
+      // that is already in the basket is rejected with a 404. Treat it as
+      // "already added" and still send the user to the basket.
+      if (axios.isAxiosError(err) && err.response?.status === 404) {
+        return { orderId, alreadyAdded: true }
+      }
+      throw err
+    }
+
+    return { orderId, alreadyAdded: false }
   },
   onSuccess(res) {
-    notification.success('Product added to basket.')
-    router.push({ name: 'basket', params: { id: res.data.order_id } })
+    if (res.alreadyAdded) {
+      notification.info('Product is already in your basket.')
+    } else {
+      notification.success('Product added to basket.')
+    }
+    router.push({ name: 'basket', params: { id: res.orderId } })
   },
   onError(err) {
     errorStatusHandler(err, router, {
@@ -114,19 +136,24 @@ const addToBasketMutation = useMutation({
         return
       },
       notFound() {
-        notification.info('Unable to add more.')
+        notification.error('Product is no longer available.')
         return
       },
     })
   },
 })
 
-function addToBasket() {
+async function addToBasket() {
   if (!store.hasAccessToken) {
-    router.push({ name: 'auth' })
+    // Keep the current product in the callback url so the user returns here
+    // after logging in and can retry adding the product.
+    router.push({
+      name: 'auth',
+      query: { callback_url: setCallbackURL(route.fullPath) },
+    })
     return
   }
-  addToBasketMutation.mutate()
+  await addToBasketMutation.mutateAsync()
 }
 </script>
 
@@ -138,7 +165,7 @@ function addToBasket() {
       </section>
       <section class="info">
         <h1>{{ product.name }}</h1>
-        <p class="price">{{ product.price }}</p>
+        <p class="price">{{ selectedPrice }}</p>
         <div class="meta-box">
           <p class="meta">Published: {{ product.pub_date }}</p>
           <p class="meta">Views: {{ product.view_counter }}</p>
@@ -166,7 +193,11 @@ function addToBasket() {
             fill-dark-color="--c-v-7"
           />
           <span>
-            {{ addToBasketMutation.isPending ? 'Adding...' : 'Add to basket' }}
+            {{
+              addToBasketMutation.isPending.value
+                ? 'Adding...'
+                : 'Add to basket'
+            }}
           </span>
         </button>
       </section>
