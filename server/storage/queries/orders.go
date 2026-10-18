@@ -70,7 +70,7 @@ func (o *orderRepository) Create(ctx context.Context, userID string) (item strin
 	// this query check, if there is not ended order (not paid), return existed id
 	// instead of creating new one.
 	const q = `WITH matched AS (
-			SELECT id FROM order_s.orders 
+			SELECT id FROM order_s.orders
 			WHERE user_id = $1::UUID AND is_paid = FALSE
 			LIMIT 1
 		),

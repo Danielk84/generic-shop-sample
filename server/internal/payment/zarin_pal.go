@@ -21,8 +21,8 @@ type ZPGatewayStatus struct {
 }
 
 type ZPReqMetadata struct {
-	Mobile  string `json:"mobile"`
-	Email   string `json:"email"`
+	Mobile  string `json:"mobile,omitempty"`
+	Email   string `json:"email,omitempty"`
 	OrderID string `json:"order_id"`
 }
 

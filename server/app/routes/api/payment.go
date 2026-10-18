@@ -43,9 +43,12 @@ func PaymentRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 		RequestLimit: deps.Config.APIRateLimiter.PaymentRT,
 		TTL:          deps.Config.APIRateLimiter.PaymentTTL,
 	})
-	router.Use(rateLimiter)
+	router.Use(
+		md.AuthMiddleware(deps, log),
+		rateLimiter,
+	)
 	router.GET("/callback", ph.callback)
-	router.POST("/:id", md.AuthMiddleware(deps, log), ph.init)
+	router.POST("/:id", ph.init)
 }
 
 type UserPayment struct {
@@ -81,8 +84,11 @@ func (h *paymentHandler) init(c *gin.Context) {
 		NotFound(c, "Order not found")
 		return
 	}
-	if !order.IsConfirmed {
-		Forbidden(c, "Unconfirmed order")
+	if !order.IsVerified {
+		h.log.Debug("not verified user order",
+			"user_id", claims.ID,
+			"order", order)
+		Forbidden(c, "UnVerified order")
 		return
 	}
 	user, err := h.userStore.Get(ctx, claims.ID)
@@ -108,7 +114,7 @@ func (h *paymentHandler) init(c *gin.Context) {
 	})
 	if err != nil {
 		h.log.Error("failed to init payment gateway", "error", err)
-		Forbidden(c, "")
+		InternalServerError(c, "")
 		return
 	}
 	if len(init.Errs) > 0 || init.Data.Code != 100 {
@@ -132,10 +138,15 @@ func (h *paymentHandler) init(c *gin.Context) {
 	}
 
 	gatewayURL := fmt.Sprintf("%s/pg/StartPay/%s", h.zpGateway.Addr, init.Data.Authority)
-	c.Redirect(http.StatusMovedPermanently, gatewayURL)
+	c.JSON(http.StatusOK, gin.H{"payment_url": gatewayURL})
 }
 
 func (h *paymentHandler) callback(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if HasPermissions(nil, claims.PermissionType, queries.BlockUser) {
+		Forbidden(c, "")
+		return
+	}
 	var input payment.ZPGatewayStatus
 	if err := c.ShouldBindQuery(&input); err != nil {
 		h.log.Debug("paymentHandler.callback", "error", err)

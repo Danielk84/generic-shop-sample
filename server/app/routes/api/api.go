@@ -94,6 +94,10 @@ func Unprocessable(c *gin.Context, msg string) {
 	JSONResponse(c, http.StatusUnprocessableEntity, msg, "Failed to process entity")
 }
 
+func InternalServerError(c *gin.Context, msg string) {
+	JSONResponse(c, http.StatusInternalServerError, msg, "Internal Server Error, comeback later!")
+}
+
 func HasPermissions(c *gin.Context, userPermission queries.PermissionType, permissions ...queries.PermissionType) bool {
 	isContains := slices.Contains(permissions, userPermission)
 	if !isContains && c != nil {
