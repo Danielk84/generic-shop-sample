@@ -1,7 +1,7 @@
 import type {
   ProductProperty,
   ProductVendor,
-} from '../products/response.interface'
+} from '@/contracts/products/response.interface'
 
 export interface OrderID {
   id: string
