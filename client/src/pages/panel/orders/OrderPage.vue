@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, defineAsyncComponent } from 'vue'
+import { ref, watch, defineAsyncComponent, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useQuery, useMutation } from '@tanstack/vue-query'
 
@@ -16,6 +16,10 @@ import {
 
 const PaymentPage = defineAsyncComponent(
   () => import('@/pages/panel/orders/PaymentPage.vue'),
+)
+
+const OrderListView = defineAsyncComponent(
+  () => import('@/components/common/orders/OrderListView.vue'),
 )
 
 const store = useStore()
@@ -49,6 +53,44 @@ const getOrderQuery = useQuery({
 watch(getOrderQuery.error, (err) => {
   if (err != undefined) {
     errorStatusHandler(err, router)
+  }
+})
+
+const isEditable = computed(
+  () =>
+    !(
+      getOrderQuery.data.value?.is_paid ||
+      getOrderQuery.data.value?.is_confirmed
+    ),
+)
+
+const hasItems = computed(
+  () =>
+    Number(getOrderQuery.data.value?.total_bill) > 0 &&
+    Number(getOrderQuery.data.value?.items_total) > 0,
+)
+
+const isPayable = computed(() => isEditable.value && hasItems.value)
+
+const getOrderItemsQuery = useQuery({
+  queryKey: ['user-order-items-history', order_id],
+  enabled: computed(() => hasItems.value),
+  queryFn: async () =>
+    api.get(``, {
+      headers: {
+        Authorization: store.hasAccessToken,
+      },
+    }),
+})
+
+watch(getOrderItemsQuery.error, (err) => {
+  if (err != null) {
+    errorStatusHandler(err, router, {
+      notFound() {
+        // empty block
+        return
+      },
+    })
   }
 })
 
@@ -187,16 +229,20 @@ async function saveVerify() {
           Confirmed
         </div>
       </div>
-      <div class="w-full c-flex-all-center">
+      <div v-if="isEditable" class="w-full c-flex-all-center">
         <button class="edit-btn" @click="isEditBoxOpen = true">Edit</button>
       </div>
     </section>
     <button
+      v-if="isPayable"
       class="c-flex-all-center text-2xl bg-(--c-v-14) text-(--c-v-1) px-10 py-4 cursor-pointer rounded-2xl"
       @click="isPayBoxOpen = true"
     >
       Next
     </button>
+    <section class="w-full">
+      <OrderListView :orderID="order_id" target="customer" />
+    </section>
     <section v-if="isEditBoxOpen" class="c-floating-window c-flex-all-center">
       <div class="c-floating-box c-form-bg">
         <div class="w-full p-2">
@@ -256,7 +302,12 @@ async function saveVerify() {
           <li>Zip Code: {{ getOrderQuery.data.value?.zip_code }}</li>
         </ul>
         <div class="flex flex-wrap justify-between w-full gap-4">
-          <button @click="saveVerify" class="base-btn verify-btn">
+          <button
+            type="button"
+            @click="saveVerify"
+            :disabled="verifyUserInfoMutation.isPending.value"
+            class="base-btn verify-btn"
+          >
             Verify
           </button>
           <button
@@ -281,7 +332,7 @@ async function saveVerify() {
 @reference "@/styles/index.css";
 
 .order-page {
-  @apply w-screen min-h-screen flex-col p-4;
+  @apply w-full min-h-screen flex-col p-4;
 }
 
 .order-page .order-info {

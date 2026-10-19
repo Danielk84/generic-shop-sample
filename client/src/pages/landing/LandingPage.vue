@@ -42,7 +42,7 @@ const PopularProducts = defineAsyncComponent(
 @reference "@/styles/index.css";
 
 .landing-page {
-  @apply w-screen min-h-screen relative -top-25
+  @apply w-full min-h-screen relative -top-25
     bg-radial
     from-(--c-v-3) from-0%
     to-(--c-v-1) to-100%;

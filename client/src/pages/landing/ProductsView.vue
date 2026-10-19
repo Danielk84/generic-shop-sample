@@ -182,7 +182,7 @@ const goForward = useTimer(() => {
 }
 
 .products-view .label {
-  @apply gap-3 md:gap-5 flex flex-row items-center justify-between;
+  @apply gap-3 md:gap-5 flex flex-row items-center justify-between flex-wrap;
 }
 
 .label > h2 {

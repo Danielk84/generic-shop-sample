@@ -8,6 +8,7 @@ const icon = {
       profile: 'common/nav-bar/ProfileIcon.vue',
       shoppingBag: 'common/nav-bar/ShoppingBagIcon.vue',
       dropdown: 'common/nav-bar/DropdownIcon.vue',
+      menu: 'common/nav-bar/MenuIcon.vue',
     },
     footer: {
       send: 'common/footer/SendIcon.vue',
@@ -58,6 +59,11 @@ const icon = {
       products: {
         upload: 'pages/panel/products/UploadIcon.vue',
         save: 'pages/panel/products/SaveIcon.vue',
+      },
+      orders: {
+        inProcess: 'pages/panel/orders/InProcessIcon.vue',
+        verified: 'pages/panel/orders/VerifiedIcon.vue',
+        notVerified: 'pages/panel/orders/NotVerifiedIcon.vue',
       },
     },
   },
