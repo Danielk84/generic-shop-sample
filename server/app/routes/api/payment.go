@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"generic-shop-sample/app"
+	"generic-shop-sample/app/background"
 	md "generic-shop-sample/app/middlewares"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/internal/payment"
@@ -25,19 +26,21 @@ func PaymentRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 
 	session := deps.DB.GetSession()
 	log := logger.GetLogger()
-	cache := deps.Cache.GetCache(cache.PaymentCache)
+	paymentCache := deps.Cache.GetCache(cache.PaymentCache)
+	orderCache := deps.Cache.GetCache(cache.OrdersCache)
 	ph := paymentHandler{
-		cache:       cache,
-		userStore:   queries.NewUserStore(session, log),
-		orderStore:  queries.NewOrderStore(session, log),
-		zpGateway:   payment.NewZarinPalGateway(addr, &http.Client{Timeout: 10 * time.Second}),
-		merchandID:  deps.Config.Payment.ZPMerchantID,
-		callbackURL: deps.Config.Payment.PaymentCallbackURL,
-		log:         log,
+		paymentCache: paymentCache,
+		orderCache:   orderCache,
+		userStore:    queries.NewUserStore(session, log),
+		orderStore:   queries.NewOrderStore(session, log),
+		zpGateway:    payment.NewZarinPalGateway(addr, &http.Client{Timeout: 10 * time.Second}),
+		merchandID:   deps.Config.Payment.ZPMerchantID,
+		callbackURL:  deps.Config.Payment.PaymentCallbackURL,
+		log:          log,
 	}
 
 	rateLimiter := md.NewRateLimiter(deps.Ctx, md.RateLimiter{
-		Cache:        cache,
+		Cache:        paymentCache,
 		Log:          log,
 		Scope:        "payment",
 		RequestLimit: deps.Config.APIRateLimiter.PaymentRT,
@@ -58,13 +61,14 @@ type UserPayment struct {
 }
 
 type paymentHandler struct {
-	cache       cache.CacheClient
-	userStore   queries.UserStore
-	orderStore  queries.OrderStore
-	zpGateway   payment.ZPGateway
-	merchandID  string
-	callbackURL string
-	log         logger.Logger
+	paymentCache cache.CacheClient
+	orderCache   cache.CacheClient
+	userStore    queries.UserStore
+	orderStore   queries.OrderStore
+	zpGateway    payment.ZPGateway
+	merchandID   string
+	callbackURL  string
+	log          logger.Logger
 }
 
 func (h *paymentHandler) init(c *gin.Context) {
@@ -84,8 +88,8 @@ func (h *paymentHandler) init(c *gin.Context) {
 		NotFound(c, "Order not found")
 		return
 	}
-	if !order.IsVerified {
-		h.log.Debug("not verified user order",
+	if !order.IsVerified && order.ItemsTotal <= 0 {
+		h.log.Debug("not verified or empty user order",
 			"user_id", claims.ID,
 			"order", order)
 		Forbidden(c, "UnVerified order")
@@ -129,7 +133,7 @@ func (h *paymentHandler) init(c *gin.Context) {
 		Unprocessable(c, "")
 		return
 	}
-	if _, err := h.cache.Set(ctx, init.Data.Authority, output, 30*time.Minute).Result(); err != nil {
+	if _, err := h.paymentCache.Set(ctx, init.Data.Authority, output, 30*time.Minute).Result(); err != nil {
 		h.log.Error("failed to cache paymeny authority",
 			"user_id", user.ID,
 			"error", err)
@@ -160,7 +164,7 @@ func (h *paymentHandler) callback(c *gin.Context) {
 
 	ctx := c.Request.Context()
 	reverse := payment.ZPReverseRequest{MerchantID: h.merchandID, Authority: input.Authority}
-	data, err := h.cache.Get(ctx, input.Authority).Result()
+	data, err := h.paymentCache.Get(ctx, input.Authority).Result()
 	if err != nil {
 		h.reverseWithLog(ctx, "failed to get payment authority related data", err, reverse)
 		BadRequest(c, "Invliad authority")
@@ -197,7 +201,7 @@ func (h *paymentHandler) callback(c *gin.Context) {
 	if slices.Contains([]int{100, 101}, verfiedPayment.Data.Code) {
 		status.IsPaid = true
 	}
-	err = h.orderStore.SetPaymentStatus(c.Request.Context(), queries.OrderID{
+	err = h.orderStore.SetPaymentStatus(ctx, queries.OrderID{
 		ID:     up.OrderID,
 		UserID: up.UserID,
 	}, status)
@@ -205,6 +209,13 @@ func (h *paymentHandler) callback(c *gin.Context) {
 		h.reverseWithLog(ctx, "failed to set payment summary", err, reverse)
 		NotFound(c, "Order not found")
 		return
+	}
+	err = background.SendOrderDone(ctx, h.orderCache, queries.OrderID{
+		ID:     up.OrderID,
+		UserID: up.UserID,
+	})
+	if err != nil {
+		h.log.Warn("failed to send order done event", "error", err)
 	}
 	Accepted(c, "")
 }

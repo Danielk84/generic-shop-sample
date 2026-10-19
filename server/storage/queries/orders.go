@@ -167,7 +167,7 @@ func (o *orderRepository) Get(ctx context.Context, id OrderID) (item OrderRespon
 func (o *orderRepository) SetUserInfo(ctx context.Context, id OrderID, info OrderUserInfo) (err error) {
 	const q = `UPDATE order_s.orders
 		SET address = @Address, zip_code = @ZipCode, is_verified = FALSE
-		WHERE id = @ID::UUID AND user_id = @UserID::UUID`
+		WHERE id = @ID::UUID AND user_id = @UserID::UUID AND is_paid = FALSE AND is_confirmed = FALSE`
 	args := pgx.NamedArgs{
 		"Address": info.Address,
 		"ZipCode": info.ZipCode,
@@ -183,7 +183,7 @@ func (o *orderRepository) SetUserInfo(ctx context.Context, id OrderID, info Orde
 func (o *orderRepository) VerifyUserInfo(ctx context.Context, id OrderID, isVerified bool) (err error) {
 	const q = `UPDATE order_s.orders
 		SET is_verified = @IsVerified
-		WHERE id = @ID::UUID AND user_id = @UserID::UUID`
+		WHERE id = @ID::UUID AND user_id = @UserID::UUID AND is_paid = FALSE AND is_confirmed = FALSE`
 	args := pgx.NamedArgs{
 		"IsVerified": isVerified,
 		"ID":         id.ID,
@@ -301,7 +301,7 @@ func (o *orderItemsRepository) Create(ctx context.Context, userID string, item O
 	const q = `WITH is_owned_order AS (
 		SELECT id
 		FROM order_s.orders
-		WHERE id = @OrderID::UUID AND user_id = @UserID::UUID AND is_paid = FALSE
+		WHERE id = @OrderID::UUID AND user_id = @UserID::UUID AND is_paid = FALSE AND is_confirmed = FALSE
 		LIMIT 1
 	)
 	INSERT INTO order_s.order_items(user_id, order_id, product_id, price, property)
@@ -320,8 +320,11 @@ func (o *orderItemsRepository) Create(ctx context.Context, userID string, item O
 	return
 }
 
-func (o *orderItemsRepository) CustomerList(ctx context.Context,
-	id OrderID, pagination, page int) (items []OwnedOrderItemResponse, err error) {
+func (o *orderItemsRepository) CustomerList(
+	ctx context.Context,
+	id OrderID,
+	pagination, page int,
+) (items []OwnedOrderItemResponse, err error) {
 	const q = `SELECT
 			o.order_id, o.product_id, o.items_total,
 			o.processed_items, o.price, p.name,
@@ -359,8 +362,11 @@ func (o *orderItemsRepository) MaxCustomerListPage(id OrderID) MaxPageType {
 	}
 }
 
-func (o *orderItemsRepository) AdminList(ctx context.Context,
-	orderID string, pagination, page int) (items []OwnedOrderItemResponse, err error) {
+func (o *orderItemsRepository) AdminList(
+	ctx context.Context,
+	orderID string,
+	pagination, page int,
+) (items []OwnedOrderItemResponse, err error) {
 	const q = `SELECT
 			order_id, product_id, items_total,
 			processed_items, price, '' as name,
@@ -396,11 +402,11 @@ func (o *orderItemsRepository) MaxAdminListPage(orderID string) MaxPageType {
 }
 
 func (o *orderItemsRepository) DailySales(ctx context.Context, pagination, page int) (items []DailySalesResponse, err error) {
-	const q = `SELECT o.started_at AS date, COUNT(*) AS count
+	const q = `SELECT (o.started_at::DATE)::TEXT AS date, COUNT(*) AS count
 		FROM order_s.order_items AS i
 		LEFT JOIN order_s.orders AS o ON o.id = i.order_id
-		GROUP BY o.started_at
-		ORDER BY o.started_at DESC
+		GROUP BY 1
+		ORDER BY 1 DESC
 		LIMIT $1
 		OFFSET $2`
 	items, err = list[DailySalesResponse](ctx, o.session, q, pagination, getOffsetFromPageNum(pagination, page))
@@ -433,8 +439,20 @@ func (o *orderItemsRepository) FullList(ctx context.Context,
 }
 
 func (o *orderItemsRepository) Delete(ctx context.Context, id OrderItemID) (err error) {
-	const q = `DELETE FROM order_s.order_items
-		WHERE order_id = @OrderID::UUID AND product_id = @ProductID::UUID AND user_id = @UserID::UUID`
+	const q = `DELETE FROM order_s.order_items AS ot
+		WHERE
+			ot.order_id = @OrderID::UUID AND
+			ot.product_id = @ProductID::UUID AND
+			ot.user_id = @UserID::UUID AND
+			EXISTS(
+				SELECT 1
+				FROM order_s.orders AS o
+				WHERE
+					o.id = ot.order_id AND
+					o.is_paid = FALSE AND
+					o.is_confirmed = FALSE
+				LIMIT 1
+			)`
 	args := pgx.NamedArgs{
 		"OrderID":   id.OrderID,
 		"ProductID": id.ProductID,
@@ -447,9 +465,21 @@ func (o *orderItemsRepository) Delete(ctx context.Context, id OrderItemID) (err 
 }
 
 func (o *orderItemsRepository) SetItemsTotal(ctx context.Context, id OrderItemID, itemsTotal int32) (err error) {
-	const q = `UPDATE order_s.order_items
+	const q = `UPDATE order_s.order_items AS ot
 		SET items_total = @ItemsTotal
-		WHERE order_id = @OrderID::UUID AND product_id = @ProductID::UUID AND user_id = @UserID::UUID`
+		WHERE
+			ot.order_id = @OrderID::UUID AND
+			ot.product_id = @ProductID::UUID AND
+			ot.user_id = @UserID::UUID AND
+			EXISTS (
+				SELECT 1
+				FROM order_s.orders AS o
+				WHERE
+					o.id = ot.order_id AND
+					o.is_paid = FALSE AND
+					o.is_confirmed = FALSE
+				LIMIT 1
+			)`
 	args := pgx.NamedArgs{
 		"OrderID":    id.OrderID,
 		"ProductID":  id.ProductID,

@@ -1,8 +1,6 @@
 package api
 
 import (
-	"context"
-	"fmt"
 	"generic-shop-sample/app"
 	md "generic-shop-sample/app/middlewares"
 	"generic-shop-sample/internal/logger"
@@ -67,18 +65,7 @@ func (h *orderHandler) customerList(c *gin.Context) {
 
 	ctx := c.Request.Context()
 	page := GetPage(c)
-	cacheKey := fmt.Sprintf("%s:customerList:%d", h.baseCacheKey, page)
-
-	output, err := JsonCache(JsonCacheInput[[]queries.OrderSummaryResponse]{
-		Ctx:        ctx,
-		CacheKey:   cacheKey,
-		Client:     h.cache,
-		Expiration: h.cacheExpiration,
-		Log:        h.log,
-		Fn: func(sCtx context.Context) ([]queries.OrderSummaryResponse, error) {
-			return h.store.CustomerList(sCtx, claims.ID, h.pagination, page)
-		},
-	})
+	output, err := h.store.CustomerList(ctx, claims.ID, h.pagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -103,19 +90,9 @@ func (h *orderHandler) get(c *gin.Context) {
 
 	ctx := c.Request.Context()
 	id := c.Param("id")
-	cacheKey := fmt.Sprintf("%s:get:%s", h.baseCacheKey, id)
-	output, err := JsonCache(JsonCacheInput[queries.OrderResponse]{
-		Ctx:        ctx,
-		CacheKey:   cacheKey,
-		Client:     h.cache,
-		Expiration: h.cacheExpiration,
-		Log:        h.log,
-		Fn: func(sCtx context.Context) (queries.OrderResponse, error) {
-			return h.store.Get(sCtx, queries.OrderID{
-				ID:     id,
-				UserID: claims.ID,
-			})
-		},
+	output, err := h.store.Get(ctx, queries.OrderID{
+		ID:     id,
+		UserID: claims.ID,
 	})
 	if err != nil {
 		NotFound(c, "")
@@ -178,8 +155,9 @@ func (h *orderHandler) verifyUserInfo(c *gin.Context) {
 
 func OrderItemsRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
+	session := deps.DB.GetSession()
 	h := orderItemsHandler{
-		store:           queries.NewOrderItemsStore(deps.DB.GetSession(), log),
+		orderItemsStore: queries.NewOrderItemsStore(session, log),
 		log:             log,
 		baseCacheKey:    "order-items",
 		cacheExpiration: 1 * time.Hour,
@@ -201,7 +179,7 @@ type ItemsTotal struct {
 }
 
 type orderItemsHandler struct {
-	store           queries.OrderItemsStore
+	orderItemsStore queries.OrderItemsStore
 	log             logger.Logger
 	baseCacheKey    string
 	cacheExpiration time.Duration
@@ -222,7 +200,7 @@ func (h *orderItemsHandler) create(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	if err := h.store.Create(c.Request.Context(), claims.ID, input); err != nil {
+	if err := h.orderItemsStore.Create(c.Request.Context(), claims.ID, input); err != nil {
 		NotFound(c, "")
 		return
 	}
@@ -239,7 +217,7 @@ func (h *orderItemsHandler) customerList(c *gin.Context) {
 	id := c.Param("id")
 	page := GetPage(c)
 	ctx := c.Request.Context()
-	output, err := h.store.CustomerList(ctx, queries.OrderID{
+	output, err := h.orderItemsStore.CustomerList(ctx, queries.OrderID{
 		ID:     id,
 		UserID: claims.ID,
 	}, h.pagination, page)
@@ -247,7 +225,7 @@ func (h *orderItemsHandler) customerList(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
-	count, err := h.store.MaxCustomerListPage(queries.OrderID{
+	count, err := h.orderItemsStore.MaxCustomerListPage(queries.OrderID{
 		ID:     id,
 		UserID: claims.ID,
 	})(ctx, h.pagination)
@@ -267,18 +245,7 @@ func (h *orderItemsHandler) adminList(c *gin.Context) {
 	id := c.Param("id")
 	ctx := c.Request.Context()
 	page := GetPage(c)
-	cacheKey := fmt.Sprintf("%s:adminList:%d", h.baseCacheKey, page)
-
-	output, err := JsonCache(JsonCacheInput[[]queries.OwnedOrderItemResponse]{
-		Ctx:        ctx,
-		CacheKey:   cacheKey,
-		Client:     h.cache,
-		Expiration: h.cacheExpiration,
-		Log:        h.log,
-		Fn: func(sCtx context.Context) ([]queries.OwnedOrderItemResponse, error) {
-			return h.store.AdminList(sCtx, id, h.pagination, page)
-		},
-	})
+	output, err := h.orderItemsStore.AdminList(ctx, id, h.pagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -289,7 +256,7 @@ func (h *orderItemsHandler) adminList(c *gin.Context) {
 		client:     h.cache,
 		name:       "orderItems-adminList",
 		pagination: h.pagination,
-		getMaxPage: h.store.MaxAdminListPage(id),
+		getMaxPage: h.orderItemsStore.MaxAdminListPage(id),
 	})
 
 	c.JSON(http.StatusOK, output)
@@ -303,18 +270,7 @@ func (h *orderItemsHandler) dailySales(c *gin.Context) {
 
 	page := GetPage(c)
 	ctx := c.Request.Context()
-	cacheKey := fmt.Sprintf("%s:dailySales:%d", h.baseCacheKey, page)
-
-	output, err := JsonCache(JsonCacheInput[[]queries.DailySalesResponse]{
-		Ctx:        ctx,
-		CacheKey:   cacheKey,
-		Client:     h.cache,
-		Expiration: h.cacheExpiration,
-		Log:        h.log,
-		Fn: func(sCtx context.Context) ([]queries.DailySalesResponse, error) {
-			return h.store.DailySales(sCtx, h.pagination, page)
-		},
-	})
+	output, err := h.orderItemsStore.DailySales(ctx, h.pagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -336,7 +292,7 @@ func (h *orderItemsHandler) delete(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	err := h.store.Delete(c.Request.Context(), queries.OrderItemID{
+	err := h.orderItemsStore.Delete(c.Request.Context(), queries.OrderItemID{
 		OrderItem: input,
 		UserID:    claims.ID,
 	})
@@ -366,7 +322,8 @@ func (h *orderItemsHandler) setItemsTotal(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	err := h.store.SetItemsTotal(c.Request.Context(), queries.OrderItemID{
+	ctx := c.Request.Context()
+	err := h.orderItemsStore.SetItemsTotal(ctx, queries.OrderItemID{
 		OrderItem: input,
 		UserID:    claims.ID,
 	}, url.Total)
