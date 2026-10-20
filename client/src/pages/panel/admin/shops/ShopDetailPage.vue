@@ -18,10 +18,7 @@ const store = useStore()
 
 const shopId = computed(() => (route.params.id as string) ?? '')
 
-const {
-  data,
-  error,
-} = useQuery({
+const { data, error } = useQuery({
   queryKey: computed(() => ['shop-detail', shopId.value]),
   queryFn: async () =>
     api.get<ShopInfoResponse>(`users/shop/${shopId.value}`, {
@@ -97,7 +94,10 @@ watch(
       </div>
     </div>
 
-    <div v-if="data?.img_path !== undefined && data?.img_path !== ''" class="card c-flex-all-center">
+    <div
+      v-if="data?.img_path !== undefined && data?.img_path !== ''"
+      class="card c-flex-all-center"
+    >
       <h2 class="w-full">Shop Image</h2>
       <div class="size-50 sm:size-100">
         <ImageFrameCard :img="data?.img_path" :alt="data?.brand" />

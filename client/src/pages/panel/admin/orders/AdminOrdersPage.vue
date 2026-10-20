@@ -6,9 +6,7 @@ import { useQuery } from '@tanstack/vue-query'
 import api from '@/utils/api'
 import { useStore } from '@/store'
 import { errorStatusHandler } from '@/utils/helper'
-import type {
-  DailySalesResponse,
-} from '@/contracts/orders/response.interface'
+import type { DailySalesResponse } from '@/contracts/orders/response.interface'
 
 const OrderListView = defineAsyncComponent(
   () => import('@/components/common/orders/OrderListView.vue'),
@@ -78,12 +76,12 @@ function findItems() {
       <form class="finder" @submit.prevent="findItems">
         <label for="order-id">Order ID</label>
         <div class="search">
-        <input
-          class="c-clean-input"
-          v-model="orderId"
-          type="text"
-          placeholder="Enter order UUID"
-        />
+          <input
+            class="c-clean-input"
+            v-model="orderId"
+            type="text"
+            placeholder="Enter order UUID"
+          />
         </div>
         <button type="submit">Find items</button>
       </form>
