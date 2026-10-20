@@ -143,8 +143,6 @@ async function onClick(event: MouseEvent) {
     mutation.mutate(input.data)
   }
 }
-
-window.scroll(0, 0)
 </script>
 
 <template>

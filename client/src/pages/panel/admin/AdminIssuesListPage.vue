@@ -252,7 +252,7 @@ async function saveResponse() {
 @reference "@/styles/index.css";
 
 .issues-list-page {
-  @apply w-screen min-h-screen flex items-center flex-col;
+  @apply w-full min-h-screen flex items-center flex-col;
 }
 
 .issues-empty-list {

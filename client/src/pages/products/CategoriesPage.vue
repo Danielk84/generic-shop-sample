@@ -12,7 +12,7 @@ const router = useRouter()
 </script>
 
 <template>
-  <div class="w-screen h-screen">
+  <div class="w-full h-screen">
     <CategoriesView
       @tag-handler="
         (category: Category) => {

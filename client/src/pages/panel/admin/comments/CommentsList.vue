@@ -333,7 +333,7 @@ const deleteMutate = useMutation({
 @reference "@/styles/index.css";
 
 .comments-list-page {
-  @apply w-screen min-h-screen p-4 md:p-6;
+  @apply w-full min-h-screen p-4 md:p-6;
 }
 
 .comments-list-page .overview {

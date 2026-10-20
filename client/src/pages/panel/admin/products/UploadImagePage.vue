@@ -118,8 +118,6 @@ const onChange = async (event: Event) => {
   }
   await mutateAsync(file)
 }
-
-window.scroll(0, 0)
 </script>
 
 <template>

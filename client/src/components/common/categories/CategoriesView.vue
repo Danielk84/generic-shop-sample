@@ -46,7 +46,6 @@ defineExpose({
 const tagHandler = (category: Category) => {
   emits('tagHandler', category)
 }
-window.scroll(0, 0)
 </script>
 
 <template>

@@ -26,7 +26,7 @@ const BaseIcon = defineAsyncComponent(
 @reference "@/styles/index.css";
 
 .loading-page {
-  @apply w-screen h-screen backdrop-blur-xl
+  @apply w-full h-screen backdrop-blur-xl
     absolute inset-0 z-70
     text-base md:text-xl font-bold
     gap-4 md:gap-5 flex-col

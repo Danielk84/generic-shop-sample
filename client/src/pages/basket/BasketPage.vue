@@ -273,7 +273,7 @@ function handleProcessOrder() {
 @reference "@/styles/index.css";
 
 .basket-page {
-  @apply w-full min-h-150 p-4 md:p-10
+  @apply w-full min-h-screen p-4 md:p-10
     flex flex-col items-center gap-6 md:gap-10;
 }
 </style>
