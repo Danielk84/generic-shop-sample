@@ -18,6 +18,11 @@ const router = createRouter({
           component: () => import('@/pages/landing/LandingPage.vue'),
         },
         {
+          path: '/categories',
+          name: 'categories',
+          component: () => import('@/pages/products/CategoriesPage.vue'),
+        },
+        {
           path: '/400',
           name: 'error-bad-request',
           component: () => import('@/pages/error/BadRequestPage.vue'),
@@ -36,6 +41,11 @@ const router = createRouter({
           path: '/404',
           name: 'error-not-found',
           component: () => import('@/pages/error/NotFoundPage.vue'),
+        },
+        {
+          path: '/406',
+          name: 'error-not-acceptable',
+          component: () => import('@/pages/error/NotAcceptablePage.vue'),
         },
         {
           path: '/413',
@@ -61,6 +71,9 @@ const router = createRouter({
     },
     {
       path: '/products',
+      meta: {
+        layout_0: 'FooterBlockLayout',
+      },
       children: [
         {
           path: '/products/',
@@ -68,17 +81,27 @@ const router = createRouter({
           component: () => import('@/pages/products/ProductsListPage.vue'),
         },
         {
-          path: '/products/:id',
+          path: '/products/popular',
+          name: 'products-popular',
+          component: () => import('@/pages/products/ProductsListPage.vue'),
+        },
+        {
+          path: '/products/:productID',
           name: 'product',
-          component: () => import('@/pages/products/ProductPage.vue'),
+          component: () =>
+            import('@/components/common/products/ProductView.vue'),
+          props: {
+            queryKey: 'public-product',
+            queryPath: '/products',
+          },
         },
       ],
     },
     {
       path: '/basket',
       meta: {
-        layer_0: 'BaseFooterLayout',
-        layer_1: 'HasAccessTokenLayout',
+        layout_0: 'BaseFooterLayout',
+        layout_1: 'HasAccessTokenLayout',
       },
       children: [
         {
@@ -112,12 +135,70 @@ const router = createRouter({
       ],
     },
     {
+      path: '/orders',
+      meta: {
+        layout_0: 'BaseFooterLayout',
+        layout_1: 'HasAccessTokenLayout',
+      },
+      children: [
+        {
+          path: '/orders/',
+          name: 'orders-list',
+          component: () => import('@/pages/panel/orders/OrdersListPage.vue'),
+        },
+        {
+          path: '/orders/:id',
+          name: 'order-detail',
+          component: () => import('@/pages/panel/orders/OrderPage.vue'),
+        },
+        {
+          path: '/orders/verify-payment',
+          name: 'user-verify-payment',
+          component: () => import('@/pages/panel/orders/VerifyPaymentPage.vue'),
+        },
+      ],
+    },
+    {
+      path: '/account',
+      meta: {
+        layout_0: 'BaseFooterLayout',
+        layout_1: 'HasAccessTokenLayout',
+      },
+      children: [
+        {
+          path: '/account/',
+          name: 'account',
+          component: () => import('@/pages/account/AccountPage.vue'),
+        },
+      ],
+    },
+    {
       path: '/panel',
       meta: {
         layout_0: 'BaseFooterLayout',
         layout_1: 'HasAccessTokenLayout',
       },
       children: [
+        {
+          path: '/panel/vendors',
+          name: 'vendor-orders',
+          meta: {
+            permissions_list: [PermissionType.Admin, PermissionType.Vendor],
+          },
+          component: () => import('@/pages/panel/vendors/VendorOrdersPage.vue'),
+        },
+        {
+          path: '/panel/issues',
+          name: 'issues-list',
+          meta: {
+            permissions_list: [
+              PermissionType.Customer,
+              PermissionType.Vendor,
+              PermissionType.Admin,
+            ],
+          },
+          component: () => import('@/pages/panel/issues/IssuesListPage.vue'),
+        },
         {
           path: '/panel/admin',
           meta: {
@@ -128,6 +209,18 @@ const router = createRouter({
               path: '/panel/admin/',
               name: 'admin',
               component: () => import('@/pages/panel/admin/AdminPage.vue'),
+            },
+            {
+              path: '/panel/admin/orders',
+              name: 'admin-orders',
+              component: () =>
+                import('@/pages/panel/admin/orders/AdminOrdersPage.vue'),
+            },
+            {
+              path: '/panel/admin/issues',
+              name: 'admin-issues',
+              component: () =>
+                import('@/pages/panel/admin/AdminIssuesListPage.vue'),
             },
             {
               path: '/panel/admin/users',
@@ -183,7 +276,11 @@ const router = createRouter({
                   path: '/panel/admin/products/overview/:productID',
                   name: 'admin-product-overview',
                   component: () =>
-                    import('@/pages/panel/admin/products/OverviewPage.vue'),
+                    import('@/components/common/products/ProductView.vue'),
+                  props: {
+                    queryKey: 'admin-overview-product',
+                    queryPath: 'products/overview',
+                  },
                 },
               ],
             },
@@ -195,6 +292,23 @@ const router = createRouter({
                   name: 'admin-comments-list',
                   component: () =>
                     import('@/pages/panel/admin/comments/CommentsList.vue'),
+                },
+              ],
+            },
+            {
+              path: '/panel/admin/shops',
+              children: [
+                {
+                  path: '/panel/admin/shops',
+                  name: 'admin-shops-list',
+                  component: () =>
+                    import('@/pages/panel/admin/shops/ShopsListPage.vue'),
+                },
+                {
+                  path: '/panel/admin/shops/:id',
+                  name: 'admin-shops-detail',
+                  component: () =>
+                    import('@/pages/panel/admin/shops/ShopDetailPage.vue'),
                 },
               ],
             },
@@ -212,7 +326,7 @@ const router = createRouter({
 })
 
 router.onError((error) => {
-  console.log(error)
+  console.error(error)
 })
 
 router.beforeEach((to) => {
