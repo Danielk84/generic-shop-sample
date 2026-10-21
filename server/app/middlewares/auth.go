@@ -41,11 +41,10 @@ func AuthMiddleware(deps *app.ServiceDeps, log logger.Logger) gin.HandlerFunc {
 		isValid := store.IsValidUser(ctx,
 			queries.ValidUserRequest{
 				ID:                claims.ID,
-				EmailAddrRequest:  queries.EmailAddrRequest{Email: claims.Email},
 				PermissionRequest: queries.PermissionRequest{PermissionType: claims.PermissionType}})
 		if !isValid {
 			log.Error("AuthMiddleware:invalid user",
-				"email", claims.Email,
+				"id", claims.ID,
 				"note", "user has valid jwt but does not exists?!")
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return

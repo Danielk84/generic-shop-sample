@@ -109,6 +109,13 @@ func (o *OrdersProcess) process(ctx context.Context, id queries.OrderID) error {
 			var remainder int32 = 1
 			confirmedVendor := []queries.ProductVendor{}
 
+			orderItemID := queries.OrderItemID{
+				OrderItem: queries.OrderItem{
+					OrderID:   i.OrderID,
+					ProductID: i.ProductID,
+				},
+				UserID: id.UserID,
+			}
 		InnertLoop:
 			for remainder > 0 {
 				remainder = i.ItemsTotal - i.ProcessedItems
@@ -177,15 +184,11 @@ func (o *OrdersProcess) process(ctx context.Context, id queries.OrderID) error {
 				"confirmedVendor", confirmedVendor,
 				"page", page)
 
-			err = o.OrderItemStore.SetConfirmedVendors(ctx,
-				queries.OrderItemID{
-					OrderItem: queries.OrderItem{
-						OrderID:   i.OrderID,
-						ProductID: i.ProductID,
-					},
-					UserID: id.UserID,
-				},
-				confirmedVendor)
+			err = o.OrderItemStore.SetConfirmedVendors(ctx, orderItemID, confirmedVendor)
+			if err != nil {
+				return err
+			}
+			err = o.OrderItemStore.SetProcessedItems(ctx, orderItemID, i.ProcessedItems)
 			if err != nil {
 				return err
 			}

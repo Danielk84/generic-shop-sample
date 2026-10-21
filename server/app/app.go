@@ -84,7 +84,9 @@ func (a *App) setMiddleware() (handler http.Handler) {
 	handler = http.TimeoutHandler(a.Router, 10*time.Second, "request timeout")
 	csrf := http.NewCrossOriginProtection()
 	for _, origin := range a.config.Origins {
-		csrf.AddTrustedOrigin(origin)
+		if err := csrf.AddTrustedOrigin(origin); err != nil {
+			a.log.Warn("App.setMiddleware", "error", err)
+		}
 	}
 	handler = csrf.Handler(handler)
 	return
