@@ -114,8 +114,11 @@ func (f *fileManager) createBucket(ctx context.Context) error {
 func (f *fileManager) validate(file multipart.File) (string, error) {
 	buf := make([]byte, 512)
 	n, err := file.ReadAt(buf, io.SeekStart)
-	if err != nil {
+	if err != nil && !errors.Is(err, io.EOF) {
 		return "", err
+	}
+	if n == 0 {
+		return "", ErrInvalidMimeType
 	}
 	if _, err := file.Seek(0, io.SeekStart); err != nil {
 		return "", err
@@ -150,8 +153,13 @@ func (f *fileManager) Upload(ctx context.Context, fh *multipart.FileHeader, key 
 	})
 	if err != nil {
 		f.log.Error("fileManager.Upload", "error", err)
+		return "", err
 	}
 	return fmt.Sprintf("%s/%s", f.bucket, fileKey), nil
+}
+
+func (f *fileManager) trimBucketPrefix(key string) string {
+	return strings.TrimPrefix(key, f.bucket+"/")
 }
 
 func (f *fileManager) Download(ctx context.Context, bucket, key string) (obj *s3.GetObjectOutput, err error) {
@@ -166,7 +174,7 @@ func (f *fileManager) Download(ctx context.Context, bucket, key string) (obj *s3
 }
 
 func (f *fileManager) Delete(ctx context.Context, key string) error {
-	fileKey := strings.TrimLeft(key, f.bucket+"/")
+	fileKey := f.trimBucketPrefix(key)
 	_, err := f.client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket: aws.String(f.bucket),
 		Key:    aws.String(fileKey),
@@ -193,9 +201,12 @@ func (f *fileManager) Delete(ctx context.Context, key string) error {
 }
 
 func (f *fileManager) BulkDelete(ctx context.Context, keys []string) error {
+	if len(keys) == 0 {
+		return nil
+	}
 	objs := make([]types.ObjectIdentifier, 0, len(keys))
 	for _, k := range keys {
-		fileKey := strings.TrimLeft(k, f.bucket+"/")
+		fileKey := f.trimBucketPrefix(k)
 		objs = append(objs, types.ObjectIdentifier{
 			Key: aws.String(fileKey),
 		})
