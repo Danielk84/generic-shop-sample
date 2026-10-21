@@ -30,7 +30,6 @@ type PermissionRequest struct {
 }
 
 type ValidUserRequest struct {
-	EmailAddrRequest
 	PermissionRequest
 	ID string
 }
@@ -89,7 +88,7 @@ type UserStore interface {
 	MaxPage(ctx context.Context, pagination int) (int, error)
 	Get(ctx context.Context, email string) (UserInfoResponse, error)
 	GetByEmail(ctx context.Context, email string) (UserInfoResponse, error)
-	Delete(ctx context.Context, id, email string) error
+	Delete(ctx context.Context, id string) error
 
 	UpdatePermission(ctx context.Context, id string, user UserPermissionRequest) error
 
@@ -126,13 +125,10 @@ func (u *userRepository) IsValidUser(ctx context.Context, user ValidUserRequest)
 		FROM user_s.users
 		WHERE
 			id = @ID::UUID AND
-			email = @Email AND
-			is_v_email = TRUE AND
 			permission_type = @PermissionType AND
 			is_active = TRUE)`
 	args := pgx.NamedArgs{
 		"ID":             user.ID,
-		"Email":          user.Email,
 		"PermissionType": user.PermissionType,
 	}
 	var isExists bool
@@ -240,7 +236,7 @@ func (u *userRepository) GetByEmail(ctx context.Context, email string) (item Use
 	return
 }
 
-func (u *userRepository) Delete(ctx context.Context, id, email string) (err error) {
+func (u *userRepository) Delete(ctx context.Context, id string) (err error) {
 	const q = `WITH remove_shop AS (
 			DELETE FROM user_s.shop WHERE user_id = $1::UUID
 		), delete_related_comments AS (
@@ -248,8 +244,8 @@ func (u *userRepository) Delete(ctx context.Context, id, email string) (err erro
 		)
 		UPDATE user_s.users
         SET email = NULL, phone_number = NULL, is_active = FALSE
-        WHERE id = $1::UUID AND email = $2`
-	if _, err = u.session.Exec(ctx, q, id, email); err != nil {
+        WHERE id = $1::UUID`
+	if err = execOne(ctx, u.session, q, id); err != nil {
 		u.log.Warn("UserRepository.Delete", "error", err)
 	}
 	return
@@ -399,6 +395,7 @@ type ShopStore interface {
 	MaxPage(ctx context.Context, pagination int) (int, error)
 	SetPhoneNumber(ctx context.Context, userID string, phoneNumber ShopPhoneNumberRequest) error
 	VerifyPhoneNumber(ctx context.Context, id string, isVerified bool) error
+	SetActive(ctx context.Context, userID string, isActive bool) error
 	GetImgPath(ctx context.Context, userID string) (string, error)
 	SetImgPath(ctx context.Context, userID string, imgPath string) error
 	DeleteImgPath(ctx context.Context, userID string) (string, error)
@@ -438,7 +435,7 @@ func (s *shopRepository) Upsert(ctx context.Context, userID string, info UpsertS
 			shop_addr = @ShopCode,
 			zip_code = @ZipCode,
 			business_code = @BusinessCode,
-			bio = @Bio,
+			bio = @Bio
 			is_shop = FALSE`
 	args := pgx.NamedArgs{
 		"UserID":       userID,
@@ -466,15 +463,16 @@ func (s *shopRepository) Get(ctx context.Context, userID string) (item ShopInfoR
 			u.is_v_phone_number,
 
 			COALESCE(s.brand, '') AS brand,
-			s.shop_addr, s.zip_code,
-			s.business_code,
+			COALESCE(s.shop_addr, '') AS shop_addr,
+			COALESCE(s.zip_code, '') AS zip_code,
+			COALESCE(s.business_code, '') AS business_code,
 			COALESCE(s.phone_number, '') AS shop_phone_number,
-			s.img_path,
-			s.bio,
-			s.is_shop
+			COALESCE(s.img_path, '') AS img_path,
+			COALESCE(s.bio, '') AS bio,
+			COALESCE(s.is_shop, FALSE) AS is_shop
 		FROM user_s.users AS u
 		LEFT JOIN user_s.shop AS s on u.id = s.user_id
-		WHERE user_id = $1::UUID`
+		WHERE u.id = $1::UUID`
 	if item, err = get[ShopInfoResponse](ctx, s.session, q, userID); err != nil {
 		s.log.Debug("ShopRepository.Get", "error", err)
 	}
@@ -514,9 +512,19 @@ func (s *shopRepository) SetPhoneNumber(ctx context.Context, userID string, phon
 func (u *shopRepository) VerifyPhoneNumber(ctx context.Context, id string, isVerified bool) (err error) {
 	const q = `UPDATE user_s.shop
 		SET is_v_phone_number = $1
-		WHERE id = $2 AND phone_number IS NOT NULL`
+		WHERE user_id = $2::UUID AND phone_number IS NOT NULL`
 	if err = execOne(ctx, u.session, q, isVerified, id); err != nil {
 		u.log.Debug("ShopRepository.VerifyPhoneNumber", "error", err)
+	}
+	return
+}
+
+func (s *shopRepository) SetActive(ctx context.Context, userID string, isActive bool) (err error) {
+	const q = `UPDATE user_s.shop
+		SET is_shop = $1
+		WHERE user_id = $2::UUID`
+	if err = execOne(ctx, s.session, q, isActive, userID); err != nil {
+		s.log.Debug("ShopRepository.SetActive", "error", err)
 	}
 	return
 }
@@ -541,12 +549,12 @@ func (s *shopRepository) SetImgPath(ctx context.Context, userID string, imgPath 
 	return
 }
 
-func (s *shopRepository) DeleteImgPath(ctx context.Context, UserID string) (imgPath string, err error) {
+func (s *shopRepository) DeleteImgPath(ctx context.Context, userID string) (imgPath string, err error) {
 	const q = `UPDATE user_s.shop
 		SET img_path = ''
 		WHERE user_id = $1::UUID
 		RETURNING OLD.img_path`
-	if err = s.session.QueryRow(ctx, q, UserID).Scan(&imgPath); err != nil {
+	if err = s.session.QueryRow(ctx, q, userID).Scan(&imgPath); err != nil {
 		s.log.Error("ShopRepository.DeleteImgPath", "error", err)
 	}
 	return

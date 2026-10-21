@@ -12,7 +12,7 @@ import (
 type CommentRequest struct {
 	Parent   string `json:"parent" binding:"omitempty,uuid"`
 	Referrer string `json:"referrer" binding:"required,uuid"`
-	Body     string `json:"body"`
+	Body     string `json:"body" binding:"required,max=5000"`
 }
 
 type CommentResponse struct {
@@ -40,10 +40,11 @@ type CommentStore interface {
 	Create(ctx context.Context, userID, name string, comment *CommentRequest) error
 	Get(ctx context.Context, id string) (RelatedCommentResponse, error)
 	List(ctx context.Context, parent string, referrer string, pagination, page int) ([]CommentResponse, error)
-	MaxListPage(ctx context.Context, pagination int) (int, error)
+	MaxListPage(parent, referrer string) MaxPageType
 	FullList(ctx context.Context, userID string, pagination, page int) ([]RelatedCommentResponse, error)
-	MaxFullListPage(ctx context.Context, pagination int) (int, error)
+	MaxFullListPage(userID string) MaxPageType
 	Find(ctx context.Context, id string, pagination, page int) ([]RelatedCommentResponse, error)
+	MaxFindPage(id string) MaxPageType
 	Delete(ctx context.Context, id string) (string, error)
 	SetActive(ctx context.Context, id string, isActive bool) error
 }
@@ -55,9 +56,9 @@ func NewCommentStore(session database.Session, log logger.Logger) CommentStore {
 func (c *commentRepository) Create(ctx context.Context, userID, name string, comment *CommentRequest) (err error) {
 	const createCommentQuery = `INSERT INTO user_s.comments(user_id, name, parent, children_amount, referrer, body)
 		VALUES (@UserID, @Name, NULLIF(@Parent, '')::UUID, 0, @Referrer, @Body)`
-	const upadteChildrenCount = `UPDATE user_s.comments
+	const updateChildrenCount = `UPDATE user_s.comments
 		SET children_amount = children_amount + 1
-		WHERE id = $1::UUID`
+		WHERE id = $1::UUID AND referrer = $2::UUID AND is_active = TRUE`
 
 	args := pgx.NamedArgs{
 		"UserID":   userID,
@@ -67,18 +68,22 @@ func (c *commentRepository) Create(ctx context.Context, userID, name string, com
 		"Body":     comment.Body,
 	}
 	err = pgx.BeginFunc(ctx, c.session, func(tx pgx.Tx) error {
+		if comment.Parent != "" {
+			tag, err := tx.Exec(ctx, updateChildrenCount, comment.Parent, comment.Referrer)
+			if err != nil {
+				return err
+			}
+			if tag.RowsAffected() != 1 {
+				return ErrNotFound
+			}
+		}
+
 		cTag, err := tx.Exec(ctx, createCommentQuery, args)
 		if err != nil {
 			return err
 		}
 		if cTag.RowsAffected() != 1 {
 			return pgx.ErrNoRows
-		}
-
-		if comment.Parent != "" {
-			if _, err := tx.Exec(ctx, upadteChildrenCount, comment.Parent); err != nil {
-				return err
-			}
 		}
 		return nil
 	})
@@ -125,17 +130,20 @@ func (c *commentRepository) List(ctx context.Context, parent string, referrer st
 	return
 }
 
-func (c *commentRepository) MaxListPage(ctx context.Context, pagination int) (count int, err error) {
+func (c *commentRepository) MaxListPage(parent, referrer string) MaxPageType {
 	const q = `SELECT COUNT(*)
 		FROM user_s.comments
-		WHERE is_active = TRUE`
-	err = c.session.QueryRow(ctx, q).Scan(&count)
-	if err != nil {
-		c.log.Debug("commentRepository.MaxListPage", "error", err)
+		WHERE COALESCE(parent::TEXT, '') = $1
+			AND referrer = $2
+			AND is_active = TRUE`
+	return func(ctx context.Context, pagination int) (count int, err error) {
+		if err = c.session.QueryRow(ctx, q, parent, referrer).Scan(&count); err != nil {
+			c.log.Debug("commentRepository.MaxListPage", "error", err)
+			return
+		}
+		count = getPageSize(count, pagination)
 		return
 	}
-	count = getPageSize(count, pagination)
-	return
 }
 
 func (c *commentRepository) FullList(
@@ -168,8 +176,21 @@ func (c *commentRepository) FullList(
 	return
 }
 
-func (c *commentRepository) MaxFullListPage(ctx context.Context, pagination int) (int, error) {
-	return getMaxPage(ctx, c.session, "user_s.comments", pagination)
+func (c *commentRepository) MaxFullListPage(userID string) MaxPageType {
+	if userID == "" {
+		return func(ctx context.Context, pagination int) (int, error) {
+			return getMaxPage(ctx, c.session, "user_s.comments", pagination)
+		}
+	}
+	const q = `SELECT COUNT(*) FROM user_s.comments WHERE user_id = $1::UUID`
+	return func(ctx context.Context, pagination int) (count int, err error) {
+		if err = c.session.QueryRow(ctx, q, userID).Scan(&count); err != nil {
+			c.log.Debug("commentRepository.MaxFullListPage", "error", err)
+			return
+		}
+		count = getPageSize(count, pagination)
+		return
+	}
 }
 
 func (c *commentRepository) Find(
@@ -199,11 +220,46 @@ func (c *commentRepository) Find(
 	return
 }
 
+func (c *commentRepository) MaxFindPage(id string) MaxPageType {
+	const q = `SELECT COUNT(*)
+		FROM user_s.comments
+		WHERE id = $1::UUID OR parent = $1::UUID`
+	return func(ctx context.Context, pagination int) (count int, err error) {
+		if err = c.session.QueryRow(ctx, q, id).Scan(&count); err != nil {
+			c.log.Debug("commentRepository.MaxFindPage", "error", err)
+			return
+		}
+		count = getPageSize(count, pagination)
+		return
+	}
+}
+
 func (c *commentRepository) Delete(ctx context.Context, id string) (item string, err error) {
-	const q = `DELETE FROM user_s.comments
-		WHERE id = $1::UUID OR parent = $1::UUID
-		RETURNING referrer`
-	if err = c.session.QueryRow(ctx, q, id).Scan(&item); err != nil {
+	const selectQuery = `SELECT referrer, COALESCE(parent::TEXT, '')
+		FROM user_s.comments
+		WHERE id = $1::UUID`
+	const deleteQuery = `DELETE FROM user_s.comments
+		WHERE id = $1::UUID OR parent = $1::UUID`
+	const decrementParentQuery = `UPDATE user_s.comments
+		SET children_amount = GREATEST(children_amount - 1, 0)
+		WHERE id = $1::UUID`
+
+	err = pgx.BeginFunc(ctx, c.session, func(tx pgx.Tx) error {
+		var parent string
+		if err := tx.QueryRow(ctx, selectQuery, id).Scan(&item, &parent); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, deleteQuery, id); err != nil {
+			return err
+		}
+		if parent != "" {
+			if _, err := tx.Exec(ctx, decrementParentQuery, parent); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
 		c.log.Debug("CommentRepository.Delete", "error", err)
 	}
 	return

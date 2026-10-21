@@ -16,7 +16,9 @@ type searchRepository struct {
 type SearchStore interface {
 	Reindex(ctx context.Context, product_id string) error
 	Search(ctx context.Context, queryStr string, pagination, page int) ([]ProductSummaryResponse, error)
+	MaxSearchPage(queryStr string) MaxPageType
 	SearchAll(ctx context.Context, queryStr string, pagination, page int) ([]ProductSummaryResponse, error)
+	MaxSearchAllPage(queryStr string) MaxPageType
 	DeleteAll(ctx context.Context) error
 }
 
@@ -65,6 +67,21 @@ func (s *searchRepository) Search(
 	return
 }
 
+func (s *searchRepository) MaxSearchPage(queryStr string) MaxPageType {
+	const q = `SELECT COUNT(*)
+		FROM product_s.products AS p
+		WHERE p.is_active = true AND
+			p.__search @@ websearch_to_tsquery('simple', $1)`
+	return func(ctx context.Context, pagination int) (count int, err error) {
+		if err = s.session.QueryRow(ctx, q, queryStr).Scan(&count); err != nil {
+			s.log.Debug("searchRepository.MaxSearchPage", "error", err)
+			return
+		}
+		count = getPageSize(count, pagination)
+		return
+	}
+}
+
 func (s *searchRepository) SearchAll(
 	ctx context.Context,
 	queryStr string,
@@ -95,12 +112,26 @@ func (s *searchRepository) SearchAll(
 	return
 }
 
+func (s *searchRepository) MaxSearchAllPage(queryStr string) MaxPageType {
+	const q = `SELECT COUNT(*)
+		FROM product_s.products AS p
+		WHERE p.__search @@ websearch_to_tsquery('simple', $1)`
+	return func(ctx context.Context, pagination int) (count int, err error) {
+		if err = s.session.QueryRow(ctx, q, queryStr).Scan(&count); err != nil {
+			s.log.Debug("searchRepository.MaxSearchAllPage", "error", err)
+			return
+		}
+		count = getPageSize(count, pagination)
+		return
+	}
+}
+
 // on deleting rows in full_text_search_s.products_changes,
 // TRIGGER _01_set_products_search_on_delete_t will execute,
 // that process product_s.products.__search.
 func (s *searchRepository) DeleteAll(ctx context.Context) (err error) {
 	const q = `DELETE FROM full_text_search_s.products_changes`
-	if err = execOne(ctx, s.session, q); err != nil {
+	if _, err = s.session.Exec(ctx, q); err != nil {
 		s.log.Debug("searchRepository.DeleteAll", "error", err)
 	}
 	return
