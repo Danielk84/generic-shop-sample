@@ -177,7 +177,7 @@ AS $$
             END LOOP;
         END LOOP;
 
-        IF TG_OP = 'UPDATE' THEN 
+        IF TG_OP = 'UPDATE' THEN
             IF OLD.available_quantity != NEW.available_quantity THEN
                 IF NEW.available_quantity < j THEN
                     NEW.available_quantity = (j - (j - NEW.available_quantity));

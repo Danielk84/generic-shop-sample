@@ -51,7 +51,7 @@ type ProductStatusResponse struct {
 
 type ProductVendor struct {
 	UserID   string `json:"user_id" binding:"required,uuid"`
-	Quantity int32  `json:"quantity" binding:"required,min=0"`
+	Quantity int32  `json:"quantity" binding:"min=0"`
 }
 
 type ProductPropertyRequest struct {
@@ -246,7 +246,7 @@ func (p *productRepository) Update(ctx context.Context, product UpdateProductReq
 
 func (p *productRepository) Delete(ctx context.Context, id string) (err error) {
 	const q = `DELETE FROM product_s.products WHERE id = $1::UUID`
-	if _, err := p.session.Exec(ctx, q, id); err != nil {
+	if _, err = p.session.Exec(ctx, q, id); err != nil {
 		p.log.Error("ProductRepository.Delete", "error", err)
 	}
 	return
@@ -374,7 +374,7 @@ type productImagesRepository struct {
 type ProductImagesStore interface {
 	Create(ctx context.Context, productID, imgPath string) error
 	List(ctx context.Context, productID string) ([]ProductImageResponse, error)
-	Delete(ctx context.Context, id string) (string, error)
+	Delete(ctx context.Context, productID, id string) (string, error)
 	BulkDelete(ctx context.Context, productID string) error
 }
 
@@ -406,7 +406,8 @@ func (p *productImagesRepository) Create(ctx context.Context, productID, imgPath
 func (p *productImagesRepository) List(ctx context.Context, productID string) (items []ProductImageResponse, err error) {
 	const q = `SELECT id, img_path
 		FROM product_s.product_images
-		WHERE product_id = $1::UUID`
+		WHERE product_id = $1::UUID
+		ORDER BY pos`
 	items, err = list[ProductImageResponse](ctx, p.session, q, productID)
 	if err != nil {
 		p.log.Debug("ProductImagesRepository.List", "error", err)
@@ -414,11 +415,11 @@ func (p *productImagesRepository) List(ctx context.Context, productID string) (i
 	return
 }
 
-func (p *productImagesRepository) Delete(ctx context.Context, id string) (imgPath string, err error) {
+func (p *productImagesRepository) Delete(ctx context.Context, productID, id string) (imgPath string, err error) {
 	const q = `DELETE FROM product_s.product_images
-		WHERE id = $1::UUID
+		WHERE id = $1::UUID AND product_id = $2::UUID
 		RETURNING img_path`
-	if err = p.session.QueryRow(ctx, q, id).Scan(&imgPath); err != nil {
+	if err = p.session.QueryRow(ctx, q, id, productID).Scan(&imgPath); err != nil {
 		p.log.Debug("productImagesRepository.Delete", "error", err)
 	}
 	return
@@ -427,8 +428,8 @@ func (p *productImagesRepository) Delete(ctx context.Context, id string) (imgPat
 func (p *productImagesRepository) BulkDelete(ctx context.Context, productID string) (err error) {
 	const q = `DELETE FROM product_s.product_images
 		WHERE product_id = $1::UUID`
-	if err = execOne(ctx, p.session, q, productID); err != nil {
-		p.log.Debug("productImagesRepository.BulkDelete", "error", err)
+	if _, err = p.session.Exec(ctx, q, productID); err != nil {
+		p.log.Debug("ProductImagesRepository.BulkDelete", "error", err)
 	}
 	return
 }
