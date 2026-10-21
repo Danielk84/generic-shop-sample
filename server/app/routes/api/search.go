@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"generic-shop-sample/app"
 	md "generic-shop-sample/app/middlewares"
 	"generic-shop-sample/internal/logger"
@@ -16,11 +17,10 @@ func SearchRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	session := deps.DB.GetSession()
 	cache := deps.Cache.GetCache(cache.ProductsCache)
 	h := searchHandler{
-		store:        queries.NewSearchStore(session, log),
-		productStore: queries.NewProductStore(session, log),
-		cache:        cache,
-		log:          log,
-		pagination:   deps.Config.Pagination,
+		store:      queries.NewSearchStore(session, log),
+		cache:      cache,
+		log:        log,
+		pagination: deps.Config.Pagination,
 	}
 
 	rateLimiter := md.NewRateLimiter(deps.Ctx, md.RateLimiter{
@@ -44,11 +44,10 @@ type searchRequest struct {
 }
 
 type searchHandler struct {
-	store        queries.SearchStore
-	productStore queries.ProductStore
-	cache        cache.CacheClient
-	log          logger.Logger
-	pagination   int
+	store      queries.SearchStore
+	cache      cache.CacheClient
+	log        logger.Logger
+	pagination int
 }
 
 func (h *searchHandler) reindex(c *gin.Context) {
@@ -62,6 +61,7 @@ func (h *searchHandler) reindex(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
+	Accepted(c, "")
 }
 
 func (h *searchHandler) search(c *gin.Context) {
@@ -79,9 +79,9 @@ func (h *searchHandler) search(c *gin.Context) {
 	SetPageHeader(c, CacheMaxPageInput{
 		ctx:        ctx,
 		client:     h.cache,
-		name:       "search",
+		name:       fmt.Sprintf("search:%s", input.QueryStr),
 		pagination: h.pagination,
-		getMaxPage: h.productStore.MaxPage,
+		getMaxPage: h.store.MaxSearchPage(input.QueryStr),
 	})
 	c.JSON(http.StatusOK, output)
 }
@@ -105,9 +105,9 @@ func (h *searchHandler) searchAll(c *gin.Context) {
 	SetPageHeader(c, CacheMaxPageInput{
 		ctx:        ctx,
 		client:     h.cache,
-		name:       "search-all",
+		name:       fmt.Sprintf("search-all:%s", input.QueryStr),
 		pagination: h.pagination,
-		getMaxPage: h.productStore.MaxPage,
+		getMaxPage: h.store.MaxSearchAllPage(input.QueryStr),
 	})
 	c.JSON(http.StatusOK, output)
 }

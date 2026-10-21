@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"generic-shop-sample/app"
 	md "generic-shop-sample/app/middlewares"
 	"generic-shop-sample/internal/logger"
@@ -92,7 +93,7 @@ func (h *issuesHandler) userList(c *gin.Context) {
 	SetPageHeader(c, CacheMaxPageInput{
 		ctx:        ctx,
 		client:     h.cache,
-		name:       "issues-user-list",
+		name:       fmt.Sprintf("issues-user-list:%s", claims.ID),
 		pagination: h.pagination,
 		getMaxPage: h.store.UserMaxPage(claims.ID),
 	})

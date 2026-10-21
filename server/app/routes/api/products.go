@@ -80,6 +80,7 @@ func (h *productsHandler) create(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
+	h.invalidate(c.Request.Context(), productID)
 	c.JSON(http.StatusCreated, gin.H{
 		"productID": productID,
 	})
@@ -219,11 +220,7 @@ func (h *productsHandler) update(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
-	cacheKey := fmt.Sprintf("%s:%s", h.baseCacheKey, input.ID)
-	if _, err := h.cache.Del(ctx, cacheKey).Result(); err != nil {
-		LogCacheErr("Del", "productsHandler.update", err)
-	}
-
+	h.invalidate(ctx, input.ID)
 	Accepted(c, "")
 }
 
@@ -243,10 +240,7 @@ func (h *productsHandler) setPrice(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
-	cacheKey := fmt.Sprintf("%s:%s", h.baseCacheKey, input.ID)
-	if _, err := h.cache.Del(ctx, cacheKey).Result(); err != nil {
-		LogCacheErr("Del", "productsHandler.setVendor", err)
-	}
+	h.invalidate(ctx, input.ID)
 	Accepted(c, "")
 }
 
@@ -271,11 +265,7 @@ func (h *productsHandler) setVendor(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
-	cacheKey := fmt.Sprintf("%s:%s", h.baseCacheKey, input.ID)
-	if _, err := h.cache.Del(ctx, cacheKey).Result(); err != nil {
-		LogCacheErr("Del", "productsHandler.setVendor", err)
-	}
-
+	h.invalidate(ctx, input.ID)
 	Accepted(c, "")
 }
 
@@ -299,11 +289,7 @@ func (h *productsHandler) setVariantDetail(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
-	cacheKey := fmt.Sprintf("%s:%s", h.baseCacheKey, id)
-	if _, err := h.cache.Del(ctx, cacheKey).Result(); err != nil {
-		LogCacheErr("Del", "productsHandler.setVariantDetail", err)
-	}
-
+	h.invalidate(ctx, id)
 	Accepted(c, "")
 }
 
@@ -315,26 +301,23 @@ func (h *productsHandler) delete(c *gin.Context) {
 
 	id := c.Param("id")
 	ctx := c.Request.Context()
-	productImages, err := h.productImagesStore.List(ctx, id)
-	if err == nil {
+	productImages, listErr := h.productImagesStore.List(ctx, id)
+	if listErr == nil {
 		imgs := make([]string, 0, len(productImages))
 		for _, p := range productImages {
 			imgs = append(imgs, p.ImgPath)
 		}
 		if err := h.fileStore.BulkDelete(ctx, imgs); err != nil {
-			Unprocessable(c, "")
-			return
+			h.log.Warn("productsHandler.delete", "error", err, "product_id", id)
 		}
+	} else {
+		h.log.Debug("productsHandler.delete:list", "error", listErr, "product_id", id)
 	}
 	if err := h.productStore.Delete(ctx, id); err != nil {
 		NotFound(c, "")
 		return
 	}
-	cacheKey := fmt.Sprintf("%s:%s", h.baseCacheKey, id)
-	if _, err := h.cache.Del(ctx, cacheKey).Result(); err != nil {
-		LogCacheErr("Del", "productsHandler.delete", err)
-	}
-
+	h.invalidate(ctx, id)
 	c.Status(http.StatusNoContent)
 }
 
@@ -357,18 +340,25 @@ func (h *productsHandler) setActive(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
+	h.invalidate(ctx, id)
+	Accepted(c, "")
+}
+
+func (h *productsHandler) invalidate(ctx context.Context, productID string) {
 	err := background.SendCacheCleaner(ctx, h.publicCache, background.CacheCleanerMessage{
 		CacheDB: cache.ProductsCache,
 		Keys: []string{
-			fmt.Sprintf("%s:%s", h.baseCacheKey, id),
+			fmt.Sprintf("%s:%s", h.baseCacheKey, productID),
 			fmt.Sprintf("%s:list", h.baseCacheKey),
 			fmt.Sprintf("%s:popular", h.baseCacheKey),
+			"max-page:products-list",
+			"max-page:products-popular",
+			"max-page:products-adminList",
 		},
 	})
 	if err != nil {
-		h.log.Warn("productsHandler.setActive", "error", err)
+		h.log.Warn("productsHandler.invalidate", "error", err)
 	}
-	Accepted(c, "")
 }
 
 func ProductImagesRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
@@ -378,6 +368,7 @@ func ProductImagesRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 		productStore:    queries.NewProductStore(session, log),
 		imagesStore:     queries.NewProductImagesStore(session, log, deps.Config.ProductImage),
 		cache:           deps.Cache.GetCache(cache.ProductsCache),
+		publicCache:     deps.Cache.GetCache(cache.PublicCache),
 		baseCacheKey:    "images",
 		cacheExpiration: 1 * time.Hour,
 		fileStore:       file_storage.NewFileStore(deps.Ctx, deps.Config.FileStore, deps.FileStore, "product-images"),
@@ -396,6 +387,7 @@ type productImagesHandler struct {
 	productStore    queries.ProductStore
 	imagesStore     queries.ProductImagesStore
 	cache           cache.CacheClient
+	publicCache     cache.CacheClient
 	baseCacheKey    string
 	cacheExpiration time.Duration
 	fileStore       file_storage.FileStore
@@ -429,10 +421,7 @@ func (h *productImagesHandler) create(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
-	cacheKey := fmt.Sprintf("%s:%s", h.baseCacheKey, productID)
-	if _, err := h.cache.Del(ctx, cacheKey).Result(); err != nil {
-		LogCacheErr("Del", "productImagesHandler.create", err)
-	}
+	h.invalidate(ctx, productID)
 	Created(c, "")
 }
 
@@ -468,7 +457,7 @@ func (h *productImagesHandler) delete(c *gin.Context) {
 	productID := c.Param("productID")
 	ctx := c.Request.Context()
 	id := c.Param("id")
-	imgPath, err := h.imagesStore.Delete(ctx, id)
+	imgPath, err := h.imagesStore.Delete(ctx, productID, id)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -477,10 +466,23 @@ func (h *productImagesHandler) delete(c *gin.Context) {
 		Forbidden(c, "")
 		return
 	}
-	cacheKey := fmt.Sprintf("%s:%s", h.baseCacheKey, productID)
-	if _, err := h.cache.Del(ctx, cacheKey).Result(); err != nil {
-		LogCacheErr("Del", "productImagesHandler.delete", err)
-	}
-
+	h.invalidate(ctx, productID)
 	c.Status(http.StatusNoContent)
+}
+
+func (h *productImagesHandler) invalidate(ctx context.Context, productID string) {
+	err := background.SendCacheCleaner(ctx, h.publicCache, background.CacheCleanerMessage{
+		CacheDB: cache.ProductsCache,
+		Keys: []string{
+			fmt.Sprintf("%s:%s", h.baseCacheKey, productID),
+			fmt.Sprintf("products:%s", productID),
+			"products:list",
+			"products:popular",
+			"max-page:products-list",
+			"max-page:products-popular",
+		},
+	})
+	if err != nil {
+		h.log.Warn("productImagesHandler.invalidate", "error", err)
+	}
 }

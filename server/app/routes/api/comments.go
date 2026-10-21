@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"generic-shop-sample/app"
 	"generic-shop-sample/app/background"
@@ -11,7 +10,6 @@ import (
 	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/queries"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -68,10 +66,12 @@ func (h *commentsHandler) create(c *gin.Context) {
 		BadRequest(c, "")
 		return
 	}
-	if err := h.store.Create(c.Request.Context(), claims.ID, claims.Name, &input); err != nil {
+	ctx := c.Request.Context()
+	if err := h.store.Create(ctx, claims.ID, claims.Name, &input); err != nil {
 		BadRequest(c, "")
 		return
 	}
+	h.invalidate(ctx)
 	Created(c, "")
 }
 
@@ -92,23 +92,16 @@ func (h *commentsHandler) get(c *gin.Context) {
 		Client:     h.cache,
 		Expiration: h.cacheExpiration,
 		Log:        h.log,
-		Fn: func(sCtx context.Context) (output queries.RelatedCommentResponse, err error) {
-			output, err = h.store.Get(sCtx, id)
-			if err != nil {
-				return
-			}
-			if output.UserID != claims.ID && !HasPermissions(nil, claims.PermissionType, queries.Admin) {
-				err = ErrForbiddenAccess
-			}
-			return
+		Fn: func(sCtx context.Context) (queries.RelatedCommentResponse, error) {
+			return h.store.Get(sCtx, id)
 		},
 	})
 	if err != nil {
-		if errors.Is(err, ErrForbiddenAccess) {
-			Forbidden(c, "")
-		} else {
-			NotFound(c, "")
-		}
+		NotFound(c, "")
+		return
+	}
+	if output.UserID != claims.ID && !HasPermissions(nil, claims.PermissionType, queries.Admin) {
+		Forbidden(c, "")
 		return
 	}
 
@@ -134,7 +127,7 @@ func (h *commentsHandler) list(c *gin.Context) {
 		Expiration: h.cacheExpiration,
 		Log:        h.log,
 		Fn: func(sCtx context.Context) ([]queries.CommentResponse, error) {
-			return h.store.List(sCtx, input.Parent, url.QueryEscape(input.Referrer), h.pagination, page)
+			return h.store.List(sCtx, input.Parent, input.Referrer, h.pagination, page)
 		},
 	})
 	if err != nil {
@@ -145,9 +138,9 @@ func (h *commentsHandler) list(c *gin.Context) {
 	SetPageHeader(c, CacheMaxPageInput{
 		ctx:        ctx,
 		client:     h.cache,
-		name:       "comments-list",
+		name:       fmt.Sprintf("comments-list:%s:%s", input.Referrer, input.Parent),
 		pagination: h.pagination,
-		getMaxPage: h.store.MaxListPage,
+		getMaxPage: h.store.MaxListPage(input.Parent, input.Referrer),
 	})
 	c.JSON(http.StatusOK, output)
 }
@@ -187,9 +180,9 @@ func (h *commentsHandler) fullList(c *gin.Context) {
 	SetPageHeader(c, CacheMaxPageInput{
 		ctx:        ctx,
 		client:     h.cache,
-		name:       "comments-fullList",
+		name:       fmt.Sprintf("comments-fullList:%s", userID),
 		pagination: h.pagination,
-		getMaxPage: h.store.MaxFullListPage,
+		getMaxPage: h.store.MaxFullListPage(userID),
 	})
 	c.JSON(http.StatusOK, output)
 }
@@ -213,9 +206,9 @@ func (h *commentsHandler) find(c *gin.Context) {
 	SetPageHeader(c, CacheMaxPageInput{
 		ctx:        ctx,
 		client:     h.cache,
-		name:       "comments-fullList",
+		name:       fmt.Sprintf("comments-find:%s", id),
 		pagination: h.pagination,
-		getMaxPage: h.store.MaxFullListPage,
+		getMaxPage: h.store.MaxFindPage(id),
 	})
 	c.JSON(http.StatusOK, output)
 }
@@ -239,22 +232,11 @@ func (h *commentsHandler) delete(c *gin.Context) {
 		Forbidden(c, "")
 		return
 	}
-	referrer, err := h.store.Delete(ctx, output.ID)
-	if err != nil {
+	if _, err := h.store.Delete(ctx, output.ID); err != nil {
 		BadRequest(c, "")
 		return
 	}
-	err = background.SendCacheCleaner(ctx, h.cache, background.CacheCleanerMessage{
-		CacheDB: cache.PublicCache,
-		Keys: []string{
-			fmt.Sprintf("%s:get:%s", h.baseCacheKey, id),
-			fmt.Sprintf("%s:list:%s", h.baseCacheKey, referrer),
-			fmt.Sprintf("%s:full:%s", h.baseCacheKey, userID),
-		},
-	})
-	if err != nil {
-		h.log.Warn("commentsHandler.delete", "error", err)
-	}
+	h.invalidate(ctx)
 	c.Status(http.StatusNoContent)
 }
 
@@ -271,10 +253,12 @@ func (h *commentsHandler) setActive(c *gin.Context) {
 	}
 	id := c.Param("id")
 
-	if err := h.store.SetActive(c.Request.Context(), id, input.Accepted); err != nil {
+	ctx := c.Request.Context()
+	if err := h.store.SetActive(ctx, id, input.Accepted); err != nil {
 		NotFound(c, "")
 		return
 	}
+	h.invalidate(ctx)
 	Accepted(c, "")
 }
 
@@ -299,5 +283,20 @@ func (h *commentsHandler) cleanCache(c *gin.Context) {
 			gin.H{"msg": "failed to clean cache."})
 	} else {
 		c.Status(http.StatusNoContent)
+	}
+}
+
+func (h *commentsHandler) invalidate(ctx context.Context) {
+	err := background.SendCacheCleaner(ctx, h.cache, background.CacheCleanerMessage{
+		CacheDB: cache.PublicCache,
+		Keys: []string{
+			fmt.Sprintf("%s:get", h.baseCacheKey),
+			fmt.Sprintf("%s:list", h.baseCacheKey),
+			fmt.Sprintf("%s:full", h.baseCacheKey),
+			"max-page:comments",
+		},
+	})
+	if err != nil {
+		h.log.Warn("commentsHandler.invalidate", "error", err)
 	}
 }

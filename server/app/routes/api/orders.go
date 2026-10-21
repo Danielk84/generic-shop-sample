@@ -1,13 +1,13 @@
 package api
 
 import (
+	"fmt"
 	"generic-shop-sample/app"
 	md "generic-shop-sample/app/middlewares"
 	"generic-shop-sample/internal/logger"
 	"generic-shop-sample/storage/cache"
 	"generic-shop-sample/storage/queries"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -74,7 +74,7 @@ func (h *orderHandler) customerList(c *gin.Context) {
 	SetPageHeader(c, CacheMaxPageInput{
 		ctx:        ctx,
 		client:     h.cache,
-		name:       "orders-customerList",
+		name:       fmt.Sprintf("orders-customerList:%s", claims.ID),
 		pagination: h.pagination,
 		getMaxPage: h.store.MaxCustomerListPage(claims.ID),
 	})
@@ -175,7 +175,7 @@ func OrderItemsRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 }
 
 type ItemsTotal struct {
-	Total int32 `uri:"total" binding:"required"`
+	Total int32 `uri:"total" binding:"gte=0"`
 }
 
 type orderItemsHandler struct {
@@ -217,20 +217,19 @@ func (h *orderItemsHandler) customerList(c *gin.Context) {
 	id := c.Param("id")
 	page := GetPage(c)
 	ctx := c.Request.Context()
-	output, err := h.orderItemsStore.CustomerList(ctx, queries.OrderID{
+	orderID := queries.OrderID{
 		ID:     id,
 		UserID: claims.ID,
-	}, h.pagination, page)
+	}
+	output, err := h.orderItemsStore.CustomerList(ctx, orderID, h.pagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return
 	}
-	count, err := h.orderItemsStore.MaxCustomerListPage(queries.OrderID{
-		ID:     id,
-		UserID: claims.ID,
-	})(ctx, h.pagination)
+	count, err := h.orderItemsStore.MaxCustomerListPage(orderID)(ctx, h.pagination)
 	if err == nil {
-		c.Header("X-Max-Page", strconv.Itoa(count))
+		c.Header("Access-Control-Expose-Headers", "X-Max-Page")
+		c.Header("X-Max-Page", fmt.Sprintf("%d", count))
 	}
 
 	c.JSON(http.StatusOK, output)
@@ -254,7 +253,7 @@ func (h *orderItemsHandler) adminList(c *gin.Context) {
 	SetPageHeader(c, CacheMaxPageInput{
 		ctx:        ctx,
 		client:     h.cache,
-		name:       "orderItems-adminList",
+		name:       fmt.Sprintf("orderItems-adminList:%s", id),
 		pagination: h.pagination,
 		getMaxPage: h.orderItemsStore.MaxAdminListPage(id),
 	})
@@ -323,10 +322,12 @@ func (h *orderItemsHandler) setItemsTotal(c *gin.Context) {
 		return
 	}
 	ctx := c.Request.Context()
-	err := h.orderItemsStore.SetItemsTotal(ctx, queries.OrderItemID{
+	itemID := queries.OrderItemID{
 		OrderItem: input,
 		UserID:    claims.ID,
-	}, url.Total)
+	}
+	// A zero quantity means the item should leave the basket.
+	err := h.orderItemsStore.Delete(ctx, itemID)
 	if err != nil {
 		NotFound(c, "")
 		return

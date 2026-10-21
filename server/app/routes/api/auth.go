@@ -54,6 +54,8 @@ func LoginRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	})
 }
 
+const refreshCookieName = "__Host-Http-Refresh"
+
 type randKeyRequest struct {
 	PassKey string `json:"pass_key" binding:"required,len=8"`
 }
@@ -144,51 +146,29 @@ func (h *authHandler) login(c *gin.Context) {
 		NotFound(c, "")
 		return
 	}
+	if !user.IsActive {
+		Forbidden(c, "account is not active")
+		return
+	}
 
 	authToken, err := h.getAuthToken(ctx, user)
 	if err != nil {
 		BadRequest(c, "")
 		return
 	}
-	var refreshKey string
-	var refreshToken string
-	var maxAge time.Duration
-	if err = h.cache.Get(ctx, refreshKey).Scan(&refreshToken); err != nil {
-		LogCacheErr("Get", "authHandler.getRefreshToken", err)
-		u, err := uuid.NewV7()
-		if err != nil {
-			h.log.Warn("authHandler.login", "error", err)
-			refreshKey = ""
-			maxAge = 0
-		} else {
-			refreshToken = u.String()
-			refreshKey = fmt.Sprintf("refresh:%s", refreshToken)
-			authExpiration := time.Now().Add(h.authExpiration * time.Minute)
-			maxAge = time.Until(authExpiration)
-			if err = SetJSONCache(ctx, h.cache, refreshKey, maxAge, user); err != nil {
-				LogCacheErr("Get", "authHandler.getRefreshToken", err)
-			}
-		}
-	} else {
-		ttl := h.cache.TTL(ctx, refreshKey)
-		if err := ttl.Err(); err != nil {
-			LogCacheErr("TTL", "authHandler.login", err)
-			maxAge = 0
-		} else {
-			maxAge = ttl.Val()
-		}
-	}
 
-	http.SetCookie(c.Writer, &http.Cookie{
-		Name:        "__Host-Http-Refresh",
-		Value:       url.QueryEscape(refreshToken),
-		MaxAge:      int(maxAge.Seconds()),
-		Path:        "/",
-		SameSite:    http.SameSiteNoneMode,
-		Secure:      true,
-		HttpOnly:    true,
-		Partitioned: true,
-	})
+	// Rotate the refresh session on every login so a stolen old cookie cannot
+	// be reused after the owner signs in again.
+	if oldToken, cookieErr := c.Cookie(refreshCookieName); cookieErr == nil && oldToken != "" {
+		_ = h.cache.Del(ctx, fmt.Sprintf("refresh:%s", oldToken)).Err()
+	}
+	refreshToken, maxAge, err := h.issueRefreshToken(ctx, user.ID)
+	if err != nil {
+		h.log.Error("authHandler.login", "error", err)
+		InternalServerError(c, "")
+		return
+	}
+	setRefreshCookie(c, refreshToken, int(maxAge.Seconds()))
 	c.JSON(http.StatusOK, gin.H{"token": authToken})
 }
 
@@ -220,15 +200,25 @@ func (h *authHandler) register(c *gin.Context) {
 }
 
 func (h *authHandler) refresh(c *gin.Context) {
-	refreshToken, err := c.Cookie("__Host-Http-Refresh")
-	if err != nil {
+	refreshToken, err := c.Cookie(refreshCookieName)
+	if err != nil || refreshToken == "" {
 		Forbidden(c, "")
+		return
 	}
+
 	ctx := c.Request.Context()
 	refreshKey := fmt.Sprintf("refresh:%s", refreshToken)
-	var user queries.UserInfoResponse
-	if err := GetJSONCache(ctx, h.cache, refreshKey, &user); err != nil {
+	var userID string
+	if err := GetJSONCache(ctx, h.cache, refreshKey, &userID); err != nil {
 		Unauthorized(c, "")
+		return
+	}
+
+	user, err := h.store.Get(ctx, userID)
+	if err != nil || !user.IsActive {
+		_ = h.cache.Del(ctx, refreshKey).Err()
+		Unauthorized(c, "")
+		return
 	}
 
 	token, err := h.getAuthToken(ctx, user)
@@ -238,6 +228,70 @@ func (h *authHandler) refresh(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"token": token})
+}
+
+func (h *authHandler) logout(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	ctx := c.Request.Context()
+
+	refreshToken, err := c.Cookie(refreshCookieName)
+	if err == nil && refreshToken != "" {
+		refreshKey := fmt.Sprintf("refresh:%s", refreshToken)
+		if err := h.cache.Del(ctx, refreshKey).Err(); err != nil {
+			LogCacheErr("Del", "authHandler.logout", err)
+		}
+	}
+
+	cacheKey := fmt.Sprintf("login:%s", claims.ID)
+	if err := h.cache.Del(ctx, cacheKey).Err(); err != nil {
+		LogCacheErr("Del", "authHandler.logout", err)
+	}
+	clearRefreshCookie(c)
+	c.Status(http.StatusNoContent)
+}
+
+func (h *authHandler) healthz(c *gin.Context) {
+	c.Status(http.StatusOK)
+}
+
+func setRefreshCookie(c *gin.Context, token string, maxAge int) {
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:        refreshCookieName,
+		Value:       url.QueryEscape(token),
+		MaxAge:      maxAge,
+		Path:        "/",
+		SameSite:    http.SameSiteNoneMode,
+		Secure:      true,
+		HttpOnly:    true,
+		Partitioned: true,
+	})
+}
+
+func clearRefreshCookie(c *gin.Context) {
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:        refreshCookieName,
+		Value:       "",
+		MaxAge:      -1,
+		Path:        "/",
+		SameSite:    http.SameSiteNoneMode,
+		Secure:      true,
+		HttpOnly:    true,
+		Partitioned: true,
+	})
+}
+
+func (h *authHandler) issueRefreshToken(ctx context.Context, userID string) (string, time.Duration, error) {
+	u, err := uuid.NewV7()
+	if err != nil {
+		return "", 0, err
+	}
+	token := u.String()
+	key := fmt.Sprintf("refresh:%s", token)
+	maxAge := h.authExpiration * time.Minute
+	if err := SetJSONCache(ctx, h.cache, key, maxAge, userID); err != nil {
+		return "", 0, err
+	}
+	return token, maxAge, nil
 }
 
 func (h *authHandler) getAuthToken(ctx context.Context, user queries.UserInfoResponse) (token string, err error) {
@@ -266,28 +320,4 @@ func (h *authHandler) getAuthToken(ctx context.Context, user queries.UserInfoRes
 		}
 	}
 	return
-}
-
-func (h *authHandler) logout(c *gin.Context) {
-	claims := md.GetUserClaims(c)
-	ctx := c.Request.Context()
-
-	refreshToken, err := c.Cookie("__Host-Http-Refresh")
-	if err != nil {
-		Forbidden(c, "")
-	}
-	refreshKey := fmt.Sprintf("refresh:%s", refreshToken)
-	if err := h.cache.Del(ctx, refreshKey).Err(); err != nil {
-		LogCacheErr("Del", "authHandler.logout", err)
-	}
-
-	cacheKey := fmt.Sprintf("login:%s", claims.ID)
-	if err := h.cache.Del(ctx, cacheKey).Err(); err != nil {
-		LogCacheErr("Del", "authHandler.logout", err)
-	}
-	c.Status(http.StatusNoContent)
-}
-
-func (h *authHandler) healthz(c *gin.Context) {
-	c.Status(http.StatusOK)
 }

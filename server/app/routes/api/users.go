@@ -111,9 +111,14 @@ func (h *usersHandler) updateUserPermission(c *gin.Context) {
 		return
 	}
 
-	if err := h.userStore.UpdatePermission(c.Request.Context(), id, input); err != nil {
+	ctx := c.Request.Context()
+	if err := h.userStore.UpdatePermission(ctx, id, input); err != nil {
 		NotFound(c, "")
 		return
+	}
+	// The cached JWT still carries the old permission, so drop it.
+	if err := h.cache.Del(ctx, fmt.Sprintf("login:%s", id)).Err(); err != nil {
+		LogCacheErr("Del", "usersHandler.updateUserPermission", err)
 	}
 	Accepted(c, "")
 }
@@ -121,20 +126,24 @@ func (h *usersHandler) updateUserPermission(c *gin.Context) {
 func (h *usersHandler) delete(c *gin.Context) {
 	claims := md.GetUserClaims(c)
 	ctx := c.Request.Context()
+
+	var imgPath string
 	if HasPermissions(nil, claims.PermissionType, queries.Admin, queries.Vendor) {
-		imgPath, err := h.shopStore.GetImgPath(ctx, claims.ID)
-		if err == nil {
-			if imgPath != "" {
-				if err := h.fileStore.Delete(ctx, imgPath); err != nil {
-					Unprocessable(c, "")
-					return
-				}
-			}
-		}
+		imgPath, _ = h.shopStore.GetImgPath(ctx, claims.ID)
 	}
-	if err := h.userStore.Delete(ctx, claims.ID, claims.Email); err != nil {
+	if err := h.userStore.Delete(ctx, claims.ID); err != nil {
 		NotFound(c, "")
 		return
+	}
+	if err := h.cache.Del(ctx, fmt.Sprintf("login:%s", claims.ID)).Err(); err != nil {
+		LogCacheErr("Del", "usersHandler.delete", err)
+	}
+	// Delete the object after the database row so a failed account deletion does
+	// not leave a valid account without its profile image.
+	if imgPath != "" {
+		if err := h.fileStore.Delete(ctx, imgPath); err != nil {
+			h.log.Warn("usersHandler.delete:fileStore.Delete", "error", err)
+		}
 	}
 
 	c.Status(http.StatusNoContent)
@@ -168,9 +177,14 @@ func (h *usersHandler) setEmail(c *gin.Context) {
 		BadRequest(c, "email already exists")
 		return
 	}
+	// Drop the cached token so it is reissued with the new email claim.
+	if err := h.cache.Del(ctx, fmt.Sprintf("login:%s", claims.ID)).Err(); err != nil {
+		LogCacheErr("Del", "usersHandler.setEmail", err)
+	}
 
+	// Key by user ID so verification still works after the email changes.
 	randKey := RandVerifyNum()
-	cacheKey := fmt.Sprintf("verify:email:%s", input.Email)
+	cacheKey := fmt.Sprintf("verify:email:%s", claims.ID)
 	if _, err := h.cache.Set(ctx, cacheKey, randKey, 2*time.Minute).Result(); err != nil {
 		LogCacheErr("Set", "usersHandler.setEmail", err)
 		Unprocessable(c, "Failed to set verifier key")
@@ -201,7 +215,7 @@ func (h *usersHandler) verifyEmail(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	cacheKey := fmt.Sprintf("verify:email:%s", claims.Email)
+	cacheKey := fmt.Sprintf("verify:email:%s", claims.ID)
 	key, err := h.cache.GetDel(ctx, cacheKey).Result()
 	if err != nil {
 		LogCacheErr("GetDel", "usersHandler.verifyEmail", err)
@@ -250,6 +264,7 @@ func ShopRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	router.POST("/", h.upsert)
 	router.GET("/:id", h.get)
 	router.GET("/", h.list)
+	router.PUT("/set-active/:id", h.setActive)
 	router.PUT("/:id", h.setPhoneNumber)
 	router.POST("/upload", h.uploadProfileImg)
 	router.DELETE("/", h.deleteImgPath)
@@ -267,6 +282,9 @@ type ShopHandler struct {
 
 func (h *ShopHandler) upsert(c *gin.Context) {
 	claims := md.GetUserClaims(c)
+	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
+		return
+	}
 	var input queries.UpsertShopRequest
 	if err := c.ShouldBindJSON(&input); err != nil {
 		h.log.Debug("ShopHandler.upsert", "error", err)
@@ -342,32 +360,57 @@ func (h *ShopHandler) setPhoneNumber(c *gin.Context) {
 	Accepted(c, "")
 }
 
+func (h *ShopHandler) setActive(c *gin.Context) {
+	claims := md.GetUserClaims(c)
+	if !HasPermissions(c, claims.PermissionType, queries.Admin) {
+		return
+	}
+	var input SetFlag
+	if err := c.ShouldBindJSON(&input); err != nil {
+		h.log.Debug("ShopHandler.setActive", "error", err)
+		BadRequest(c, "")
+		return
+	}
+	if err := h.store.SetActive(c.Request.Context(), c.Param("id"), input.Accepted); err != nil {
+		NotFound(c, "")
+		return
+	}
+	Accepted(c, "")
+}
+
 func (h *ShopHandler) uploadProfileImg(c *gin.Context) {
 	claims := md.GetUserClaims(c)
+	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
+		return
+	}
 	file, err := c.FormFile("file")
 	if err != nil {
 		BadRequest(c, "")
 		return
 	}
 
-	var fileKey string
 	ctx := c.Request.Context()
-	if fpath, err := h.store.GetImgPath(ctx, claims.ID); err == nil {
-		fileKey = fpath
-	} else {
-		fileKey = GenFileKey(claims, claims.ID)
-	}
+	// Always use a fresh key; reusing the old one would append another
+	// extension to the stored path.
+	fileKey := GenFileKey(claims, claims.ID)
 	resultPath, err := h.fileStore.Upload(ctx, file, fileKey)
 	if err != nil {
 		h.log.Error("failed to upload file", "error", err)
 		BadRequest(c, "failed to process file")
 		return
 	}
-	if resultPath != fileKey {
-		if err := h.store.SetImgPath(ctx, claims.ID, resultPath); err != nil {
-			h.log.Error("failed to set img path", "error", err)
-			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": "failed to save file"})
-			return
+	oldPath, _ := h.store.GetImgPath(ctx, claims.ID)
+	if err := h.store.SetImgPath(ctx, claims.ID, resultPath); err != nil {
+		h.log.Error("failed to set img path", "error", err)
+		if delErr := h.fileStore.Delete(ctx, resultPath); delErr != nil {
+			h.log.Warn("failed to clean up uploaded file", "error", delErr)
+		}
+		Unprocessable(c, "failed to save file")
+		return
+	}
+	if oldPath != "" && oldPath != resultPath {
+		if err := h.fileStore.Delete(ctx, oldPath); err != nil {
+			h.log.Warn("failed to delete old shop image", "error", err)
 		}
 	}
 	Accepted(c, "")
@@ -375,15 +418,20 @@ func (h *ShopHandler) uploadProfileImg(c *gin.Context) {
 
 func (h *ShopHandler) deleteImgPath(c *gin.Context) {
 	claims := md.GetUserClaims(c)
+	if !HasPermissions(c, claims.PermissionType, queries.Admin, queries.Vendor) {
+		return
+	}
 	ctx := c.Request.Context()
 	imgPath, err := h.store.DeleteImgPath(ctx, claims.ID)
 	if err != nil {
 		NotFound(c, "")
 		return
 	}
-	if err := h.fileStore.Delete(ctx, imgPath); err != nil {
-		Forbidden(c, "")
-		return
+	if imgPath != "" {
+		if err := h.fileStore.Delete(ctx, imgPath); err != nil {
+			Forbidden(c, "")
+			return
+		}
 	}
 	c.Status(http.StatusNoContent)
 }

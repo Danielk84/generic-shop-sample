@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"generic-shop-sample/app"
 	"generic-shop-sample/app/background"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 )
 
 func PaymentRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
@@ -88,11 +90,15 @@ func (h *paymentHandler) init(c *gin.Context) {
 		NotFound(c, "Order not found")
 		return
 	}
-	if !order.IsVerified && order.ItemsTotal <= 0 {
+	if !order.IsVerified || order.ItemsTotal <= 0 || order.TotalBill <= 0 {
 		h.log.Debug("not verified or empty user order",
 			"user_id", claims.ID,
 			"order", order)
 		Forbidden(c, "UnVerified order")
+		return
+	}
+	if order.IsPaid || order.IsConfirmed {
+		BadRequest(c, "order is already paid")
 		return
 	}
 	user, err := h.userStore.Get(ctx, claims.ID)
@@ -146,34 +152,39 @@ func (h *paymentHandler) init(c *gin.Context) {
 }
 
 func (h *paymentHandler) callback(c *gin.Context) {
-	claims := md.GetUserClaims(c)
-	if HasPermissions(nil, claims.PermissionType, queries.BlockUser) {
-		Forbidden(c, "")
-		return
-	}
 	var input payment.ZPGatewayStatus
 	if err := c.ShouldBindQuery(&input); err != nil {
 		h.log.Debug("paymentHandler.callback", "error", err)
 		BadRequest(c, "")
 		return
 	}
-	if !h.zpGateway.CheckStatus(input.Status) {
-		Forbidden(c, "")
-		return
-	}
 
 	ctx := c.Request.Context()
 	reverse := payment.ZPReverseRequest{MerchantID: h.merchandID, Authority: input.Authority}
-	data, err := h.paymentCache.Get(ctx, input.Authority).Result()
+	// Consume the authority atomically so concurrent callbacks cannot verify
+	// and apply the same payment more than once.
+	data, err := h.paymentCache.GetDel(ctx, input.Authority).Result()
 	if err != nil {
-		h.reverseWithLog(ctx, "failed to get payment authority related data", err, reverse)
-		BadRequest(c, "Invliad authority")
+		// A missing authority normally means this callback was already handled.
+		// Do not reverse on any lookup failure: a duplicate callback or a
+		// transient cache error must not undo a successful payment.
+		if errors.Is(err, redis.Nil) {
+			BadRequest(c, "Invalid authority")
+			return
+		}
+		h.log.Error("failed to get payment authority related data", "error", err)
+		InternalServerError(c, "")
 		return
 	}
+
 	var up UserPayment
 	if err := json.Unmarshal([]byte(data), &up); err != nil {
-		h.reverseWithLog(ctx, "failed to decode api.paymeny.UserPayment", err, reverse)
+		h.reverseWithLog(ctx, "failed to decode api.payment.UserPayment", err, reverse)
 		Unprocessable(c, "")
+		return
+	}
+	if !h.zpGateway.CheckStatus(input.Status) {
+		BadRequest(c, "payment was not successful")
 		return
 	}
 	verfiedPayment, err := h.zpGateway.VerifyReq(ctx, payment.ZPVerifyRequest{
@@ -198,9 +209,12 @@ func (h *paymentHandler) callback(c *gin.Context) {
 			"err":       fmt.Sprintf("%v", verfiedPayment.Errs),
 		},
 	}
-	if slices.Contains([]int{100, 101}, verfiedPayment.Data.Code) {
-		status.IsPaid = true
+	if !slices.Contains([]int{100, 101}, verfiedPayment.Data.Code) {
+		h.reverseWithLog(ctx, "payment verification returned a non-success code", nil, reverse)
+		BadRequest(c, "payment was not verified")
+		return
 	}
+	status.IsPaid = true
 	err = h.orderStore.SetPaymentStatus(ctx, queries.OrderID{
 		ID:     up.OrderID,
 		UserID: up.UserID,
