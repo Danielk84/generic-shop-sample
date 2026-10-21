@@ -10,8 +10,8 @@ import (
 )
 
 type OrderUserInfo struct {
-	Address string `json:"address" binding:"required"`
-	ZipCode string `json:"zip_code" binding:"required"`
+	Address string `json:"address" binding:"required,min=4,max=1000"`
+	ZipCode string `json:"zip_code" binding:"required,min=3,max=10"`
 }
 
 type OrderID struct {
@@ -71,7 +71,12 @@ func (o *orderRepository) Create(ctx context.Context, userID string) (item strin
 	// instead of creating new one.
 	const q = `WITH matched AS (
 			SELECT id FROM order_s.orders
-			WHERE user_id = $1::UUID AND is_paid = FALSE
+			WHERE
+				user_id = $1::UUID AND
+				is_paid = FALSE AND
+				is_confirmed = FALSE
+				AND (started_at + INTERVAL '24 hours') > NOW()
+			ORDER BY started_at DESC
 			LIMIT 1
 		),
 		inserted AS (
@@ -183,7 +188,15 @@ func (o *orderRepository) SetUserInfo(ctx context.Context, id OrderID, info Orde
 func (o *orderRepository) VerifyUserInfo(ctx context.Context, id OrderID, isVerified bool) (err error) {
 	const q = `UPDATE order_s.orders
 		SET is_verified = @IsVerified
-		WHERE id = @ID::UUID AND user_id = @UserID::UUID AND is_paid = FALSE AND is_confirmed = FALSE`
+		WHERE
+			id = @ID::UUID AND
+			user_id = @UserID::UUID AND
+			is_paid = FALSE AND
+			is_confirmed = FALSE AND (
+				@IsVerified = FALSE OR (
+					COALESCE(address, '') <> '' AND
+					COALESCE(zip_code, '') <> ''
+			))`
 	args := pgx.NamedArgs{
 		"IsVerified": isVerified,
 		"ID":         id.ID,
@@ -198,7 +211,7 @@ func (o *orderRepository) VerifyUserInfo(ctx context.Context, id OrderID, isVeri
 func (o *orderRepository) SetPaymentStatus(ctx context.Context, id OrderID, status PaymentStatus) (err error) {
 	const q = `UPDATE order_s.orders
 		SET payment_summary = jsonb_insert(payment_summary, '{-1}', @Summary::JSONB), is_paid = @IsPaid
-		WHERE id = @ID::UUID AND user_id = @UserID::UUID`
+		WHERE id = @ID::UUID AND user_id = @UserID::UUID AND is_paid = FALSE`
 	args := &pgx.NamedArgs{
 		"Summary": status.PaymentSummary,
 		"IsPaid":  status.IsPaid,
@@ -229,7 +242,7 @@ func (o *orderRepository) SetConfirmed(ctx context.Context, id OrderID, IsConfir
 func (o *orderRepository) DeleteExpiredOrders(ctx context.Context) (err error) {
 	const q = `DELETE FROM order_s.orders
 		WHERE is_paid = FALSE
-		AND started_at <= NOW()
+		AND (started_at + INTERVAL '24 hours') < NOW()
 		AND is_confirmed = FALSE`
 	if _, err = o.session.Exec(ctx, q); err != nil {
 		o.log.Warn("OrderRepository.DeleteExpiredOrders", "error", err)
@@ -290,6 +303,7 @@ type OrderItemsStore interface {
 	DailySales(ctx context.Context, pagination, page int) ([]DailySalesResponse, error)
 	Delete(ctx context.Context, id OrderItemID) error
 	SetItemsTotal(ctx context.Context, id OrderItemID, itemsTotal int32) error
+	SetProcessedItems(ctx context.Context, id OrderItemID, processedItems int32) error
 	SetConfirmedVendors(ctx context.Context, id OrderItemID, confirmedVendors []ProductVendor) error
 }
 
@@ -488,6 +502,22 @@ func (o *orderItemsRepository) SetItemsTotal(ctx context.Context, id OrderItemID
 	}
 	if err = execOne(ctx, o.session, q, args); err != nil {
 		o.log.Error("OrderItemsRepository.SetItemsTotal", "error", err)
+	}
+	return
+}
+
+func (o *orderItemsRepository) SetProcessedItems(ctx context.Context, id OrderItemID, processedItems int32) (err error) {
+	const q = `UPDATE order_s.order_items
+		SET processed_items = @ProcessedItems
+		WHERE order_id = @OrderID::UUID AND product_id = @ProductID::UUID AND user_id = @UserID::UUID`
+	args := pgx.NamedArgs{
+		"ProcessedItems": processedItems,
+		"OrderID":        id.OrderID,
+		"ProductID":      id.ProductID,
+		"UserID":         id.UserID,
+	}
+	if err = execOne(ctx, o.session, q, args); err != nil {
+		o.log.Error("OrderItemsRepository.SetProcessedItems", "error", err)
 	}
 	return
 }

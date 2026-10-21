@@ -50,13 +50,22 @@ AS $$
 
         UPDATE product_s.products
             SET available_quantity = (available_quantity - NEW.items_total)
-            WHERE id = NEW.product_id;
+            WHERE
+              id = NEW.product_id AND
+              is_available = TRUE AND
+              is_active = TRUE;
+        IF NOT FOUND THEN
+          RAISE EXCEPTION 'failed to update product_s.products';
+        END IF;
 
         UPDATE order_s.orders
             SET
                 items_total = (items_total + NEW.items_total),
                 total_bill = (total_bill + (NEW.items_total * product_price))
             WHERE id = NEW.order_id;
+        IF NOT FOUND THEN
+          RAISE EXCEPTION 'failed to update order_s.orders';
+        END IF;
 
         RETURN NEW;
     END;
@@ -72,13 +81,22 @@ AS $$
     BEGIN
         UPDATE product_s.products
             SET available_quantity = (available_quantity + OLD.items_total) - NEW.items_total
-            WHERE id = NEW.product_id;
+            WHERE
+              id = NEW.product_id AND
+              is_available = TRUE AND
+              is_active = TRUE;
+        IF NOT FOUND THEN
+          RAISE EXCEPTION 'failed to update product_s.products';
+        END IF;
 
         UPDATE order_s.orders
             SET
                 items_total = (items_total - OLD.items_total) + NEW.items_total,
                 total_bill = (total_bill - (OLD.items_total * OLD.price)) + (NEW.items_total * NEW.price)
             WHERE id = NEW.order_id;
+        IF NOT FOUND THEN
+          RAISE EXCEPTION 'failed to update order_s.orders';
+        END IF;
 
         RETURN NEW;
     END;
