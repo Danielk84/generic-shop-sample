@@ -310,7 +310,8 @@ func (h *orderItemsHandler) setItemsTotal(c *gin.Context) {
 	}
 
 	var url ItemsTotal
-	if err := c.ShouldBindUri(&url); err != nil {
+	err := c.ShouldBindUri(&url)
+	if err != nil {
 		h.log.Debug("orderItemsHandler.setItemsTotal", "step", "bindUri", "error", err)
 		BadRequest(c, "")
 		return
@@ -326,8 +327,12 @@ func (h *orderItemsHandler) setItemsTotal(c *gin.Context) {
 		OrderItem: input,
 		UserID:    claims.ID,
 	}
-	// A zero quantity means the item should leave the basket.
-	err := h.orderItemsStore.Delete(ctx, itemID)
+	if url.Total == 0 {
+		// A zero quantity means the item should leave the basket.
+		err = h.orderItemsStore.Delete(ctx, itemID)
+	} else {
+		err = h.orderItemsStore.SetItemsTotal(ctx, itemID, url.Total)
+	}
 	if err != nil {
 		NotFound(c, "")
 		return

@@ -435,7 +435,7 @@ func (s *shopRepository) Upsert(ctx context.Context, userID string, info UpsertS
 			shop_addr = @ShopCode,
 			zip_code = @ZipCode,
 			business_code = @BusinessCode,
-			bio = @Bio
+			bio = @Bio,
 			is_shop = FALSE`
 	args := pgx.NamedArgs{
 		"UserID":       userID,
@@ -446,7 +446,7 @@ func (s *shopRepository) Upsert(ctx context.Context, userID string, info UpsertS
 		"Bio":          info.Bio,
 	}
 	if err = execOne(ctx, s.session, q, args); err != nil {
-		s.log.Debug("ShopRepository.Upsert")
+		s.log.Debug("ShopRepository.Upsert", "error", err)
 	}
 	return
 }

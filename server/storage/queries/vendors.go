@@ -13,7 +13,7 @@ type VendorOrderDelivere struct {
 	OrderID     string          `json:"order_id" binding:"required,uuid"`
 	ProductID   string          `json:"product_id" binding:"required,uuid"`
 	Property    ProductProperty `json:"property" binding:"required,min=0,dive,keys,required,min=1,endkeys,required,min=1"`
-	IsDelivered bool            `json:"is_delivered" binding:"required"`
+	IsDelivered bool            `json:"is_delivered" binding:"boolean"`
 }
 
 type VendorOrder struct {

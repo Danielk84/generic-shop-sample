@@ -59,6 +59,7 @@ type OrderStore interface {
 	VerifyUserInfo(ctx context.Context, id OrderID, isVerified bool) error
 	SetPaymentStatus(ctx context.Context, id OrderID, status PaymentStatus) error
 	SetConfirmed(ctx context.Context, id OrderID, IsConfirmed bool) error
+	SetDelivered(ctx context.Context, id string, isDelivered bool) error
 	DeleteExpiredOrders(ctx context.Context) error
 }
 
@@ -239,6 +240,20 @@ func (o *orderRepository) SetConfirmed(ctx context.Context, id OrderID, IsConfir
 	return
 }
 
+func (o *orderRepository) SetDelivered(ctx context.Context, id string, isDelivered bool) (err error) {
+	const q = `UPDATE order_s.orders
+		SET is_delivered = @IsDelivered
+		WHERE id = @ID::UUID`
+	args := pgx.NamedArgs{
+		"IsDelivered": isDelivered,
+		"ID":          id,
+	}
+	if err = execOne(ctx, o.session, q, args); err != nil {
+		o.log.Debug("OrderRepository.SetDelivered", "error", err)
+	}
+	return
+}
+
 func (o *orderRepository) DeleteExpiredOrders(ctx context.Context) (err error) {
 	const q = `DELETE FROM order_s.orders
 		WHERE is_paid = FALSE
@@ -292,6 +307,7 @@ type orderItemsRepository struct {
 
 type OrderItemsStore interface {
 	Create(ctx context.Context, userID string, item OrderItemRequest) error
+	OrderList(ctx context.Context, orderID string) ([]OwnedOrderItemResponse, error)
 
 	CustomerList(ctx context.Context, id OrderID, pagination, page int) ([]OwnedOrderItemResponse, error)
 	MaxCustomerListPage(id OrderID) MaxPageType
@@ -330,6 +346,20 @@ func (o *orderItemsRepository) Create(ctx context.Context, userID string, item O
 	}
 	if err = execOne(ctx, o.session, q, args); err != nil {
 		o.log.Warn("OrderItemRepository.Create", "error", err)
+	}
+	return
+}
+
+func (o *orderItemsRepository) OrderList(ctx context.Context, orderID string) (items []OwnedOrderItemResponse, err error) {
+	const q = `SELECT
+			order_id, product_id, items_total,
+			processed_items, price, '' AS name,
+			confirmed_vendors
+		FROM order_s.order_items
+		WHERE order_id = $1::UUID`
+	items, err = list[OwnedOrderItemResponse](ctx, o.session, q, orderID)
+	if err != nil {
+		o.log.Debug("orderRepository.OrderList", "error", err)
 	}
 	return
 }

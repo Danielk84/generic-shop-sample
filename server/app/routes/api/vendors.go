@@ -15,13 +15,16 @@ import (
 
 func VendorOrderRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 	log := logger.GetLogger()
+	session := deps.DB.GetSession()
 	h := vendorOrderHandler{
-		log:             log,
-		store:           queries.NewVendorOrderStore(deps.DB.GetSession(), log),
-		cache:           deps.Cache.GetCache(cache.UsersCache),
-		pagination:      deps.Config.Pagination,
-		cacheExpiration: 1 * time.Hour,
-		baseCacheKey:    "vendor-order-router",
+		log:              log,
+		vendorOrderStore: queries.NewVendorOrderStore(session, log),
+		orderStore:       queries.NewOrderStore(session, log),
+		orderItemsStore:  queries.NewOrderItemsStore(session, log),
+		cache:            deps.Cache.GetCache(cache.UsersCache),
+		pagination:       deps.Config.Pagination,
+		cacheExpiration:  1 * time.Hour,
+		baseCacheKey:     "vendor-order-router",
 	}
 	router.Use(md.AuthMiddleware(deps, log))
 	router.GET("/", h.list)
@@ -29,12 +32,14 @@ func VendorOrderRouter(deps *app.ServiceDeps, router *gin.RouterGroup) {
 }
 
 type vendorOrderHandler struct {
-	log             logger.Logger
-	store           queries.VendorOrderStore
-	cache           cache.CacheClient
-	pagination      int
-	cacheExpiration time.Duration
-	baseCacheKey    string
+	log              logger.Logger
+	vendorOrderStore queries.VendorOrderStore
+	orderStore       queries.OrderStore
+	orderItemsStore  queries.OrderItemsStore
+	cache            cache.CacheClient
+	pagination       int
+	cacheExpiration  time.Duration
+	baseCacheKey     string
 }
 
 func (h *vendorOrderHandler) list(c *gin.Context) {
@@ -44,7 +49,7 @@ func (h *vendorOrderHandler) list(c *gin.Context) {
 	}
 	ctx := c.Request.Context()
 	page := GetPage(c)
-	output, err := h.store.List(ctx, claims.ID, h.pagination, page)
+	output, err := h.vendorOrderStore.List(ctx, claims.ID, h.pagination, page)
 	if err != nil {
 		NotFound(c, "")
 		return
@@ -54,7 +59,7 @@ func (h *vendorOrderHandler) list(c *gin.Context) {
 		client:     h.cache,
 		name:       fmt.Sprintf("vendorOrder:%s", claims.ID),
 		pagination: h.pagination,
-		getMaxPage: h.store.MaxPage(claims.ID),
+		getMaxPage: h.vendorOrderStore.MaxPage(claims.ID),
 	})
 	c.JSON(http.StatusOK, output)
 }
@@ -66,6 +71,7 @@ func (h *vendorOrderHandler) setIsDelivered(c *gin.Context) {
 	}
 	var input queries.VendorOrderDelivere
 	if err := c.ShouldBindJSON(&input); err != nil {
+		h.log.Debug("vendorOrderHandler.setIsDelivered", "error", err)
 		BadRequest(c, "")
 		return
 	}
@@ -74,10 +80,30 @@ func (h *vendorOrderHandler) setIsDelivered(c *gin.Context) {
 		return
 	}
 	ctx := c.Request.Context()
-	if err := h.store.SetIsDelivered(ctx, input); err != nil {
+	items, err := h.orderItemsStore.OrderList(ctx, input.OrderID)
+	if err != nil || len(items) == 0 {
+		h.log.Warn("vendorOrderHandler.setIsDelivered", "error", err)
 		NotFound(c, "")
 		return
 	}
-
+	allProcessed := true
+	for _, i := range items {
+		if i.ProcessedItems != i.ItemsTotal {
+			allProcessed = false
+			break
+		}
+	}
+	if allProcessed {
+		err := h.orderStore.SetDelivered(ctx, input.OrderID, input.IsDelivered)
+		if err != nil {
+			h.log.Warn("vendorOrderHandler.setIsDelivered", "error", err)
+			NotFound(c, "")
+			return
+		}
+	}
+	if err := h.vendorOrderStore.SetIsDelivered(ctx, input); err != nil {
+		NotFound(c, "")
+		return
+	}
 	Accepted(c, "")
 }
