@@ -15,7 +15,7 @@ import NotAcceptableSVG from '@/assets/artwork/error/406-artwork.vue'
 @reference "@/styles/index.css";
 
 .not-acceptable-pag {
-  @apply w-screen min-h-screen flex-col md:mt-5;
+  @apply w-full min-h-screen flex-col md:mt-5;
 }
 
 .not-acceptable-pag .artwork {

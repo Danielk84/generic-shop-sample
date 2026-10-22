@@ -15,7 +15,7 @@ import ContentTooLargeSVG from '@/assets/artwork/error/413-artwork.vue'
 @reference "@/styles/index.css";
 
 .bad-request-page {
-  @apply w-screen min-h-screen md:mt-10;
+  @apply w-full min-h-screen md:mt-10;
 }
 
 .bad-request-page .artwork {

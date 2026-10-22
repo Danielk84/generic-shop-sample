@@ -17,7 +17,7 @@ import UnauthorizedSVG from '@/assets/artwork/error/401-artwork.vue'
 @reference "@/styles/index.css";
 
 .unauthorized-page {
-  @apply w-screen min-h-screen -mt-4 md:-mt-20;
+  @apply w-full min-h-screen -mt-4 md:-mt-20;
 }
 
 .unauthorized-page h1 {

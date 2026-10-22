@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineAsyncComponent, computed } from 'vue'
+import { defineAsyncComponent, computed, type Component } from 'vue'
 
 import { getCssVar } from '@/utils/helper'
 import { useStore } from '@/store'
@@ -17,10 +17,17 @@ const props = withDefaults(defineProps<Icon>(), {
 
 const store = useStore()
 
-const icon = defineAsyncComponent(
-  () => import(/* @vite-ignore */ `../../assets/icons/${props.icon}`),
+const iconLoader = import.meta.glob<{ default: Component }>(
+  '../../assets/icons/**/*.vue',
 )
 
+const icon = computed(() => {
+  const key = `../../assets/icons/${props.icon}`
+  const loader = iconLoader[key]
+  if (!loader) throw new Error(`Icon not found: ${key}`)
+
+  return defineAsyncComponent(async () => (await loader()).default)
+})
 const style = computed(() => ({
   strokeColor: getCssVar(
     store.isDarkTheme ? props.strokeDarkColor : props.strokeColor,
@@ -33,7 +40,8 @@ const style = computed(() => ({
 
 <template>
   <div class="base-icon">
-    <icon
+    <component
+      :is="icon"
       :style="{
         width: props.size,
         height: props.size,

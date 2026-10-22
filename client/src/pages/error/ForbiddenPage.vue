@@ -15,7 +15,7 @@ import ForbiddenSVG from '@/assets/artwork/error/403-artwork.vue'
 @reference "@/styles/index.css";
 
 .forbidden-page {
-  @apply w-screen min-h-screen md:-mt-30;
+  @apply w-full min-h-screen md:-mt-30;
 }
 
 .forbidden-page h1 {

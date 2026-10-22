@@ -15,7 +15,7 @@ import UnprocessableContentSVG from '@/assets/artwork/error/422-artwork.vue'
 @reference "@/styles/index.css";
 
 .unprocessable-content-page {
-  @apply w-screen min-h-screen flex-col max-sm:-mt-20 md:mt-10 overflow-hidden;
+  @apply w-full min-h-screen flex-col max-sm:-mt-20 md:mt-10 overflow-hidden;
 }
 
 .unprocessable-content-page .artwork {
