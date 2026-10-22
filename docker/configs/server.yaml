@@ -27,8 +27,8 @@ product_image:
   max_product_images_amount: 6
 
 payment:
-  zp_merchant_id: "YOUR_ZARINPAL_MERCHANT_ID"
-  payment_callback_url: "https://example.com/payment/callback"
+  zp_merchant_id: "000000000000000000000000000000000000"
+  payment_callback_url: "http://localhost:8080/orders/verify-payment"
 
 file_upload:
   allowed_image_mimetype:

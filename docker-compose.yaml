@@ -1,13 +1,10 @@
 services:
   proxyserver:
-    image: nginx:1.31-alpine
     container_name: proxyserver
+    build:
+      context: .
+      dockerfile: docker/client.Dockerfile
     restart: always
-    volumes:
-        - type: bind
-          source: "./nginx"
-          target: "/etc/nginx"
-          read_only: true
     ports:
       - 8080:8080
     networks:
