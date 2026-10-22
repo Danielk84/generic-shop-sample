@@ -27,7 +27,12 @@ const store = useStore()
 const callbackUrl = route.query.callback_url
 
 if (store.getEmail === '') {
-  router.push({ name: 'auth' })
+  router.push({
+    name: 'auth',
+    query: {
+      callback_url: typeof callbackUrl === 'string' ? callbackUrl : '',
+    },
+  })
 }
 
 const { formData, errors, validate } = useValidator(LoginRequest)
@@ -64,7 +69,12 @@ const { mutate, isPending } = useMutation({
         errorMsg.value = `Invalid request, try again.`
         break
       default:
-        router.push({ name: 'auth' })
+        router.push({
+          name: 'auth',
+          query: {
+            callback_url: typeof callbackUrl === 'string' ? callbackUrl : '',
+          },
+        })
     }
   },
 })
@@ -151,7 +161,7 @@ const onClick = async (event: MouseEvent) => {
 @reference "@/styles/index.css";
 
 .login-page {
-  @apply w-screen h-screen;
+  @apply w-full h-screen;
 }
 
 .login-page .login-box {

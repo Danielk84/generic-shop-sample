@@ -162,8 +162,9 @@ const removeMutation = useMutation({
     notification.success('Item removed.')
     await Promise.all([refetch(), refetchOrder()])
   },
-  onError: (err) => {
+  async onError(err) {
     errorStatusHandler(err, router)
+    await Promise.all([refetch(), refetchOrder()])
   },
 })
 
@@ -184,26 +185,9 @@ const changeCountMutation = useMutation({
     notification.success('Count updated.')
     await Promise.all([refetch(), refetchOrder()])
   },
-  onError: (err) => {
+  async onError(err) {
     errorStatusHandler(err, router)
-  },
-})
-
-const processOrderMutation = useMutation({
-  mutationKey: ['basket-process-order'],
-  mutationFn: async () => {
-    return api.put(
-      `orders/verify/${orderId.value}`,
-      { accepted: true },
-      { headers: { Authorization: store.getAccessToken } },
-    )
-  },
-  onSuccess: async () => {
-    notification.success('Order verified. Continue to shipping info.')
-    router.push({ name: 'order-detail', params: { id: orderId.value } })
-  },
-  onError: (err) => {
-    errorStatusHandler(err, router)
+    await Promise.all([refetch(), refetchOrder()])
   },
 })
 
@@ -237,7 +221,7 @@ function handleProcessOrder() {
     notification.warning('Your basket is empty.')
     return
   }
-  processOrderMutation.mutate()
+  router.push({ name: 'order-detail', params: { id: orderId.value } })
 }
 </script>
 
@@ -254,7 +238,6 @@ function handleProcessOrder() {
         total: itemsTotal,
       }"
       :disabled="totalItems === 0"
-      :processing="processOrderMutation.isPending.value"
       @process="handleProcessOrder"
     />
     <ListPagination

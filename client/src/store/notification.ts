@@ -20,7 +20,7 @@ export const useNotificationStore = defineStore('notification', {
   },
   getters: {
     Notify(): Notification[] {
-      return this.notifications.reverse()
+      return [...this.notifications].reverse()
     },
   },
   actions: {

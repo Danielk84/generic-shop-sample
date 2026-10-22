@@ -131,11 +131,17 @@ export function parseJwt<T>(token: string): T | undefined {
   }
   try {
     const base64Url = token.split('.')[1]
-    if (base64Url === undefined) {
+    if (!base64Url) {
       return undefined
     }
-    const base64 = base64Url.replace('-', '+').replace('_', '/')
-    return JSON.parse(window.atob(base64)) as T
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64.padEnd(
+      base64.length + ((4 - (base64.length % 4)) % 4),
+      '=',
+    )
+    const binary = window.atob(padded)
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0))
+    return JSON.parse(new TextDecoder().decode(bytes)) as T
   } catch {
     return undefined
   }

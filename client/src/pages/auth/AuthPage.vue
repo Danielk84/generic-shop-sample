@@ -26,10 +26,6 @@ const route = useRoute()
 const store = useStore()
 const callbackUrl = route.query.callback_url
 
-if (store.getEmail === '') {
-  router.push({ name: 'auth' })
-}
-
 const { formData, errors, validate } = useValidator(EmailAddrRequest)
 
 const errorMsg = ref<string>('')
@@ -66,7 +62,12 @@ const { mutate, isPending } = useMutation({
           return
         }
         if (error.response?.data.msg === 'register') {
-          router.push({ name: 'register' })
+          router.push({
+            name: 'register',
+            query: {
+              callback_url: typeof callbackUrl === 'string' ? callbackUrl : '',
+            },
+          })
         } else {
           router.push('/')
         }
@@ -141,7 +142,7 @@ const onClick = async (event: MouseEvent) => {
 @reference "@/styles/index.css";
 
 .auth-page {
-  @apply w-screen min-h-screen;
+  @apply w-full min-h-screen;
 }
 
 .auth-page > .auth-box {

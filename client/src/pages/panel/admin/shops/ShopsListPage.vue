@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useQuery } from '@tanstack/vue-query'
 
 import api from '@/utils/api'
@@ -13,12 +13,18 @@ const ListPagination = defineAsyncComponent(
 )
 
 const store = useStore()
+const route = useRoute()
 const router = useRouter()
 
-const page = ref<number>(1)
+function initialPage(): number {
+  const queryPage = Number(route.query.page)
+  return Number.isInteger(queryPage) && queryPage > 0 ? queryPage : 1
+}
+
+const page = ref<number>(initialPage())
 const maxPage = ref<number>(1)
 
-const { data, error } = useQuery({
+const { data, error, isPending } = useQuery({
   queryKey: computed(() => ['admin-shops-list', page.value]),
   queryFn: async () =>
     api.get<ShopResponse[]>('users/shop/', {
@@ -49,7 +55,10 @@ watch(
   <section class="shops-list-page">
     <h1 class="page-title">Shops Management</h1>
 
-    <div v-if="data === undefined || data.length === 0" class="empty">
+    <div v-if="isPending" class="empty">
+      <p>Loading shops...</p>
+    </div>
+    <div v-else-if="data === undefined || data.length === 0" class="empty">
       <p>No shops found.</p>
     </div>
     <div v-else class="list">

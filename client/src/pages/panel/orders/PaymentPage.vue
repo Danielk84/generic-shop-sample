@@ -40,14 +40,15 @@ const initPaymentMutation = useMutation({
 <template>
   <section class="c-floating-window c-flex-all-center bg-(--c-v-1)/70">
     <button
-      class="text-2xl font-bold bg-(--c-v-15) text-(--c-v-7) py-4 px-6 rounded-2xl hover:brightness-120"
+      class="text-2xl font-bold bg-(--c-v-15) text-(--c-v-7) py-4 px-6 rounded-2xl hover:brightness-120 disabled:opacity-50 disabled:cursor-not-allowed"
+      :disabled="initPaymentMutation.isPending.value"
       @click="
         () => {
           initPaymentMutation.mutate()
         }
       "
     >
-      Let's Pay
+      {{ initPaymentMutation.isPending.value ? 'Redirecting...' : "Let's Pay" }}
     </button>
   </section>
 </template>

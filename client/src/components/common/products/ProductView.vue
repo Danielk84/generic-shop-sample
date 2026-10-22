@@ -144,6 +144,10 @@ const addToBasketMutation = useMutation({
 })
 
 async function addToBasket() {
+  if (selectedVariant.value === null) {
+    notification.error('Choose a product variant.')
+    return
+  }
   if (!store.hasAccessToken) {
     // Keep the current product in the callback url so the user returns here
     // after logging in and can retry adding the product.
@@ -180,7 +184,9 @@ async function addToBasket() {
         <button
           class="add-to-basket"
           :disabled="
-            !product.is_available || addToBasketMutation.isPending.value
+            !product.is_available ||
+            selectedVariant === null ||
+            addToBasketMutation.isPending.value
           "
           @click="addToBasket"
         >

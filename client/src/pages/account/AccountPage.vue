@@ -69,7 +69,6 @@ const {
   validate: userInfoValidate,
 } = useValidator(UserInfoRequest)
 
-const IsEmailVerifyReq = ref<boolean>(false)
 const emailVerifyCode = ref<string>('')
 
 const userQuery = useQuery({
@@ -98,6 +97,9 @@ watch(
     emailForm.value.email = value.email
     userPhoneForm.value.phone_number = value.phone_number
     userInfoForm.value.national_code = value.national_code
+    const nameParts = value.name.trim().split(/\s+/)
+    userInfoForm.value.first_name = nameParts.shift() ?? ''
+    userInfoForm.value.last_name = nameParts.join(' ')
   },
   { immediate: true },
 )
@@ -150,7 +152,8 @@ const shopMutation = useMutation({
       headers: { Authorization: store.getAccessToken },
     })
   },
-  async onSuccess() {
+  async onSuccess(data) {
+    if (data === null) return
     notification.success('Shop profile saved.')
     isShopError.value = false
     await shopQuery.refetch()
@@ -175,7 +178,8 @@ const phoneMutation = useMutation({
       headers: { Authorization: store.getAccessToken },
     })
   },
-  async onSuccess() {
+  async onSuccess(data) {
+    if (data === null) return
     notification.success('Shop phone number updated.')
     isUserError.value = false
     await shopQuery.refetch()
@@ -200,7 +204,8 @@ const userPhoneMutation = useMutation({
       headers: { Authorization: store.getAccessToken },
     })
   },
-  async onSuccess() {
+  async onSuccess(data) {
+    if (data === null) return
     notification.success('Verification code sent to your phone.')
     isUserError.value = false
     await userQuery.refetch()
@@ -225,7 +230,8 @@ const emailMutation = useMutation({
       headers: { Authorization: store.getAccessToken },
     })
   },
-  async onSuccess() {
+  async onSuccess(data) {
+    if (data === null) return
     notification.success('Verification code sent to the new email.')
     isUserError.value = false
     isEmailVerifyOpen.value = true
@@ -233,6 +239,11 @@ const emailMutation = useMutation({
   },
   onError(err) {
     errorStatusHandler(err, router, {
+      badRequest() {
+        notification.error('Invalid or already used email.')
+        isUserError.value = true
+        return
+      },
       notFound() {
         notification.error('Invalid user email')
         isUserError.value = true
@@ -251,7 +262,8 @@ const userInfoMutation = useMutation({
       headers: { Authorization: store.getAccessToken },
     })
   },
-  async onSuccess() {
+  async onSuccess(data) {
+    if (data === null) return
     notification.success('Profile info updated.')
     isUserError.value = false
     await userQuery.refetch()
@@ -281,6 +293,7 @@ const verifyEmailMutation = useMutation({
     notification.success('Email verified.')
     emailVerifyCode.value = ''
     isEmailVerifyOpen.value = false
+    await userQuery.refetch()
   },
   onError(err) {
     errorStatusHandler(err, router, {
@@ -359,8 +372,15 @@ const removeImageMutation = useMutation({
 async function onImageChange(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
-  if (file !== undefined) await imageMutation.mutateAsync(file)
-  IsEmailVerifyReq.value = false
+  if (file === undefined) return
+  try {
+    await imageMutation.mutateAsync(file)
+  } catch {
+    // The mutation's onError handler already reports the failure.
+  } finally {
+    // Allow selecting the same file again after an upload attempt.
+    input.value = ''
+  }
 }
 </script>
 

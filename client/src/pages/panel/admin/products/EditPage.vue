@@ -223,7 +223,8 @@ async function onClick(event: MouseEvent) {
         </div>
         <button
           class="c-form-btn"
-          :class="{ 'c-is-pending': !query.isPending }"
+          :class="{ 'c-is-pending': mutation.isPending.value }"
+          :disabled="mutation.isPending.value"
           type="button"
           @click="onClick($event)"
         >
@@ -266,7 +267,7 @@ async function onClick(event: MouseEvent) {
 @reference "@/styles/index.css";
 
 .product-edit-page {
-  @apply w-screen min-h-screen p-4 md:p-10 flex-col gap-10 md:gap-20;
+  @apply w-full min-h-screen p-4 md:p-10 flex-col gap-10 md:gap-20;
 }
 
 .product-edit-page .edit-box {

@@ -2,7 +2,6 @@
 import { defineAsyncComponent, ref } from 'vue'
 
 import type { Category } from '@/contracts/categories/response.interface'
-import { useRouter } from 'vue-router'
 
 const CreateTag = defineAsyncComponent(
   () => import('@/pages/panel/admin/categories/CreateTag.vue'),
@@ -13,8 +12,6 @@ const DeleteTag = defineAsyncComponent(
 const CategoriesView = defineAsyncComponent(
   () => import('@/components/common/categories/CategoriesView.vue'),
 )
-
-const router = useRouter()
 
 const showFloatingBox = ref<boolean>(false)
 const tag = ref<Category>({ tag: '', id: 0 })
@@ -61,13 +58,7 @@ function tagHandler(category: Category) {
       </div>
     </div>
     <div class="add c-flex-all-center">
-      <CreateTag
-        @refetch="
-          () => {
-            router.go(0)
-          }
-        "
-      />
+      <CreateTag @refetch="categoryRef?.refetch()" />
     </div>
     <div class="list">
       <CategoriesView @tag-handler="tagHandler" ref="categoryRef" />

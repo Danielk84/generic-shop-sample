@@ -28,12 +28,17 @@ const route = useRoute()
 const router = useRouter()
 const notification = useNotificationStore()
 
-const page = ref<number | null>(null)
+function initialPage(): number {
+  const queryPage = Number(route.query.page)
+  return Number.isInteger(queryPage) && queryPage > 0 ? queryPage : 1
+}
+
+const page = ref<number>(initialPage())
 const maxPage = ref<number>(1)
 const searchText = ref('')
 const searchResults = ref<ProductSummaryResponse[] | null>(null)
 
-const { data, error, refetch } = useQuery({
+const { data, error, refetch, isPending } = useQuery({
   queryKey: computed(() => ['admin-products-list', page.value]),
   enabled: computed(() => page.value !== null),
   queryFn: async () =>
@@ -246,7 +251,13 @@ watch(page, (v) => {
         </div>
       </div>
     </section>
-    <div v-if="data === undefined" class="empty-product c-flex-all-center">
+    <div v-if="isPending" class="empty-product c-flex-all-center">
+      <p>Loading products...</p>
+    </div>
+    <div
+      v-else-if="data === undefined || data.length === 0"
+      class="empty-product c-flex-all-center"
+    >
       <p>There are not any products.</p>
     </div>
     <div
@@ -268,7 +279,7 @@ watch(page, (v) => {
             class="set-btn true-btn cursor-pointer"
             :class="{
               'false-btn': !item.is_active,
-              'c-is-pending': !setActiveMutation.isPending,
+              'c-is-pending': setActiveMutation.isPending.value,
             }"
             @click="
               setActiveMutation.mutate({

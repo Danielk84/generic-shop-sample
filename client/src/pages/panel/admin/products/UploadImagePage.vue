@@ -175,7 +175,7 @@ const onChange = async (event: Event) => {
 @reference "@/styles/index.css";
 
 .upload-image-page {
-  @apply w-screen min-h-screen flex flex-col
+  @apply w-full min-h-screen flex flex-col
     items-center;
 }
 

@@ -119,6 +119,7 @@ const pcMutation = useMutation({
   async onSuccess() {
     notification.success('Product tags updated.')
     await pcQuery.refetch()
+    isBoxOpen.value = false
   },
   onError(error) {
     errorStatusHandler(error, router, {
@@ -152,13 +153,7 @@ const pcMutation = useMutation({
           </button>
           <button
             class="save-btn c-flex-all-center"
-            @click="
-              async () => {
-                await pcMutation.mutateAsync(choosedTags)
-                await pcQuery.refetch()
-                isBoxOpen = false
-              }
-            "
+            @click="pcMutation.mutate(choosedTags)"
             :disabled="pcMutation.isPending.value"
           >
             <BaseIcon

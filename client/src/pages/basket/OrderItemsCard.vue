@@ -24,6 +24,15 @@ watch(count, () => {
   hasChanges.value = count.value !== props.data.count
 })
 
+watch(
+  () => props.data.count,
+  (value) => {
+    if (!hasChanges.value) {
+      count.value = value
+    }
+  },
+)
+
 function saveChange() {
   emits('changeCount', count.value)
   hasChanges.value = false

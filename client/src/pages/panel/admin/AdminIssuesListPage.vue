@@ -40,7 +40,7 @@ const {
 } = useValidator(SetIssuesResRequest)
 
 const issuesQuery = useQuery({
-  queryKey: computed(() => ['issues-list', page.value]),
+  queryKey: computed(() => ['issues-list', 'admin', page.value]),
   queryFn: async () =>
     api.get<IssuesSummaryResponse[]>('issues/admin', {
       params: {
@@ -70,7 +70,7 @@ watch(issuesQuery.error, (err) => {
 })
 
 const getIssueQuery = useQuery({
-  queryKey: computed(() => ['get-issue-query', getIssueDetail]),
+  queryKey: computed(() => ['get-issue-query', 'admin', getIssueDetail.value]),
   enabled: computed(() => getIssueDetail.value !== null),
   queryFn: async () =>
     api.get<IssuesResponse>(
@@ -302,7 +302,7 @@ async function saveResponse() {
   @apply bg-(--c-v-13) text-(--c-v-1);
 }
 
-.issues-list-page .is-done {
+.issues-list-page .not-done {
   @apply bg-(--c-v-11) text-(--c-v-7);
 }
 

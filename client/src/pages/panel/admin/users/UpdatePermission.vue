@@ -15,6 +15,11 @@ import {
   type UserPermissionInput,
 } from '@/contracts/users/request.schema'
 
+const props = defineProps<{
+  permissionType: number
+  isActive: boolean
+}>()
+
 const store = useStore()
 const route = useRoute()
 const router = useRouter()
@@ -22,7 +27,8 @@ const notification = useNotificationStore()
 const id = route.params.id
 
 const { formData, errors, validate } = useValidator(UserPermissionRequest)
-formData.value.is_active = true
+formData.value.permission_type = props.permissionType
+formData.value.is_active = props.isActive
 
 const { mutate, isPending } = useMutation({
   mutationKey: ['update-user-permission', id],
@@ -92,7 +98,7 @@ const onClick = async (event: Event) => {
       </div>
       <button
         class="c-form-btn"
-        :class="{ 'is-pending': isPending }"
+        :class="{ 'c-is-pending': isPending }"
         @click="onClick($event)"
       >
         Set

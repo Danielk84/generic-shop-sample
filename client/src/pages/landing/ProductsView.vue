@@ -17,6 +17,7 @@ const props = defineProps<{
   to: string
   emptyView: string
   data?: ProductSummaryResponse[]
+  loading?: boolean
 }>()
 
 const scrollBoxRef = ref<HTMLDivElement | null>(null)
@@ -117,8 +118,11 @@ const goForward = useTimer(() => {
 </script>
 
 <template>
+  <div v-if="props.loading" class="empty-view c-flex-all-center">
+    <h2>Loading products...</h2>
+  </div>
   <div
-    v-if="props.data === undefined || props.data.length === 0"
+    v-else-if="props.data === undefined || props.data.length === 0"
     class="empty-view c-flex-all-center"
   >
     <h2>{{ props.emptyView }}</h2>

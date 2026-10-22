@@ -5,10 +5,8 @@ import { useMutation } from '@tanstack/vue-query'
 
 import api from '@/utils/api'
 import icons from '@/utils/icons'
-import { useStore } from '@/store'
 import { errorStatusHandler } from '@/utils/helper'
 
-const store = useStore()
 const router = useRouter()
 const route = useRoute()
 
@@ -23,15 +21,13 @@ const isSuccessPayment = ref<boolean | null>(null)
 
 const verifyPaymentMutation = useMutation({
   mutationKey: ['user-verify-payment'],
-  retry: true,
+  // The callback consumes the authority, so retrying cannot succeed.
+  retry: false,
   mutationFn: async () =>
     api.get('payment/callback', {
       params: {
         Authority: Authority,
         Status: Status,
-      },
-      headers: {
-        Authorization: store.getAccessToken,
       },
     }),
   onSuccess() {
@@ -51,7 +47,11 @@ const verifyPaymentMutation = useMutation({
 })
 
 onMounted(async () => {
-  await verifyPaymentMutation.mutateAsync()
+  try {
+    await verifyPaymentMutation.mutateAsync()
+  } catch {
+    // The mutation's onError handler already updates the page state.
+  }
 })
 </script>
 
@@ -74,7 +74,10 @@ onMounted(async () => {
           fillColor="--c-v-14"
           fillDarkColor="--c-v-14"
         />
-        <RouterLink class="back-url callback-text" to="/">
+        <RouterLink
+          class="back-url callback-text"
+          :to="{ name: 'orders-list' }"
+        >
           Successfully Verified, Back To Orders.
         </RouterLink>
       </div>
@@ -88,7 +91,7 @@ onMounted(async () => {
           fillColor="--c-v-13"
           fillDarkColor="--c-v-13"
         />
-        <h1 class="callback-text">Payment Verifing...</h1>
+        <h1 class="callback-text">Payment Verifying...</h1>
       </div>
       <div v-else class="status-box">
         <BaseIcon

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { defineAsyncComponent, ref } from 'vue'
+import { computed, defineAsyncComponent, ref } from 'vue'
 
 import icons from '@/utils/icons'
 import type { ProductImageResponse } from '@/contracts/products/response.interface'
@@ -16,17 +16,26 @@ const BaseIcon = defineAsyncComponent(
 
 const props = defineProps<{ data: ProductImageResponse[] | undefined }>()
 
-const showUp = ref<ProductImageResponse>(
-  props.data === undefined || props.data.length === 0
-    ? ({} as ProductImageResponse)
-    : props.data[0],
-)
+const selected = ref<ProductImageResponse | null>(null)
+const showUp = computed<ProductImageResponse | null>(() => {
+  const data = props.data
+  if (data === undefined || data.length === 0) {
+    return null
+  }
+  if (selected.value !== null) {
+    const match = data.find((image) => image.id === selected.value?.id)
+    if (match !== undefined) {
+      return match
+    }
+  }
+  return data[0]
+})
 
 const fullScreen = ref<boolean>(false)
 </script>
 
 <template>
-  <div v-if="props.data === undefined" class="empty-img-list c-flex-all-center">
+  <div v-if="showUp === null" class="empty-img-list c-flex-all-center">
     There are not photo for Product.
   </div>
   <div v-else class="image-frame-list c-flex-all-center">
@@ -50,12 +59,12 @@ const fullScreen = ref<boolean>(false)
     </div>
     <div class="list">
       <div v-for="i in props.data" :key="i.img_path" class="base-img item">
-        <button class="btn" @click="showUp = i">
+        <button class="btn" @click="selected = i">
           <ImageFrameCard :img="i.img_path" :alt="i.id" />
         </button>
       </div>
     </div>
-    <div v-if="fullScreen">
+    <div v-if="fullScreen && showUp !== null">
       <FullScreenImage
         :img="showUp.img_path"
         :alt="showUp.id"

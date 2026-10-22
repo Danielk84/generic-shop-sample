@@ -21,7 +21,7 @@ api.interceptors.response.use(
       originalRequest.url?.includes('auth/refresh')
     ) {
       if (error.response?.status === 401) {
-        store.setIsAuth(false)
+        store.logout()
       }
       return Promise.reject(error)
     }
@@ -29,7 +29,7 @@ api.interceptors.response.use(
     originalRequest._retry = true
 
     if (!(await store.refreshAccessKey())) {
-      store.setIsAuth(false)
+      store.logout()
       return Promise.reject(error)
     }
 

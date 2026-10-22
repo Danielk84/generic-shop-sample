@@ -56,13 +56,10 @@ watch(getOrderQuery.error, (err) => {
   }
 })
 
-const isEditable = computed(
-  () =>
-    !(
-      getOrderQuery.data.value?.is_paid ||
-      getOrderQuery.data.value?.is_confirmed
-    ),
-)
+const isEditable = computed(() => {
+  const order = getOrderQuery.data.value
+  return order !== undefined && !order.is_paid && !order.is_confirmed
+})
 
 const hasItems = computed(
   () =>
@@ -70,29 +67,22 @@ const hasItems = computed(
     Number(getOrderQuery.data.value?.items_total) > 0,
 )
 
-const isPayable = computed(() => isEditable.value && hasItems.value)
+const isPayable = computed(
+  () =>
+    isEditable.value &&
+    hasItems.value &&
+    getOrderQuery.data.value?.is_verified === true,
+)
 
-const getOrderItemsQuery = useQuery({
-  queryKey: ['user-order-items-history', order_id],
-  enabled: computed(() => hasItems.value),
-  queryFn: async () =>
-    api.get(``, {
-      headers: {
-        Authorization: store.hasAccessToken,
-      },
-    }),
-})
-
-watch(getOrderItemsQuery.error, (err) => {
-  if (err != null) {
-    errorStatusHandler(err, router, {
-      notFound() {
-        // empty block
-        return
-      },
-    })
+function openEdit() {
+  const order = getOrderQuery.data.value
+  if (order === undefined) {
+    return
   }
-})
+  OrderInfoForm.value.address = order.address
+  OrderInfoForm.value.zip_code = order.zip_code
+  isEditBoxOpen.value = true
+}
 
 const setUserInfoMutation = useMutation({
   mutationKey: ['set-user-info-mutation'],
@@ -102,10 +92,9 @@ const setUserInfoMutation = useMutation({
         Authorization: store.getAccessToken,
       },
     }),
-  async onSettled() {
+  async onSuccess() {
     notification.success('User information saved.')
     await getOrderQuery.refetch()
-    return
   },
   onError(error) {
     if (error !== undefined) {
@@ -157,15 +146,21 @@ async function saveUserInfo() {
     notification.error('Unexpected error!?')
     return
   }
-  await setUserInfoMutation.mutateAsync(input.data)
+  try {
+    await setUserInfoMutation.mutateAsync(input.data)
+  } catch {
+    return
+  }
   isEditBoxOpen.value = false
-
-  await getOrderQuery.refetch()
   isVerifyBoxOpen.value = true
 }
 
 async function saveVerify() {
-  await verifyUserInfoMutation.mutateAsync()
+  try {
+    await verifyUserInfoMutation.mutateAsync()
+  } catch {
+    return
+  }
   await getOrderQuery.refetch()
   isVerifyBoxOpen.value = false
 }
@@ -230,7 +225,7 @@ async function saveVerify() {
         </div>
       </div>
       <div v-if="isEditable" class="w-full c-flex-all-center">
-        <button class="edit-btn" @click="isEditBoxOpen = true">Edit</button>
+        <button class="edit-btn" @click="openEdit">Edit</button>
       </div>
     </section>
     <button

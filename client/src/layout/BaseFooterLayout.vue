@@ -9,7 +9,7 @@ const BaseFooter = defineAsyncComponent(
 <template>
   <div class="page">
     <main>
-      <RouterView />
+      <slot />
     </main>
     <footer>
       <BaseFooter />

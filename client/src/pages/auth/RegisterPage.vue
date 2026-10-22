@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { defineAsyncComponent, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useMutation } from '@tanstack/vue-query'
 import axios from 'axios'
 
@@ -25,8 +25,19 @@ const CountdownTimer = defineAsyncComponent(
 )
 
 const router = useRouter()
+const route = useRoute()
 const store = useStore()
+const callbackUrl = route.query.callback_url
 const { formData, errors, validate } = useValidator(RegisterRequest)
+
+function goToAuth() {
+  router.push({
+    name: 'auth',
+    query: {
+      callback_url: typeof callbackUrl === 'string' ? callbackUrl : '',
+    },
+  })
+}
 
 const errorMsg = ref<string>('')
 const showPassword = ref<boolean>(false)
@@ -38,7 +49,7 @@ const { mutate, isPending } = useMutation({
   },
   onSuccess: () => {
     errorMsg.value = ''
-    router.push({ name: 'auth' })
+    goToAuth()
   },
   onError: (error) => {
     if (!axios.isAxiosError(error)) {
@@ -50,7 +61,7 @@ const { mutate, isPending } = useMutation({
         errorMsg.value = `Invalid request, try again.`
         break
       default:
-        router.push({ name: 'auth' })
+        goToAuth()
     }
   },
 })
@@ -174,7 +185,7 @@ const onClick = async (event: MouseEvent) => {
 @reference "@/styles/index.css";
 
 .register-page {
-  @apply w-screen min-h-screen p-4 md:p-20;
+  @apply w-full min-h-screen p-4 md:p-20;
 }
 
 .register-page .register-box {

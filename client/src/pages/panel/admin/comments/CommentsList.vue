@@ -18,7 +18,12 @@ const notification = useNotificationStore()
 const route = useRoute()
 const router = useRouter()
 
-const page = ref<number | null>(null)
+function initialPage(): number {
+  const queryPage = Number(route.query.page)
+  return Number.isInteger(queryPage) && queryPage > 0 ? queryPage : 1
+}
+
+const page = ref<number>(initialPage())
 const maxPage = ref<number>(1)
 const finderID = ref<string>('')
 const foundComments = ref<RelatedCommentResponse[] | null>(null)
@@ -62,7 +67,7 @@ const findMutation = useMutation({
   mutationKey: ['admin-comments-find'],
   mutationFn: async (id: string) => {
     return api.get<RelatedCommentResponse[]>(`comments/find/${id}`, {
-      params: { page: page.value },
+      params: { page: page.value ?? 1 },
       headers: { Authorization: store.getAccessToken },
     })
   },
@@ -85,6 +90,10 @@ function findComments() {
     findMutation.mutate(id)
   }
 }
+
+watch(page, () => {
+  foundComments.value = null
+})
 
 const overviewMutation = useMutation({
   mutationKey: ['admin-comment-overview'],
@@ -114,8 +123,15 @@ const setActiveMutate = useMutation({
       },
     )
   },
-  async onSuccess() {
+  async onSuccess(_, input) {
     notification.success('Saved comment activation status.')
+    if (foundComments.value !== null) {
+      foundComments.value = foundComments.value.map((comment) =>
+        comment.id === input.id
+          ? { ...comment, is_active: input.status }
+          : comment,
+      )
+    }
     await listQuery.refetch()
   },
   onError(err) {
@@ -132,7 +148,7 @@ const cleanCacheMutation = useMutation({
       },
     }),
   async onSuccess() {
-    notification.success('Comments cache cleand.')
+    notification.success('Comments cache cleaned.')
   },
   onError(error) {
     errorStatusHandler(error, router, {
@@ -155,6 +171,7 @@ const deleteMutate = useMutation({
   },
   async onSuccess() {
     notification.success('Comments deleted.')
+    foundComments.value = null
     await listQuery.refetch()
   },
   onError(err) {
@@ -216,7 +233,7 @@ const deleteMutate = useMutation({
               }
             "
             class="base-btn delete-btn"
-            :class="{ 'c-is-pending': !deleteMutate.isPending }"
+            :class="{ 'c-is-pending': deleteMutate.isPending.value }"
           >
             Delete
           </button>
@@ -266,7 +283,10 @@ const deleteMutate = useMutation({
         Clear
       </button>
     </form>
-    <section class="list c-flex-all-center">
+    <section v-if="listQuery.isPending.value" class="list c-flex-all-center">
+      <p class="p-4 text-lg font-bold">Loading comments...</p>
+    </section>
+    <section v-else class="list c-flex-all-center">
       <div
         v-for="item of foundComments ?? listQuery.data.value ?? []"
         :key="item.id"
@@ -298,7 +318,7 @@ const deleteMutate = useMutation({
           class="base-btn active-btn"
           :class="{
             'off-btn': !item.is_active,
-            'c-is-pending': !setActiveMutate.isPending,
+            'c-is-pending': setActiveMutate.isPending.value,
           }"
         >
           Active

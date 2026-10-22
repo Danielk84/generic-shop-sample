@@ -50,7 +50,7 @@ const {
 } = useValidator(UpdateIssuesRequest)
 
 const issuesQuery = useQuery({
-  queryKey: computed(() => ['issues-list', page.value]),
+  queryKey: computed(() => ['issues-list', 'user', page.value]),
   queryFn: async () =>
     api.get<IssuesSummaryResponse[]>('issues/', {
       params: {
@@ -80,7 +80,7 @@ watch(issuesQuery.error, (err) => {
 })
 
 const getIssueQuery = useQuery({
-  queryKey: computed(() => ['get-issue-query', getIssueDetail]),
+  queryKey: computed(() => ['get-issue-query', 'user', getIssueDetail.value]),
   enabled: computed(() => getIssueDetail.value !== null),
   queryFn: async () =>
     api.get<IssuesResponse>(
@@ -123,7 +123,8 @@ const createIssuesMutation = useMutation({
   async onSuccess() {
     notification.success('New Issue created.')
     createForm.value.req = ''
-    await getIssueQuery.refetch()
+    isCreateIssueOpen.value = false
+    await issuesQuery.refetch()
   },
   onError(error) {
     errorStatusHandler(error, router, {
@@ -408,7 +409,7 @@ async function saveChanges() {
   @apply bg-(--c-v-13) text-(--c-v-1);
 }
 
-.issues-list-page .is-done {
+.issues-list-page .not-done {
   @apply bg-(--c-v-11) text-(--c-v-7);
 }
 

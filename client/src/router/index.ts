@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 import { useStore } from '@/store'
+import { setCallbackURL } from '@/utils/helper'
 import { PermissionType } from '@/contracts/users/request.schema'
 
 const router = createRouter({
@@ -153,14 +154,17 @@ const router = createRouter({
           component: () => import('@/pages/panel/orders/OrdersListPage.vue'),
         },
         {
+          path: '/orders/verify-payment',
+          name: 'user-verify-payment',
+          meta: {
+            layout_0: 'BaseFooterLayout',
+          },
+          component: () => import('@/pages/panel/orders/VerifyPaymentPage.vue'),
+        },
+        {
           path: '/orders/:id',
           name: 'order-detail',
           component: () => import('@/pages/panel/orders/OrderPage.vue'),
-        },
-        {
-          path: '/orders/verify-payment',
-          name: 'user-verify-payment',
-          component: () => import('@/pages/panel/orders/VerifyPaymentPage.vue'),
         },
       ],
     },
@@ -335,8 +339,24 @@ router.onError((error) => {
   console.error(error)
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const store = useStore()
+  const needsAuth =
+    to.meta.layout_1 === 'HasAccessTokenLayout' ||
+    to.meta.permissions_list !== undefined
+
+  if (needsAuth && !store.hasAccessToken) {
+    if (!(await store.refreshAccessKey())) {
+      return {
+        name: 'auth',
+        query: {
+          callback_url: setCallbackURL(to.fullPath),
+        },
+        replace: true,
+      }
+    }
+  }
+
   const permissions_list = to.meta.permissions_list
   if (permissions_list === undefined) {
     return true

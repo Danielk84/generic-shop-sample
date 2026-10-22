@@ -38,6 +38,7 @@ const { mutate, isPending } = useMutation({
   onSuccess: () => {
     if (errorMsg.value !== '') errorMsg.value = ''
     if (isError.value) isError.value = false
+    formData.value.tag = ''
     notification.success('new tag added.')
     emits('refetch')
   },

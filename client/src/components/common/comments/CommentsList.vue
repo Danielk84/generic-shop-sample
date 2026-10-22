@@ -243,7 +243,7 @@ async function createComments(event: MouseEvent) {
 }
 
 .comments-list .list {
-  @apply border-l border-t border-(--c-v-1) dark:border-(--c-v-7) p-4 md:p-6;
+  @apply border-l border-t border-(--c-v-1) dark:border-(--c-v-7) px-1 py-4 md:p-6;
 }
 
 .comments-list .item {

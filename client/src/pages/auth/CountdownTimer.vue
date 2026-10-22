@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onBeforeUnmount } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { useNotificationStore } from '@/store/notification'
@@ -11,38 +11,33 @@ const props = defineProps<{
 const router = useRouter()
 const notification = useNotificationStore()
 
-const minutes = ref<number>(props.remainingMinutes - 1)
-const seconds = ref<number>(59)
+const remainingSeconds = ref<number>(props.remainingMinutes * 60)
+const minutes = computed(() => Math.floor(remainingSeconds.value / 60))
+const seconds = computed(() =>
+  String(remainingSeconds.value % 60).padStart(2, '0'),
+)
+
+let redirectTimer: number | undefined
 
 const timer = setInterval(() => {
-  if (seconds.value > 0) {
-    seconds.value -= 1
-  } else {
-    if (minutes.value > 0) {
-      minutes.value -= 1
-      seconds.value = 59
-    }
+  if (remainingSeconds.value === 0) {
+    return
+  }
+  remainingSeconds.value -= 1
+  if (remainingSeconds.value === 0) {
+    clearInterval(timer)
+    notification.error('end of remaining time, back to auth after 20s.')
+    redirectTimer = window.setTimeout(() => {
+      router.push({ name: 'auth' })
+    }, 20000)
   }
 }, 1000)
 
-watch(
-  () => [minutes.value, seconds.value],
-  (v) => {
-    if (v[0] === 0 && v[1] === 0) {
-      clearInterval(timer)
-      notification.error('end of remaining time, back to auth after 20s.')
-      setTimeout(() => {
-        router.push({ name: 'auth' })
-      }, 20000)
-    }
-  },
-  {
-    immediate: true,
-  },
-)
-
 onBeforeUnmount(() => {
   clearInterval(timer)
+  if (redirectTimer !== undefined) {
+    clearTimeout(redirectTimer)
+  }
 })
 </script>
 

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useQuery } from '@tanstack/vue-query'
+import { useMutation, useQuery } from '@tanstack/vue-query'
 
 import api from '@/utils/api'
 import { useStore } from '@/store'
+import { useNotificationStore } from '@/store/notification'
 import { errorStatusHandler } from '@/utils/helper'
 import type { ShopInfoResponse } from '@/contracts/users/response.interface'
 
@@ -15,10 +16,11 @@ const ImageFrameCard = defineAsyncComponent(
 const route = useRoute()
 const router = useRouter()
 const store = useStore()
+const notification = useNotificationStore()
 
 const shopId = computed(() => (route.params.id as string) ?? '')
 
-const { data, error } = useQuery({
+const { data, error, isPending, refetch } = useQuery({
   queryKey: computed(() => ['shop-detail', shopId.value]),
   queryFn: async () =>
     api.get<ShopInfoResponse>(`users/shop/${shopId.value}`, {
@@ -27,6 +29,28 @@ const { data, error } = useQuery({
   select: (res) => res.data,
   enabled: computed(() => shopId.value !== ''),
 })
+
+const setShopStatusMutation = useMutation({
+  mutationKey: ['admin-shop-set-active'],
+  mutationFn: async (isActive: boolean) =>
+    api.put(
+      `users/shop/set-active/${shopId.value}`,
+      { accepted: isActive },
+      { headers: { Authorization: store.getAccessToken } },
+    ),
+  async onSuccess() {
+    notification.success('Shop status updated.')
+    await refetch()
+  },
+  onError(err) {
+    errorStatusHandler(err, router)
+  },
+})
+
+function toggleShopStatus() {
+  const isActive = data.value?.is_shop ?? false
+  setShopStatusMutation.mutate(!isActive)
+}
 
 watch(
   error,
@@ -43,7 +67,7 @@ watch(
   <div v-if="data !== undefined" class="shop-detail-page">
     <h1 class="page-title">
       {{ data?.brand }}
-      <span v-if="data?.is_shop" class="verified-badge">✓ Verified</span>
+      <span v-if="data?.is_shop" class="verified-badge">Active</span>
     </h1>
 
     <div class="card">
@@ -68,6 +92,28 @@ watch(
         <span class="label">Bio</span>
         <span>{{ data?.bio }}</span>
       </div>
+    </div>
+
+    <div class="card">
+      <h2>Shop Status</h2>
+      <div class="row">
+        <span class="label">Current status</span>
+        <span>{{ data?.is_shop ? 'Active' : 'Pending approval' }}</span>
+      </div>
+      <button
+        class="btn primary"
+        type="button"
+        :disabled="setShopStatusMutation.isPending.value"
+        @click="toggleShopStatus"
+      >
+        {{
+          setShopStatusMutation.isPending.value
+            ? 'Updating...'
+            : data?.is_shop
+              ? 'Deactivate shop'
+              : 'Activate shop'
+        }}
+      </button>
     </div>
 
     <div class="card">
@@ -104,8 +150,11 @@ watch(
       </div>
     </div>
   </div>
-  <div v-else class="shop-detail-page empty c-flex-all-center">
+  <div v-else-if="isPending" class="shop-detail-page empty c-flex-all-center">
     <p>Loading...</p>
+  </div>
+  <div v-else class="shop-detail-page empty c-flex-all-center">
+    <p>Shop not found.</p>
   </div>
 </template>
 

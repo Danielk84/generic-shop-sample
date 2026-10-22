@@ -6,6 +6,9 @@ import { parseJwt } from '@/utils/helper'
 import type { AccessTokenResponse } from '@/contracts/auth/response.interface'
 import type { AuthClaims } from '@/contracts/auth/response.interface'
 
+// Shared by every caller so concurrent 401s trigger a single refresh request.
+let refreshPromise: Promise<boolean> | null = null
+
 interface State {
   user: {
     email: string
@@ -67,13 +70,24 @@ export const useStore = defineStore('store', {
       this.user.isAuth = status
     },
     async refreshAccessKey(): Promise<boolean> {
-      const res = await api.post<AccessTokenResponse>('auth/refresh')
-      if (res.status === axios.HttpStatusCode.Ok) {
-        this.user.accessToken = res.data.token
-        this.setClaims(res.data.token)
-        return true
+      if (refreshPromise !== null) {
+        return refreshPromise
       }
-      return false
+      refreshPromise = (async () => {
+        try {
+          const res = await api.post<AccessTokenResponse>('auth/refresh')
+          if (res.status === axios.HttpStatusCode.Ok && res.data.token) {
+            this.setAccessToken(res.data.token)
+            return true
+          }
+          return false
+        } catch {
+          return false
+        } finally {
+          refreshPromise = null
+        }
+      })()
+      return refreshPromise
     },
     setClaims(token: string) {
       const claims = parseJwt<AuthClaims>(token)
@@ -94,7 +108,7 @@ export const useStore = defineStore('store', {
       this.user.isAuth = false
       this.claims.id = ''
       this.claims.email = ''
-      this.claims.permission_type = 4
+      this.claims.permission_type = 3
     },
     setDarkTheme(status: boolean) {
       this.theme.isDark = status

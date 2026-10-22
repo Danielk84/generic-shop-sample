@@ -11,30 +11,13 @@ const ProductsView = defineAsyncComponent(
   () => import('@/pages/landing/ProductsView.vue'),
 )
 
-const emits = defineEmits<{
-  (e: 'setLoadingState', state: boolean): void
-}>()
-
 const router = useRouter()
 
-const { data, isPending, isFetched, error } = useQuery({
+const { data, isPending, error } = useQuery({
   queryKey: ['latest-products'],
   queryFn: async () => api.get<ProductSummaryResponse[]>('products/'),
   select: (res) => res.data,
 })
-
-watch(
-  () => ({
-    isPending: isPending.value,
-    isFetched: isFetched.value,
-  }),
-  (state) => {
-    emits('setLoadingState', state.isFetched && state.isPending)
-  },
-  {
-    immediate: true,
-  },
-)
 
 watch(
   error,
@@ -60,6 +43,7 @@ watch(
     to="/products/"
     empty-view="Sorry, but there is not any new products."
     :data="data"
+    :loading="isPending"
   />
 </template>
 

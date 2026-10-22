@@ -11,30 +11,13 @@ const ProductsView = defineAsyncComponent(
   () => import('@/pages/landing/ProductsView.vue'),
 )
 
-const emits = defineEmits<{
-  (e: 'setLoadingState', state: boolean): void
-}>()
-
 const router = useRouter()
 
-const { data, isPending, isFetched, error } = useQuery({
-  queryKey: ['papular-products'],
+const { data, isPending, error } = useQuery({
+  queryKey: ['popular-products'],
   queryFn: async () => api.get<ProductSummaryResponse[]>('products/popular'),
   select: (res) => res.data,
 })
-
-watch(
-  () => ({
-    isPending: isPending.value,
-    isFetched: isFetched.value,
-  }),
-  (state) => {
-    emits('setLoadingState', state.isFetched && state.isPending)
-  },
-  {
-    immediate: true,
-  },
-)
 
 watch(
   error,
@@ -60,6 +43,7 @@ watch(
     to="/products/popular"
     empty-view="Sorry, but there is not any popular products."
     :data="data"
+    :loading="isPending"
   />
 </template>
 

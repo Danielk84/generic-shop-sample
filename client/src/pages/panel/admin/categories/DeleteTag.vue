@@ -19,7 +19,7 @@ const notification = useNotificationStore()
 const store = useStore()
 const router = useRouter()
 
-const { mutateAsync, isPending } = useMutation({
+const { mutate, isPending } = useMutation({
   mutationKey: ['admin-categories-delete', props.id],
   mutationFn: async () => {
     return api.delete(`categories/${props.id}`, {
@@ -47,12 +47,7 @@ const { mutateAsync, isPending } = useMutation({
   <button
     class="delete-btn c-flex-all-center"
     :class="{ 'c-is-pending': isPending }"
-    @click="
-      async () => {
-        await mutateAsync()
-        emits('afterDelete')
-      }
-    "
+    @click="mutate()"
   >
     Delete
   </button>

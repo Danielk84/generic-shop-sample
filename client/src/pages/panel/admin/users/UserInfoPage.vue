@@ -54,7 +54,11 @@ watch(
       <h3>Verified phone number: {{ data.is_v_phone_number }}</h3>
       <h2>Permission type: {{ PermissionString(data.permission_type) }}</h2>
     </div>
-    <UpdatePermission />
+    <UpdatePermission
+      v-if="data !== undefined"
+      :permission-type="data.permission_type"
+      :is-active="data.is_active"
+    />
   </div>
 </template>
 

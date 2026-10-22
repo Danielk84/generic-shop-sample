@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 
 import { imageOnLoadHook } from '@/components/card/hooks'
 import type { ImageFrameCardProps } from '@/components/card/types'
@@ -14,10 +14,6 @@ const imgRef = ref<HTMLImageElement | null>(null)
 const bgRef = ref<HTMLDivElement | null>(null)
 
 const onload = imageOnLoadHook(imgRef, bgRef)
-
-onMounted(async () => {
-  imgRef.value?.addEventListener('load', onload)
-})
 </script>
 
 <template>
@@ -31,9 +27,10 @@ onMounted(async () => {
         :loading="props.loading"
         draggable="false"
         @dragstart.prevent
+        @load="onload"
       />
     </div>
-    <div v-if="typeof tag == 'string'" class="tag">
+    <div v-if="typeof props.tag === 'string'" class="tag">
       <span>{{ props.tag }}</span>
     </div>
   </div>

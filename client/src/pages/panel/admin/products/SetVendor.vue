@@ -96,6 +96,20 @@ const setPriceValidator = useValidator(ProductSetPriceRequest)
 
 setPriceValidator.formData.value.id = props.data.id
 
+watch(
+  () => props.data.id,
+  (id) => {
+    setPriceValidator.formData.value.id = id
+  },
+)
+
+watch(
+  () => props.data.variant_detail,
+  (detail) => {
+    variantDetail.state.value = structuredClone(toRaw(detail ?? []))
+  },
+)
+
 watch(vendorEdit, (v) => {
   if (v === null) {
     return null
@@ -181,6 +195,14 @@ const setPriceMutation = useMutation({
   },
 })
 
+function openNewVendor(property: ProductProperty) {
+  vendorProperty.value = property
+  vendorEdit.value = null
+  setVendorValidator.formData.value.user_id = ''
+  setVendorValidator.formData.value.quantity = 0
+  setVendorValidator.errors.value = {}
+}
+
 async function saveVendor() {
   if (vendorProperty.value === null) {
     notification.warning('First select property then manage vendor.')
@@ -263,7 +285,7 @@ async function savePrice() {
         </table>
         <button
           class="text-2xl font-bold cursor-pointer w-full text-center hover:brightness-125"
-          @click="vendorProperty = item.property"
+          @click="openNewVendor(item.property)"
         >
           Add New Vendor
         </button>
@@ -447,10 +469,10 @@ async function savePrice() {
               v-model="setPriceValidator.formData.value.price"
             />
             <p
-              v-if="setVendorValidator.errors.value['price'] !== undefined"
+              v-if="setPriceValidator.errors.value['price'] !== undefined"
               class="c-form-error"
             >
-              {{ setVendorValidator.errors.value['price'] }}
+              {{ setPriceValidator.errors.value['price'] }}
             </p>
           </div>
           <button class="c-form-btn" type="button" @click="savePrice">
